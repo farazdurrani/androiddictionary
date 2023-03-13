@@ -6,12 +6,38 @@
   android:layout_height="match_parent"
   tools:context=".MainActivity">
 
+  <TextView
+    android:id="@+id/definitions"
+    android:layout_width="341dp"
+    android:layout_height="521dp"
+    android:maxWidth="50dp"
+    android:minWidth="50dp"
+    android:textSize="24sp"
+    app:layout_constraintEnd_toEndOf="parent"
+    app:layout_constraintHorizontal_bias="0.528"
+    app:layout_constraintStart_toStartOf="parent"
+    tools:ignore="MissingConstraints"
+    tools:layout_editor_absoluteY="16dp" />
+
+  <TextView
+    android:id="@+id/google"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="40dp"
+    android:layout_marginTop="17dp"
+    android:text="open in google..."
+    android:visibility="invisible"
+    app:layout_constraintBottom_toTopOf="@+id/wordBox"
+    app:layout_constraintEnd_toEndOf="parent"
+    app:layout_constraintStart_toStartOf="parent"
+    app:layout_constraintTop_toBottomOf="@+id/definitions" />
+
   <EditText
     android:id="@+id/wordBox"
-    android:layout_width="351dp"
-    android:layout_height="66dp"
-    android:layout_marginBottom="15dp"
-    android:layout_marginTop="99dp"
+    android:layout_width="336dp"
+    android:layout_height="67dp"
+    android:layout_marginBottom="44dp"
+    android:layout_marginTop="68dp"
     android:ems="10"
     android:focusable="true"
     android:hint="Enter a word..."
@@ -19,22 +45,8 @@
     android:inputType="text"
     app:layout_constraintBottom_toBottomOf="parent"
     app:layout_constraintEnd_toEndOf="parent"
-    app:layout_constraintHorizontal_bias="0.5"
+    app:layout_constraintHorizontal_bias="0.493"
     app:layout_constraintStart_toStartOf="parent"
-    app:layout_constraintTop_toBottomOf="@+id/textView2" />
-
-  <TextView
-    android:id="@+id/textView2"
-    android:layout_width="375dp"
-    android:layout_height="480dp"
-    android:maxWidth="50dp"
-    android:minWidth="50dp"
-    android:text="TextView"
-    android:textSize="24sp"
-    app:layout_constraintEnd_toEndOf="parent"
-    app:layout_constraintHorizontal_bias="0.5"
-    app:layout_constraintStart_toStartOf="parent"
-    tools:layout_editor_absoluteY="72dp"
-    tools:ignore="MissingConstraints" />
+    app:layout_constraintTop_toBottomOf="@+id/definitions" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

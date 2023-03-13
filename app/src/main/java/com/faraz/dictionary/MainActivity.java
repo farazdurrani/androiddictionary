@@ -1,12 +1,16 @@
 package com.faraz.dictionary;
 
+import static android.view.View.INVISIBLE;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static java.lang.String.format;
 import static java.lang.System.lineSeparator;
 import static java.util.stream.Collectors.joining;
 
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.KeyEvent;
+import android.view.View;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -38,23 +42,35 @@ public class MainActivity extends AppCompatActivity {
   private static final String FREE_DICTIONARY_URL = "dictionary.freeDictionary.url";
   private static final String MAILJET_API_KEY = "mailjet.apiKey";
 
+  private EditText lookupWord;
+  private TextView googleLink;
+  private TextView definitionsView;
+
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.activity_main);
-    EditText et = (EditText) findViewById(R.id.wordBox);
-    TextView tv = (TextView) findViewById(R.id.textView2);
+    lookupWord = (EditText) findViewById(R.id.wordBox);
+    definitionsView = (TextView) findViewById(R.id.definitions);
+    googleLink = (TextView) findViewById(R.id.google);
 
-    et.setOnKeyListener((view, code, event) -> {
+    setOpenInBrowserListener();
+
+    setLookupWordListener();
+  }
+
+  private void setLookupWordListener() {
+    lookupWord.setOnKeyListener((view, code, event) -> {
       if ((event.getAction() == KeyEvent.ACTION_DOWN) && (code == KeyEvent.KEYCODE_ENTER)) {
-        Toast.makeText(this, "Sending " + et.getText().toString(), Toast.LENGTH_SHORT).show();
-        String word = et.getText().toString();
+        googleLink.setVisibility(INVISIBLE);
+        Toast.makeText(this, "Sending " + lookupWord.getText().toString(), Toast.LENGTH_SHORT).show();
+        String word = lookupWord.getText().toString();
         String mk = loadProperty(MERRIAM_WEBSTER_KEY);
         String mUrl = loadProperty(MERRIAM_WEBSTER_URL);
         String url = format(mUrl, word, mk);
         JsonArrayRequest jsonObjectRequest = new JsonArrayRequest(url,
-            this.responseConsumer(word, tv),
-            error -> tv.setText(error.toString()));
+            this.responseConsumer(word, definitionsView),
+            error -> definitionsView.setText(error.toString()));
         RequestQueue requestQueue = Volley.newRequestQueue(this);
         requestQueue.add(jsonObjectRequest);
         return true;
@@ -63,9 +79,18 @@ public class MainActivity extends AppCompatActivity {
     });
   }
 
+  private void setOpenInBrowserListener() {
+    googleLink.setOnClickListener((view) -> {
+      Uri uri = Uri.parse(format("https://www.google.com/search?q=define: %s", lookupWord.getText().toString()));
+      startActivity(new Intent(Intent.ACTION_VIEW, uri));
+    });
+  }
+
   private Response.Listener<JSONArray> responseConsumer(String word, TextView tv) {
     return response -> {
       try {
+        googleLink.setVisibility(View.VISIBLE);
+        googleLink.setText(format("open '%s' in google", lookupWord.getText().toString()));
         String json = response.toString();
         Map<String, Object> flattenJson = JsonFlattener.flattenAsMap(json);
         List<Object> orig = new ArrayList<>(flattenJson.values());
