@@ -9,13 +9,17 @@ import android.os.Bundle;
 import android.view.KeyEvent;
 import android.widget.EditText;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.android.volley.RequestQueue;
+import com.android.volley.Response;
 import com.android.volley.toolbox.JsonArrayRequest;
 import com.android.volley.toolbox.Volley;
 import com.github.wnameless.json.flattener.JsonFlattener;
+
+import org.json.JSONArray;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -43,46 +47,47 @@ public class MainActivity extends AppCompatActivity {
 
     et.setOnKeyListener((view, code, event) -> {
       if ((event.getAction() == KeyEvent.ACTION_DOWN) && (code == KeyEvent.KEYCODE_ENTER)) {
+        Toast.makeText(this, "Sending " + et.getText().toString(), Toast.LENGTH_SHORT).show();
         String word = et.getText().toString();
         String mk = loadProperty(MERRIAM_WEBSTER_KEY);
         String mUrl = loadProperty(MERRIAM_WEBSTER_URL);
         String url = format(mUrl, word, mk);
         JsonArrayRequest jsonObjectRequest = new JsonArrayRequest(url,
-            response -> {
-              try {
-                System.out.println("Aagaya" + response.toString());
-                String json = response.toString();
-                Map<String, Object> flattenJson = JsonFlattener.flattenAsMap(json);
-                List<Object> orig = new ArrayList<>(flattenJson.values());
-                flattenJson.keySet().removeIf(x -> !x.contains("shortdef"));
-                if (flattenJson.values().isEmpty()) {
-                  orig.add(0, NO_DEFINITION_FOUND + word + ". Perhaps, you meant:");
-                  tv.setText(orig.stream().filter(String.class::isInstance).map(String.class::cast).collect(joining()));
-                }
-                else {
-                  String result = flattenJson.values().stream().filter(String.class::isInstance).map(String.class::cast).limit(3)
-                      .collect(joining(lineSeparator()));
-                  String stringResult = result + orig.stream().filter(String.class::isInstance).map(String.class::cast)
-                      .filter(x -> x.contains("\\{wi}") && x.contains("\\{/wi}")).map(x -> x.replaceAll("\\{wi}", EMPTY)).map(x -> x.replaceAll(
-                          "\\{/wi}", EMPTY)).map("// "::concat).collect(joining(lineSeparator()));
-                  tv.setText(stringResult);
-                }
-              }
-              catch (Exception e) {
-                e.printStackTrace();
-              }
-              System.out.println("Kia huwa");
-            },
-            error -> {
-              System.out.println("The Land, " + error.toString());
-              tv.setText(error.toString());
-            });
+            this.responseConsumer(word, tv),
+            error -> tv.setText(error.toString()));
         RequestQueue requestQueue = Volley.newRequestQueue(this);
         requestQueue.add(jsonObjectRequest);
         return true;
       }
       return false;
     });
+  }
+
+  private Response.Listener<JSONArray> responseConsumer(String word, TextView tv) {
+    return response -> {
+      try {
+        String json = response.toString();
+        Map<String, Object> flattenJson = JsonFlattener.flattenAsMap(json);
+        List<Object> orig = new ArrayList<>(flattenJson.values());
+        flattenJson.keySet().removeIf(x -> !x.contains("shortdef"));
+        if (flattenJson.values().isEmpty()) {
+          orig.add(0, NO_DEFINITION_FOUND + word + ". Perhaps, you meant:");
+          tv.setText(orig.stream().filter(String.class::isInstance).map(String.class::cast)
+              .collect(joining()));
+        }
+        else {
+          String result = flattenJson.values().stream().filter(String.class::isInstance).map(String.class::cast).limit(3)
+              .collect(joining(lineSeparator()));
+          String stringResult = result + orig.stream().filter(String.class::isInstance).map(String.class::cast)
+              .filter(x -> x.contains("\\{wi}") && x.contains("\\{/wi}")).map(x -> x.replaceAll("\\{wi}", EMPTY)).map(x -> x.replaceAll(
+                  "\\{/wi}", EMPTY)).map("// "::concat).collect(joining(lineSeparator()));
+          tv.setText(stringResult);
+        }
+      }
+      catch (Exception e) {
+        e.printStackTrace();
+      }
+    };
   }
 
   private String loadProperty(String property) {

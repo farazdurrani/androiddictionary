@@ -200,8 +200,11 @@ crashlytics.properties
 crashlytics-build.properties
 fabric.properties
 
+app/release/*
+
 ### AndroidStudio Patch ###
 
 !/gradle/wrapper/gradle-wrapper.jar
 
-# End of https://www.toptal.com/developers/gitignore/api/android,androidstudio,gradle
+# End of https://www.toptal.com/developers/gitignore/api/android,androidstudio,gradlea p p / r e l e a s e / *  
+ 

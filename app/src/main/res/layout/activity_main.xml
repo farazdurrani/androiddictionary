@@ -1,39 +1,40 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    tools:context=".MainActivity">
+  xmlns:app="http://schemas.android.com/apk/res-auto"
+  xmlns:tools="http://schemas.android.com/tools"
+  android:layout_width="match_parent"
+  android:layout_height="match_parent"
+  tools:context=".MainActivity">
 
-    <EditText
-        android:id="@+id/wordBox"
-        android:layout_width="371dp"
-        android:layout_height="60dp"
-        android:ems="10"
-        android:focusable="true"
-        android:hint="Enter a word..."
-        android:inputType="text"
-        android:imeOptions="actionDone"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/textView2"
-        app:layout_constraintVertical_bias="0.615" />
+  <EditText
+    android:id="@+id/wordBox"
+    android:layout_width="351dp"
+    android:layout_height="66dp"
+    android:layout_marginBottom="15dp"
+    android:layout_marginTop="99dp"
+    android:ems="10"
+    android:focusable="true"
+    android:hint="Enter a word..."
+    android:imeOptions="actionSearch"
+    android:inputType="text"
+    app:layout_constraintBottom_toBottomOf="parent"
+    app:layout_constraintEnd_toEndOf="parent"
+    app:layout_constraintHorizontal_bias="0.5"
+    app:layout_constraintStart_toStartOf="parent"
+    app:layout_constraintTop_toBottomOf="@+id/textView2" />
 
-    <TextView
-        android:id="@+id/textView2"
-        android:layout_width="375dp"
-        android:layout_height="480dp"
-        android:layout_marginTop="32dp"
-        android:maxWidth="50dp"
-        android:minWidth="50dp"
-        android:text="TextView"
-        android:textSize="24sp"
-        app:layout_constraintBottom_toTopOf="@+id/wordBox"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.5" />
+  <TextView
+    android:id="@+id/textView2"
+    android:layout_width="375dp"
+    android:layout_height="480dp"
+    android:maxWidth="50dp"
+    android:minWidth="50dp"
+    android:text="TextView"
+    android:textSize="24sp"
+    app:layout_constraintEnd_toEndOf="parent"
+    app:layout_constraintHorizontal_bias="0.5"
+    app:layout_constraintStart_toStartOf="parent"
+    tools:layout_editor_absoluteY="72dp"
+    tools:ignore="MissingConstraints" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

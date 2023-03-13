@@ -3,7 +3,7 @@ plugins {
 }
 
 android {
-    namespace 'com.faraz.dictionary'
+  namespace 'com.faraz.dictionary'
     compileSdk 33
 
     defaultConfig {
