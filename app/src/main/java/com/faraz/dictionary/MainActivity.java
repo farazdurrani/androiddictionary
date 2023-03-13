@@ -43,6 +43,7 @@ public class MainActivity extends AppCompatActivity {
   private static final String MAILJET_API_KEY = "mailjet.apiKey";
 
   private EditText lookupWord;
+  private String originalLookupWord;
   private TextView googleLink;
   private TextView definitionsView;
 
@@ -62,9 +63,10 @@ public class MainActivity extends AppCompatActivity {
   private void setLookupWordListener() {
     lookupWord.setOnKeyListener((view, code, event) -> {
       if ((event.getAction() == KeyEvent.ACTION_DOWN) && (code == KeyEvent.KEYCODE_ENTER)) {
+        originalLookupWord = lookupWord.getText().toString();
         googleLink.setVisibility(INVISIBLE);
-        Toast.makeText(this, "Sending " + lookupWord.getText().toString(), Toast.LENGTH_SHORT).show();
-        String word = lookupWord.getText().toString();
+        Toast.makeText(this, "Sending " + originalLookupWord , Toast.LENGTH_SHORT).show();
+        String word = originalLookupWord;
         String mk = loadProperty(MERRIAM_WEBSTER_KEY);
         String mUrl = loadProperty(MERRIAM_WEBSTER_URL);
         String url = format(mUrl, word, mk);
@@ -81,7 +83,7 @@ public class MainActivity extends AppCompatActivity {
 
   private void setOpenInBrowserListener() {
     googleLink.setOnClickListener((view) -> {
-      Uri uri = Uri.parse(format("https://www.google.com/search?q=define: %s", lookupWord.getText().toString()));
+      Uri uri = Uri.parse(format("https://www.google.com/search?q=define: %s", originalLookupWord));
       startActivity(new Intent(Intent.ACTION_VIEW, uri));
     });
   }
@@ -90,7 +92,7 @@ public class MainActivity extends AppCompatActivity {
     return response -> {
       try {
         googleLink.setVisibility(View.VISIBLE);
-        googleLink.setText(format("open '%s' in google", lookupWord.getText().toString()));
+        googleLink.setText(format("open '%s' in google", originalLookupWord));
         String json = response.toString();
         Map<String, Object> flattenJson = JsonFlattener.flattenAsMap(json);
         List<Object> orig = new ArrayList<>(flattenJson.values());
