@@ -64,6 +64,7 @@ public class MainActivity extends AppCompatActivity {
     lookupWord.setOnKeyListener((view, code, event) -> {
       if ((event.getAction() == KeyEvent.ACTION_DOWN) && (code == KeyEvent.KEYCODE_ENTER)) {
         originalLookupWord = lookupWord.getText().toString();
+        lookupWord.setText(null);
         googleLink.setVisibility(INVISIBLE);
         Toast.makeText(this, "Sending " + originalLookupWord , Toast.LENGTH_SHORT).show();
         String word = originalLookupWord;
