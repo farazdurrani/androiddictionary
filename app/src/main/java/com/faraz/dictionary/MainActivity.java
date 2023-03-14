@@ -2,14 +2,17 @@ package com.faraz.dictionary;
 
 import static android.view.View.INVISIBLE;
 import static android.view.View.VISIBLE;
+import static android.widget.Toast.LENGTH_SHORT;
 import static com.android.volley.Request.Method.POST;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.apache.commons.lang3.StringUtils.deleteWhitespace;
+import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.lang3.StringUtils.lowerCase;
 import static java.lang.String.format;
 import static java.lang.System.lineSeparator;
 import static java.util.stream.Collectors.joining;
 
+import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
@@ -33,6 +36,9 @@ import org.json.JSONObject;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -40,11 +46,14 @@ import java.util.Properties;
 
 public class MainActivity extends AppCompatActivity {
 
-  private static final String MONGO_META_DATA = "{\"collection\":\"dictionary\",\"database\":\"myFirstDatabase\",\"dataSource\":\"Cluster0\"";
+  private static final String CHICAGO = "America/Chicago";
+  private static final String MONGO_PARTIAL_BODY = "{\"collection\":\"dictionary\",\"database\":\"myFirstDatabase\",\"dataSource\":\"Cluster0\"";
   private static final String NO_DEFINITION_FOUND = "No definitions found for ";
   private static final String MONGO_ACTION_FIND_ONE = "findOne";
+  private static final String MONGO_ACTION_INSERT_ONE = "insertOne";
   private static final String CLOSE_CURLY = "}";
   private static final String MONGO_FILTER = "\"filter\": {  \"word\" : \"%s\" } ";
+  private static final String MONGO_DOCUMENT = "\"document\" : {  \"word\": \"%s\",\"lookupTime\": \"%s\", \"reminded\": %s }";
 
   private Properties properties;
   private static final String MERRIAM_WEBSTER_KEY = "dictionary.merriamWebster.key";
@@ -73,13 +82,13 @@ public class MainActivity extends AppCompatActivity {
   }
 
   private void mongoSearchOperation() {
-    String operation = MONGO_META_DATA + "," + format(MONGO_FILTER, originalLookupWord) + CLOSE_CURLY;
+    String operation = MONGO_PARTIAL_BODY + "," + format(MONGO_FILTER, originalLookupWord) + CLOSE_CURLY;
     mongoSearchOperation(operation, MONGO_ACTION_FIND_ONE);
   }
 
   void mongoSearchOperation(String operation, String action) {
     StringRequest stringRequest = new MongoStringRequest(POST, format(loadProperty(MONGODB_URI), action),
-        handleMongoResponse(), handleMongoError(), operation, loadProperty(MONGODB_API_KEY));
+        handleMongoFindResponse(), handleMongoError(), operation, loadProperty(MONGODB_API_KEY));
     RequestQueue requestQueue = Volley.newRequestQueue(this);
     requestQueue.add(stringRequest);
   }
@@ -92,7 +101,7 @@ public class MainActivity extends AppCompatActivity {
     };
   }
 
-  private Response.Listener<String> handleMongoResponse() {
+  private Response.Listener<String> handleMongoFindResponse() {
     return response -> {
       try {
         JSONObject jsonObject = new JSONObject(response);
@@ -108,6 +117,34 @@ public class MainActivity extends AppCompatActivity {
       }
       googleLink.setVisibility(VISIBLE);
       googleLink.setText(format("open '%s' in google", originalLookupWord));
+    };
+  }
+
+  @SuppressLint("NewApi")
+  private void saveWordInMongo() {
+    String body = MONGO_PARTIAL_BODY + "," + format(MONGO_DOCUMENT, originalLookupWord,
+        Instant.now(Clock.system(ZoneId.of(CHICAGO))), false) + CLOSE_CURLY;
+    StringRequest stringRequest = new MongoStringRequest(POST, format(loadProperty(MONGODB_URI), MONGO_ACTION_INSERT_ONE),
+        handleMongoInsertResponse(), handleMongoError(), body, loadProperty(MONGODB_API_KEY));
+    RequestQueue requestQueue = Volley.newRequestQueue(this);
+    requestQueue.add(stringRequest);
+  }
+
+  private Response.Listener<String> handleMongoInsertResponse() {
+    return response -> {
+      try {
+        JSONObject jsonObject = new JSONObject(response);
+        System.out.println(response);
+        if (isBlank(jsonObject.optString("insertedId"))) {
+          Toast.makeText(this, originalLookupWord + " is not saved for some reason...", Toast.LENGTH_SHORT).show();
+        }
+        else {
+          Toast.makeText(this, originalLookupWord + "'s been stored.", Toast.LENGTH_SHORT).show();
+        }
+      }
+      catch (JSONException e) {
+        throw new RuntimeException(e);
+      }
     };
   }
 
@@ -128,7 +165,7 @@ public class MainActivity extends AppCompatActivity {
         originalLookupWord = lowerCase(deleteWhitespace(lookupWord.getText().toString()));
         lookupWord.setText(null);
         googleLink.setVisibility(INVISIBLE);
-        Toast.makeText(this, "Sending " + originalLookupWord, Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "Sending " + originalLookupWord, LENGTH_SHORT).show();
         mongoSearchOperation();
         return true;
       }
@@ -162,6 +199,7 @@ public class MainActivity extends AppCompatActivity {
               .filter(x -> x.contains("\\{wi}") && x.contains("\\{/wi}")).map(x -> x.replaceAll("\\{wi}", EMPTY)).map(x -> x.replaceAll(
                   "\\{/wi}", EMPTY)).map("// "::concat).collect(joining(lineSeparator()));
           definitionsView.setText(stringResult);
+          saveWordInMongo();
         }
       }
       catch (Exception e) {
