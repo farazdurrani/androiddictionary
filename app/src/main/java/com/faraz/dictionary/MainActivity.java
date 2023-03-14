@@ -2,6 +2,7 @@ package com.faraz.dictionary;
 
 import static android.view.View.INVISIBLE;
 import static android.view.View.VISIBLE;
+import static com.android.volley.Request.Method.POST;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.apache.commons.lang3.StringUtils.deleteWhitespace;
 import static org.apache.commons.lang3.StringUtils.lowerCase;
@@ -19,10 +20,8 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
-import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonArrayRequest;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
@@ -34,9 +33,7 @@ import org.json.JSONObject;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -66,12 +63,12 @@ public class MainActivity extends AppCompatActivity {
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.activity_main);
+
     lookupWord = findViewById(R.id.wordBox);
     definitionsView = findViewById(R.id.definitions);
     googleLink = findViewById(R.id.google);
 
     setOpenInBrowserListener();
-
     setLookupWordListener();
   }
 
@@ -81,53 +78,37 @@ public class MainActivity extends AppCompatActivity {
   }
 
   void mongoSearchOperation(String operation, String action) {
-    StringRequest stringRequest = new StringRequest(Request.Method.POST, format(loadProperty(MONGODB_URI), action),
-        this::handleMongoResponse,
-        this::handleMongoError) {
-      @Override
-      public String getBodyContentType() {
-        return "application/json; charset=utf-8";
-      }
-
-      @Override
-      public byte[] getBody() {
-        return operation.getBytes(StandardCharsets.UTF_8);
-      }
-
-      @Override
-      public Map<String, String> getHeaders() {
-        Map<String, String> headers = new HashMap<>();
-        headers.put("Content-Type", "application/json");
-        headers.put("Access-Control-Request-Headers", "*");
-        headers.put("api-key", loadProperty(MONGODB_API_KEY));
-        return headers;
-      }
-    };
+    StringRequest stringRequest = new MongoStringRequest(POST, format(loadProperty(MONGODB_URI), action),
+        handleMongoResponse(), handleMongoError(), operation, loadProperty(MONGODB_API_KEY));
     RequestQueue requestQueue = Volley.newRequestQueue(this);
     requestQueue.add(stringRequest);
   }
 
-  private void handleMongoError(VolleyError ignore) {
-    definitionsView.setText("Welp... Mongo has gone belly up.");
-    googleLink.setVisibility(VISIBLE);
-    googleLink.setText(format("open '%s' in google", originalLookupWord));
+  private Response.ErrorListener handleMongoError() {
+    return ignore -> {
+      definitionsView.setText("Welp... Mongo has gone belly up.");
+      googleLink.setVisibility(VISIBLE);
+      googleLink.setText(format("open '%s' in google", originalLookupWord));
+    };
   }
 
-  private void handleMongoResponse(String response) {
-    try {
-      JSONObject jsonObject = new JSONObject(response);
-      if (jsonObject.optJSONObject("document") == null) {
-        lookupInMerriamWebster();
+  private Response.Listener<String> handleMongoResponse() {
+    return response -> {
+      try {
+        JSONObject jsonObject = new JSONObject(response);
+        if (jsonObject.optJSONObject("document") == null) {
+          lookupInMerriamWebster();
+        }
+        else {
+          definitionsView.setText(format("'%s' already looked-up", originalLookupWord));
+        }
       }
-      else {
-        definitionsView.setText(format("'%s' already looked-up", originalLookupWord));
+      catch (JSONException e) {
+        definitionsView.setText("Welp... Mongo has gone belly up.");
       }
-    }
-    catch (JSONException e) {
-      definitionsView.setText("Welp... Mongo has gone belly up.");
-    }
-    googleLink.setVisibility(VISIBLE);
-    googleLink.setText(format("open '%s' in google", originalLookupWord));
+      googleLink.setVisibility(VISIBLE);
+      googleLink.setText(format("open '%s' in google", originalLookupWord));
+    };
   }
 
   private void lookupInMerriamWebster() {
@@ -135,9 +116,8 @@ public class MainActivity extends AppCompatActivity {
     String mk = loadProperty(MERRIAM_WEBSTER_KEY);
     String mUrl = loadProperty(MERRIAM_WEBSTER_URL);
     String url = format(mUrl, word, mk);
-    JsonArrayRequest jsonObjectRequest = new JsonArrayRequest(url,
-        this.responseConsumer(word, definitionsView),
-        error -> definitionsView.setText(error.toString()));
+    JsonArrayRequest jsonObjectRequest = new JsonArrayRequest(url, this.merriamWebsterResponse(word),
+        ignoreError -> definitionsView.setText("Welp... merriam webster call has gone belly up!"));
     RequestQueue requestQueue = Volley.newRequestQueue(this);
     requestQueue.add(jsonObjectRequest);
   }
@@ -163,7 +143,7 @@ public class MainActivity extends AppCompatActivity {
     });
   }
 
-  private Response.Listener<JSONArray> responseConsumer(String word, TextView tv) {
+  private Response.Listener<JSONArray> merriamWebsterResponse(String word) {
     return response -> {
       try {
         String json = response.toString();
@@ -172,7 +152,7 @@ public class MainActivity extends AppCompatActivity {
         flattenJson.keySet().removeIf(x -> !x.contains("shortdef"));
         if (flattenJson.values().isEmpty()) {
           orig.add(0, NO_DEFINITION_FOUND + word + ". Perhaps, you meant:");
-          tv.setText(orig.stream().filter(String.class::isInstance).map(String.class::cast)
+          definitionsView.setText(orig.stream().filter(String.class::isInstance).map(String.class::cast)
               .collect(joining()));
         }
         else {
@@ -181,7 +161,7 @@ public class MainActivity extends AppCompatActivity {
           String stringResult = result + orig.stream().filter(String.class::isInstance).map(String.class::cast)
               .filter(x -> x.contains("\\{wi}") && x.contains("\\{/wi}")).map(x -> x.replaceAll("\\{wi}", EMPTY)).map(x -> x.replaceAll(
                   "\\{/wi}", EMPTY)).map("// "::concat).collect(joining(lineSeparator()));
-          tv.setText(stringResult);
+          definitionsView.setText(stringResult);
         }
       }
       catch (Exception e) {
