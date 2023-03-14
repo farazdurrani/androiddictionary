@@ -1,7 +1,10 @@
 package com.faraz.dictionary;
 
 import static android.view.View.INVISIBLE;
+import static android.view.View.VISIBLE;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
+import static org.apache.commons.lang3.StringUtils.deleteWhitespace;
+import static org.apache.commons.lang3.StringUtils.lowerCase;
 import static java.lang.String.format;
 import static java.lang.System.lineSeparator;
 import static java.util.stream.Collectors.joining;
@@ -10,37 +13,49 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.KeyEvent;
-import android.view.View;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
+import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonArrayRequest;
+import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
 import com.github.wnameless.json.flattener.JsonFlattener;
 
 import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
 public class MainActivity extends AppCompatActivity {
 
+  private static final String MONGO_META_DATA = "{\"collection\":\"dictionary\",\"database\":\"myFirstDatabase\",\"dataSource\":\"Cluster0\"";
   private static final String NO_DEFINITION_FOUND = "No definitions found for ";
+  private static final String MONGO_ACTION_FIND_ONE = "findOne";
+  private static final String CLOSE_CURLY = "}";
+  private static final String MONGO_FILTER = "\"filter\": {  \"word\" : \"%s\" } ";
 
   private Properties properties;
   private static final String MERRIAM_WEBSTER_KEY = "dictionary.merriamWebster.key";
   private static final String MERRIAM_WEBSTER_URL = "dictionary.merriamWebster.url";
   private static final String FREE_DICTIONARY_URL = "dictionary.freeDictionary.url";
   private static final String MAILJET_API_KEY = "mailjet.apiKey";
+  private static final String MONGODB_URI = "mongodb.data.uri";
+  private static final String MONGODB_API_KEY = "mongodb.data.api.key";
 
   private EditText lookupWord;
   private String originalLookupWord;
@@ -51,31 +66,90 @@ public class MainActivity extends AppCompatActivity {
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.activity_main);
-    lookupWord = (EditText) findViewById(R.id.wordBox);
-    definitionsView = (TextView) findViewById(R.id.definitions);
-    googleLink = (TextView) findViewById(R.id.google);
+    lookupWord = findViewById(R.id.wordBox);
+    definitionsView = findViewById(R.id.definitions);
+    googleLink = findViewById(R.id.google);
 
     setOpenInBrowserListener();
 
     setLookupWordListener();
   }
 
+  private void mongoSearchOperation() {
+    String operation = MONGO_META_DATA + "," + format(MONGO_FILTER, originalLookupWord) + CLOSE_CURLY;
+    mongoSearchOperation(operation, MONGO_ACTION_FIND_ONE);
+  }
+
+  void mongoSearchOperation(String operation, String action) {
+    StringRequest stringRequest = new StringRequest(Request.Method.POST, format(loadProperty(MONGODB_URI), action),
+        this::handleMongoResponse,
+        this::handleMongoError) {
+      @Override
+      public String getBodyContentType() {
+        return "application/json; charset=utf-8";
+      }
+
+      @Override
+      public byte[] getBody() {
+        return operation.getBytes(StandardCharsets.UTF_8);
+      }
+
+      @Override
+      public Map<String, String> getHeaders() {
+        Map<String, String> headers = new HashMap<>();
+        headers.put("Content-Type", "application/json");
+        headers.put("Access-Control-Request-Headers", "*");
+        headers.put("api-key", loadProperty(MONGODB_API_KEY));
+        return headers;
+      }
+    };
+    RequestQueue requestQueue = Volley.newRequestQueue(this);
+    requestQueue.add(stringRequest);
+  }
+
+  private void handleMongoError(VolleyError ignore) {
+    definitionsView.setText("Welp... Mongo has gone belly up.");
+    googleLink.setVisibility(VISIBLE);
+    googleLink.setText(format("open '%s' in google", originalLookupWord));
+  }
+
+  private void handleMongoResponse(String response) {
+    try {
+      JSONObject jsonObject = new JSONObject(response);
+      if (jsonObject.optJSONObject("document") == null) {
+        lookupInMerriamWebster();
+      }
+      else {
+        definitionsView.setText(format("'%s' already looked-up", originalLookupWord));
+      }
+    }
+    catch (JSONException e) {
+      definitionsView.setText("Welp... Mongo has gone belly up.");
+    }
+    googleLink.setVisibility(VISIBLE);
+    googleLink.setText(format("open '%s' in google", originalLookupWord));
+  }
+
+  private void lookupInMerriamWebster() {
+    String word = originalLookupWord;
+    String mk = loadProperty(MERRIAM_WEBSTER_KEY);
+    String mUrl = loadProperty(MERRIAM_WEBSTER_URL);
+    String url = format(mUrl, word, mk);
+    JsonArrayRequest jsonObjectRequest = new JsonArrayRequest(url,
+        this.responseConsumer(word, definitionsView),
+        error -> definitionsView.setText(error.toString()));
+    RequestQueue requestQueue = Volley.newRequestQueue(this);
+    requestQueue.add(jsonObjectRequest);
+  }
+
   private void setLookupWordListener() {
     lookupWord.setOnKeyListener((view, code, event) -> {
       if ((event.getAction() == KeyEvent.ACTION_DOWN) && (code == KeyEvent.KEYCODE_ENTER)) {
-        originalLookupWord = lookupWord.getText().toString();
+        originalLookupWord = lowerCase(deleteWhitespace(lookupWord.getText().toString()));
         lookupWord.setText(null);
         googleLink.setVisibility(INVISIBLE);
-        Toast.makeText(this, "Sending " + originalLookupWord , Toast.LENGTH_SHORT).show();
-        String word = originalLookupWord;
-        String mk = loadProperty(MERRIAM_WEBSTER_KEY);
-        String mUrl = loadProperty(MERRIAM_WEBSTER_URL);
-        String url = format(mUrl, word, mk);
-        JsonArrayRequest jsonObjectRequest = new JsonArrayRequest(url,
-            this.responseConsumer(word, definitionsView),
-            error -> definitionsView.setText(error.toString()));
-        RequestQueue requestQueue = Volley.newRequestQueue(this);
-        requestQueue.add(jsonObjectRequest);
+        Toast.makeText(this, "Sending " + originalLookupWord, Toast.LENGTH_SHORT).show();
+        mongoSearchOperation();
         return true;
       }
       return false;
@@ -92,8 +166,6 @@ public class MainActivity extends AppCompatActivity {
   private Response.Listener<JSONArray> responseConsumer(String word, TextView tv) {
     return response -> {
       try {
-        googleLink.setVisibility(View.VISIBLE);
-        googleLink.setText(format("open '%s' in google", originalLookupWord));
         String json = response.toString();
         Map<String, Object> flattenJson = JsonFlattener.flattenAsMap(json);
         List<Object> orig = new ArrayList<>(flattenJson.values());
