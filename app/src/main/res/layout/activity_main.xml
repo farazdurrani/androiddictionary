@@ -13,6 +13,7 @@
     android:maxWidth="50dp"
     android:minWidth="50dp"
     android:textSize="24sp"
+    android:maxLines="10"
     app:layout_constraintEnd_toEndOf="parent"
     app:layout_constraintHorizontal_bias="0.528"
     app:layout_constraintStart_toStartOf="parent"
