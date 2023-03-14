@@ -53,7 +53,7 @@ public class MainActivity extends AppCompatActivity {
   private static final String MONGO_ACTION_INSERT_ONE = "insertOne";
   private static final String CLOSE_CURLY = "}";
   private static final String MONGO_FILTER = "\"filter\": {  \"word\" : \"%s\" } ";
-  private static final String MONGO_DOCUMENT = "\"document\" : {  \"word\": \"%s\",\"lookupTime\": \"%s\", \"reminded\": %s }";
+  private static final String MONGO_DOCUMENT = "\"document\" : {  \"word\": \"%s\",\"lookupTime\": {  \"$date\" : {  \"$numberLong\" : \"%d\"} }, \"reminded\": %s }";
 
   private Properties properties;
   private static final String MERRIAM_WEBSTER_KEY = "dictionary.merriamWebster.key";
@@ -110,6 +110,7 @@ public class MainActivity extends AppCompatActivity {
         }
         else {
           definitionsView.setText(format("'%s' already looked-up", originalLookupWord));
+          Toast.makeText(this, "Not storing " + originalLookupWord, Toast.LENGTH_SHORT).show();
         }
       }
       catch (JSONException e) {
@@ -123,7 +124,7 @@ public class MainActivity extends AppCompatActivity {
   @SuppressLint("NewApi")
   private void saveWordInMongo() {
     String body = MONGO_PARTIAL_BODY + "," + format(MONGO_DOCUMENT, originalLookupWord,
-        Instant.now(Clock.system(ZoneId.of(CHICAGO))), false) + CLOSE_CURLY;
+        Instant.now(Clock.system(ZoneId.of(CHICAGO))).toEpochMilli(), false) + CLOSE_CURLY;
     StringRequest stringRequest = new MongoStringRequest(POST, format(loadProperty(MONGODB_URI), MONGO_ACTION_INSERT_ONE),
         handleMongoInsertResponse(), handleMongoError(), body, loadProperty(MONGODB_API_KEY));
     RequestQueue requestQueue = Volley.newRequestQueue(this);
@@ -134,7 +135,6 @@ public class MainActivity extends AppCompatActivity {
     return response -> {
       try {
         JSONObject jsonObject = new JSONObject(response);
-        System.out.println(response);
         if (isBlank(jsonObject.optString("insertedId"))) {
           Toast.makeText(this, originalLookupWord + " is not saved for some reason...", Toast.LENGTH_SHORT).show();
         }
