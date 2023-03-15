@@ -26,11 +26,11 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
 import com.android.volley.toolbox.JsonArrayRequest;
-import com.android.volley.toolbox.RequestFuture;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
 import com.github.wnameless.json.flattener.JsonFlattener;
 
+import org.apache.commons.lang3.StringUtils;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -49,7 +49,7 @@ public class MainActivity extends AppCompatActivity {
 
   private static final String CHICAGO = "America/Chicago";
   private static final String MONGO_PARTIAL_BODY = "{\"collection\":\"dictionary\",\"database\":\"myFirstDatabase\",\"dataSource\":\"Cluster0\"";
-  private static final String NO_DEFINITION_FOUND = "No definitions found for ";
+  private static final String NO_DEFINITION_FOUND = "No definitions found for '%s'. Perhaps, you meant:";
   private static final String MONGO_ACTION_FIND_ONE = "findOne";
   private static final String MONGO_ACTION_INSERT_ONE = "insertOne";
   private static final String CLOSE_CURLY = "}";
@@ -59,8 +59,6 @@ public class MainActivity extends AppCompatActivity {
   private Properties properties;
   private static final String MERRIAM_WEBSTER_KEY = "dictionary.merriamWebster.key";
   private static final String MERRIAM_WEBSTER_URL = "dictionary.merriamWebster.url";
-  private static final String FREE_DICTIONARY_URL = "dictionary.freeDictionary.url";
-  private static final String MAILJET_API_KEY = "mailjet.apiKey";
   private static final String MONGODB_URI = "mongodb.data.uri";
   private static final String MONGODB_API_KEY = "mongodb.data.api.key";
 
@@ -95,9 +93,7 @@ public class MainActivity extends AppCompatActivity {
   }
 
   private void setStoreWordListener() {
-    saveView.setOnClickListener((view) -> {
-      saveWordInMongo();
-    });
+    saveView.setOnClickListener((view) -> saveWordInMongo());
   }
 
   private void setOpenInBrowserListener() {
@@ -107,13 +103,9 @@ public class MainActivity extends AppCompatActivity {
     });
   }
 
-  private void mongoSearchOperation() {
+  void mongoSearchOperation() {
     String operation = MONGO_PARTIAL_BODY + "," + format(MONGO_FILTER, originalLookupWord) + CLOSE_CURLY;
-    mongoSearchOperation(operation, MONGO_ACTION_FIND_ONE);
-  }
-
-  void mongoSearchOperation(String operation, String action) {
-    StringRequest stringRequest = new MongoStringRequest(POST, format(loadProperty(MONGODB_URI), action),
+    StringRequest stringRequest = new MongoStringRequest(POST, format(loadProperty(MONGODB_URI), MONGO_ACTION_FIND_ONE),
         handleMongoFindResponse(), handleMongoError(), operation, loadProperty(MONGODB_API_KEY));
     requestQueue.add(stringRequest);
   }
@@ -205,7 +197,7 @@ public class MainActivity extends AppCompatActivity {
         List<Object> orig = new ArrayList<>(flattenJson.values());
         flattenJson.keySet().removeIf(x -> !x.contains("shortdef"));
         if (flattenJson.values().isEmpty()) {
-          orig.add(0, NO_DEFINITION_FOUND + word + ". Perhaps, you meant:");
+          orig.add(0, format(NO_DEFINITION_FOUND, word));
           definitionsView.setText(orig.stream().filter(String.class::isInstance).map(String.class::cast)
               .collect(joining()));
           saveView.setVisibility(VISIBLE);
@@ -214,7 +206,7 @@ public class MainActivity extends AppCompatActivity {
         else {
           String result = flattenJson.values().stream().filter(String.class::isInstance).map(String.class::cast).limit(3)
               .collect(joining(lineSeparator()));
-          String stringResult = result + orig.stream().filter(String.class::isInstance).map(String.class::cast)
+          String stringResult = result + orig.stream().filter(String.class::isInstance).map(String.class::cast).filter(StringUtils::isNotBlank)
               .filter(x -> x.contains("\\{wi}") && x.contains("\\{/wi}")).map(x -> x.replaceAll("\\{wi}", EMPTY)).map(x -> x.replaceAll(
                   "\\{/wi}", EMPTY)).map("// "::concat).collect(joining(lineSeparator()));
           definitionsView.setText(stringResult);
