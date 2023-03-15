@@ -199,7 +199,7 @@ public class MainActivity extends AppCompatActivity {
         if (flattenJson.values().isEmpty()) {
           orig.add(0, format(NO_DEFINITION_FOUND, word));
           definitionsView.setText(orig.stream().filter(String.class::isInstance).map(String.class::cast)
-              .collect(joining()));
+              .map(lineSeparator()::concat).map("----------"::concat).collect(joining(lineSeparator())));
           saveView.setVisibility(VISIBLE);
           saveView.setText(format("save '%s'", originalLookupWord));
         }
