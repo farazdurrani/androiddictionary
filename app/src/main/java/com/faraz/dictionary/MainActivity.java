@@ -26,6 +26,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
 import com.android.volley.toolbox.JsonArrayRequest;
+import com.android.volley.toolbox.RequestFuture;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
 import com.github.wnameless.json.flattener.JsonFlattener;
@@ -63,6 +64,8 @@ public class MainActivity extends AppCompatActivity {
   private static final String MONGODB_URI = "mongodb.data.uri";
   private static final String MONGODB_API_KEY = "mongodb.data.api.key";
 
+  private RequestQueue requestQueue;
+
   private EditText lookupWord;
   private String originalLookupWord;
   private TextView googleLink;
@@ -79,14 +82,34 @@ public class MainActivity extends AppCompatActivity {
     googleLink = findViewById(R.id.google);
     saveView = findViewById(R.id.save);
 
+    setRequestQueue();
     setOpenInBrowserListener();
     setLookupWordListener();
     setStoreWordListener();
   }
 
+  private void setRequestQueue() {
+    if (this.requestQueue == null) {
+      this.requestQueue = Volley.newRequestQueue(this);
+    }
+  }
+
   private void setStoreWordListener() {
     saveView.setOnClickListener((view) -> {
       Toast.makeText(this, format("Saved '%s'", originalLookupWord), LENGTH_SHORT).show();
+      RequestFuture<JSONObject> future = RequestFuture.newFuture();
+//      JsonObjectRequest request = new JsonObjectRequest(URL, new JSONObject(), future, future);
+//      requestQueue.add(request);
+//
+//      try {
+//        JSONObject response = future.get(); // this will block
+//      }
+//      catch (InterruptedException e) {
+//        // exception handling
+//      }
+//      catch (ExecutionException e) {
+//        // exception handling
+//      }
     });
   }
 
@@ -105,7 +128,6 @@ public class MainActivity extends AppCompatActivity {
   void mongoSearchOperation(String operation, String action) {
     StringRequest stringRequest = new MongoStringRequest(POST, format(loadProperty(MONGODB_URI), action),
         handleMongoFindResponse(), handleMongoError(), operation, loadProperty(MONGODB_API_KEY));
-    RequestQueue requestQueue = Volley.newRequestQueue(this);
     requestQueue.add(stringRequest);
   }
 
@@ -143,7 +165,6 @@ public class MainActivity extends AppCompatActivity {
         Instant.now(Clock.system(ZoneId.of(CHICAGO))).toEpochMilli(), false) + CLOSE_CURLY;
     StringRequest stringRequest = new MongoStringRequest(POST, format(loadProperty(MONGODB_URI), MONGO_ACTION_INSERT_ONE),
         handleMongoInsertResponse(), handleMongoError(), body, loadProperty(MONGODB_API_KEY));
-    RequestQueue requestQueue = Volley.newRequestQueue(this);
     requestQueue.add(stringRequest);
   }
 
@@ -171,7 +192,6 @@ public class MainActivity extends AppCompatActivity {
     String url = format(mUrl, word, mk);
     JsonArrayRequest jsonObjectRequest = new JsonArrayRequest(url, this.merriamWebsterResponse(word),
         ignoreError -> definitionsView.setText("Welp... merriam webster call has gone belly up!"));
-    RequestQueue requestQueue = Volley.newRequestQueue(this);
     requestQueue.add(jsonObjectRequest);
   }
 
