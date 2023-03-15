@@ -67,6 +67,7 @@ public class MainActivity extends AppCompatActivity {
   private String originalLookupWord;
   private TextView googleLink;
   private TextView definitionsView;
+  private TextView saveView;
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
@@ -76,9 +77,24 @@ public class MainActivity extends AppCompatActivity {
     lookupWord = findViewById(R.id.wordBox);
     definitionsView = findViewById(R.id.definitions);
     googleLink = findViewById(R.id.google);
+    saveView = findViewById(R.id.save);
 
     setOpenInBrowserListener();
     setLookupWordListener();
+    setStoreWordListener();
+  }
+
+  private void setStoreWordListener() {
+    saveView.setOnClickListener((view) -> {
+      Toast.makeText(this, format("Saved '%s'", originalLookupWord), LENGTH_SHORT).show();
+    });
+  }
+
+  private void setOpenInBrowserListener() {
+    googleLink.setOnClickListener((view) -> {
+      Uri uri = Uri.parse(format("https://www.google.com/search?q=define: %s", originalLookupWord));
+      startActivity(new Intent(Intent.ACTION_VIEW, uri));
+    });
   }
 
   private void mongoSearchOperation() {
@@ -110,7 +126,7 @@ public class MainActivity extends AppCompatActivity {
         }
         else {
           definitionsView.setText(format("'%s' already looked-up", originalLookupWord));
-          Toast.makeText(this, "Not storing " + originalLookupWord, Toast.LENGTH_SHORT).show();
+          Toast.makeText(this, format("Not storing '%s'", originalLookupWord), LENGTH_SHORT).show();
         }
       }
       catch (JSONException e) {
@@ -136,10 +152,10 @@ public class MainActivity extends AppCompatActivity {
       try {
         JSONObject jsonObject = new JSONObject(response);
         if (isBlank(jsonObject.optString("insertedId"))) {
-          Toast.makeText(this, originalLookupWord + " is not saved for some reason...", Toast.LENGTH_SHORT).show();
+          Toast.makeText(this, format("'%s' is not saved for some reason...", originalLookupWord), LENGTH_SHORT).show();
         }
         else {
-          Toast.makeText(this, originalLookupWord + "'s been stored.", Toast.LENGTH_SHORT).show();
+          Toast.makeText(this, format("%s's been stored.", originalLookupWord), LENGTH_SHORT).show();
         }
       }
       catch (JSONException e) {
@@ -165,18 +181,12 @@ public class MainActivity extends AppCompatActivity {
         originalLookupWord = lowerCase(deleteWhitespace(lookupWord.getText().toString()));
         lookupWord.setText(null);
         googleLink.setVisibility(INVISIBLE);
-        Toast.makeText(this, "Sending " + originalLookupWord, LENGTH_SHORT).show();
+        saveView.setVisibility(INVISIBLE);
+        Toast.makeText(this, format("Sending '%s'", originalLookupWord), LENGTH_SHORT).show();
         mongoSearchOperation();
         return true;
       }
       return false;
-    });
-  }
-
-  private void setOpenInBrowserListener() {
-    googleLink.setOnClickListener((view) -> {
-      Uri uri = Uri.parse(format("https://www.google.com/search?q=define: %s", originalLookupWord));
-      startActivity(new Intent(Intent.ACTION_VIEW, uri));
     });
   }
 
@@ -191,6 +201,8 @@ public class MainActivity extends AppCompatActivity {
           orig.add(0, NO_DEFINITION_FOUND + word + ". Perhaps, you meant:");
           definitionsView.setText(orig.stream().filter(String.class::isInstance).map(String.class::cast)
               .collect(joining()));
+          saveView.setVisibility(VISIBLE);
+          saveView.setText(format("save '%s'", originalLookupWord));
         }
         else {
           String result = flattenJson.values().stream().filter(String.class::isInstance).map(String.class::cast).limit(3)

@@ -6,33 +6,6 @@
   android:layout_height="match_parent"
   tools:context=".MainActivity">
 
-  <TextView
-    android:id="@+id/definitions"
-    android:layout_width="341dp"
-    android:layout_height="521dp"
-    android:maxWidth="50dp"
-    android:minWidth="50dp"
-    android:textSize="24sp"
-    android:maxLines="10"
-    app:layout_constraintEnd_toEndOf="parent"
-    app:layout_constraintHorizontal_bias="0.528"
-    app:layout_constraintStart_toStartOf="parent"
-    tools:ignore="MissingConstraints"
-    tools:layout_editor_absoluteY="16dp" />
-
-  <TextView
-    android:id="@+id/google"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
-    android:layout_marginBottom="40dp"
-    android:layout_marginTop="17dp"
-    android:text="open in google..."
-    android:visibility="invisible"
-    app:layout_constraintBottom_toTopOf="@+id/wordBox"
-    app:layout_constraintEnd_toEndOf="parent"
-    app:layout_constraintStart_toStartOf="parent"
-    app:layout_constraintTop_toBottomOf="@+id/definitions" />
-
   <EditText
     android:id="@+id/wordBox"
     android:layout_width="336dp"
@@ -47,6 +20,47 @@
     app:layout_constraintBottom_toBottomOf="parent"
     app:layout_constraintEnd_toEndOf="parent"
     app:layout_constraintHorizontal_bias="0.493"
+    app:layout_constraintStart_toStartOf="parent"
+    app:layout_constraintTop_toBottomOf="@+id/definitions" />
+
+  <TextView
+    android:id="@+id/google"
+    android:layout_width="178dp"
+    android:layout_height="21dp"
+    android:layout_marginBottom="40dp"
+    android:layout_marginTop="17dp"
+    android:visibility="invisible"
+    app:layout_constraintBottom_toTopOf="@+id/wordBox"
+    app:layout_constraintEnd_toEndOf="parent"
+    app:layout_constraintHorizontal_bias="0.836"
+    app:layout_constraintStart_toStartOf="parent"
+    app:layout_constraintTop_toBottomOf="@+id/definitions"
+    app:layout_constraintVertical_bias="0.0" />
+
+  <TextView
+    android:id="@+id/definitions"
+    android:layout_width="341dp"
+    android:layout_height="521dp"
+    android:maxLines="10"
+    android:maxWidth="50dp"
+    android:minWidth="50dp"
+    android:textSize="24sp"
+    app:layout_constraintEnd_toEndOf="parent"
+    app:layout_constraintHorizontal_bias="0.528"
+    app:layout_constraintStart_toStartOf="parent"
+    tools:ignore="MissingConstraints"
+    tools:layout_editor_absoluteY="16dp" />
+
+  <TextView
+    android:id="@+id/save"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="40dp"
+    android:layout_marginTop="17dp"
+    android:visibility="invisible"
+    app:layout_constraintBottom_toTopOf="@+id/wordBox"
+    app:layout_constraintEnd_toEndOf="parent"
+    app:layout_constraintHorizontal_bias="0.104"
     app:layout_constraintStart_toStartOf="parent"
     app:layout_constraintTop_toBottomOf="@+id/definitions" />
 
