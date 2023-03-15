@@ -205,7 +205,7 @@ public class MainActivity extends AppCompatActivity {
         }
         else {
           String result = flattenJson.values().stream().filter(String.class::isInstance).map(String.class::cast).limit(3)
-              .collect(joining(lineSeparator()));
+              .map(lineSeparator()::concat).map("----------"::concat).collect(joining(lineSeparator()));
           String stringResult = result + orig.stream().filter(String.class::isInstance).map(String.class::cast).filter(StringUtils::isNotBlank)
               .filter(x -> x.contains("\\{wi}") && x.contains("\\{/wi}")).map(x -> x.replaceAll("\\{wi}", EMPTY)).map(x -> x.replaceAll(
                   "\\{/wi}", EMPTY)).map("// "::concat).collect(joining(lineSeparator()));
