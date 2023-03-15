@@ -41,7 +41,7 @@
     android:id="@+id/definitions"
     android:layout_width="341dp"
     android:layout_height="521dp"
-    android:maxLines="10"
+    android:maxLines="30"
     android:maxWidth="50dp"
     android:minWidth="50dp"
     android:textSize="24sp"
