@@ -6,12 +6,40 @@
   android:layout_height="match_parent"
   tools:context=".MainActivity">
 
+  <Button
+    android:id="@+id/save"
+    android:layout_width="61dp"
+    android:layout_height="39dp"
+    android:text="save"
+    android:textSize="8sp"
+    android:visibility="invisible"
+    app:layout_constraintBottom_toBottomOf="parent"
+    app:layout_constraintEnd_toEndOf="parent"
+    app:layout_constraintHorizontal_bias="0.882"
+    app:layout_constraintStart_toStartOf="parent"
+    app:layout_constraintTop_toTopOf="parent"
+    app:layout_constraintVertical_bias="0.686" />
+
+  <Button
+    android:id="@+id/google"
+    android:layout_width="61dp"
+    android:layout_height="39dp"
+    android:text="google"
+    android:visibility="invisible"
+    android:textSize="6sp"
+    app:layout_constraintBottom_toBottomOf="parent"
+    app:layout_constraintEnd_toEndOf="parent"
+    app:layout_constraintHorizontal_bias="0.882"
+    app:layout_constraintStart_toStartOf="parent"
+    app:layout_constraintTop_toTopOf="parent"
+    app:layout_constraintVertical_bias="0.802" />
+
   <EditText
     android:id="@+id/wordBox"
-    android:layout_width="336dp"
-    android:layout_height="67dp"
-    android:layout_marginBottom="44dp"
-    android:layout_marginTop="68dp"
+    android:layout_width="359dp"
+    android:layout_height="72dp"
+    android:layout_marginBottom="16dp"
+    android:layout_marginTop="13dp"
     android:ems="10"
     android:focusable="true"
     android:hint="Enter a word..."
@@ -19,49 +47,25 @@
     android:inputType="text"
     app:layout_constraintBottom_toBottomOf="parent"
     app:layout_constraintEnd_toEndOf="parent"
-    app:layout_constraintHorizontal_bias="0.493"
+    app:layout_constraintHorizontal_bias="0.4"
     app:layout_constraintStart_toStartOf="parent"
     app:layout_constraintTop_toBottomOf="@+id/definitions" />
 
   <TextView
-    android:id="@+id/google"
-    android:layout_width="178dp"
-    android:layout_height="21dp"
-    android:layout_marginBottom="40dp"
-    android:layout_marginTop="17dp"
-    android:visibility="invisible"
-    app:layout_constraintBottom_toTopOf="@+id/wordBox"
-    app:layout_constraintEnd_toEndOf="parent"
-    app:layout_constraintHorizontal_bias="0.836"
-    app:layout_constraintStart_toStartOf="parent"
-    app:layout_constraintTop_toBottomOf="@+id/definitions"
-    app:layout_constraintVertical_bias="0.0" />
-
-  <TextView
     android:id="@+id/definitions"
-    android:layout_width="341dp"
-    android:layout_height="521dp"
+    android:layout_width="370dp"
+    android:layout_height="614dp"
+    android:layout_marginBottom="13dp"
+    android:layout_marginTop="16dp"
     android:maxLines="30"
     android:maxWidth="50dp"
     android:minWidth="50dp"
     android:textSize="24sp"
-    app:layout_constraintEnd_toEndOf="parent"
-    app:layout_constraintHorizontal_bias="0.528"
-    app:layout_constraintStart_toStartOf="parent"
-    tools:ignore="MissingConstraints"
-    tools:layout_editor_absoluteY="16dp" />
-
-  <TextView
-    android:id="@+id/save"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
-    android:layout_marginBottom="40dp"
-    android:layout_marginTop="17dp"
-    android:visibility="invisible"
     app:layout_constraintBottom_toTopOf="@+id/wordBox"
     app:layout_constraintEnd_toEndOf="parent"
-    app:layout_constraintHorizontal_bias="0.104"
+    app:layout_constraintHorizontal_bias="0.609"
     app:layout_constraintStart_toStartOf="parent"
-    app:layout_constraintTop_toBottomOf="@+id/definitions" />
+    app:layout_constraintTop_toTopOf="parent"
+    tools:ignore="MissingConstraints" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

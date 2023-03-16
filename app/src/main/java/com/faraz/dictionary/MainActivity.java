@@ -16,6 +16,7 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.KeyEvent;
+import android.view.View;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -71,6 +72,7 @@ public class MainActivity extends AppCompatActivity {
   private TextView definitionsView;
   private TextView saveView;
 
+  @SuppressLint("NewApi")
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
@@ -85,6 +87,11 @@ public class MainActivity extends AppCompatActivity {
     setOpenInBrowserListener();
     setLookupWordListener();
     setStoreWordListener();
+  }
+
+  public void goTo2ndActivity(View view) {
+    Intent intent = new Intent(this, MainActivity2.class);
+    startActivity(intent);
   }
 
   private void setRequestQueue() {
@@ -115,7 +122,6 @@ public class MainActivity extends AppCompatActivity {
     return ignore -> {
       definitionsView.setText("Welp... Mongo has gone belly up.");
       googleLink.setVisibility(VISIBLE);
-      googleLink.setText(format("open '%s' in google", originalLookupWord));
     };
   }
 
@@ -135,7 +141,6 @@ public class MainActivity extends AppCompatActivity {
         definitionsView.setText("Welp... Mongo has gone belly up.");
       }
       googleLink.setVisibility(VISIBLE);
-      googleLink.setText(format("open '%s' in google", originalLookupWord));
     };
   }
 
@@ -203,7 +208,6 @@ public class MainActivity extends AppCompatActivity {
           definitionsView.setText(orig.stream().filter(String.class::isInstance).map(String.class::cast)
               .map(lineSeparator()::concat).map("----------"::concat).collect(joining(lineSeparator())));
           saveView.setVisibility(VISIBLE);
-          saveView.setText(format("save '%s'", originalLookupWord));
         }
         else {
           String result = flattenJson.values().stream().filter(String.class::isInstance).map(String.class::cast).limit(3)
@@ -234,3 +238,44 @@ public class MainActivity extends AppCompatActivity {
     return this.properties.getProperty(property);
   }
 }
+/**
+ *   public void loadData() {
+ *     File file = getApplicationContext().getFileStreamPath("mydictionary.txt");
+ *     String lineFromfile;
+ *
+ *     if (file.exists()) {
+ *       try {
+ *         BufferedReader reader = new BufferedReader(new InputStreamReader(openFileInput("mydictionary.txt")));
+ *
+ *         while ((lineFromfile = reader.readLine()) != null) {
+ *           System.out.println("Just print: " + lineFromfile);
+ *           System.out.println();
+ *         }
+ *         reader.close();
+ *       }
+ *       catch (IOException e) {
+ *         Toast.makeText(MainActivity.this, e.getMessage(), Toast.LENGTH_SHORT)
+ *             .show();
+ *       }
+ *     }
+ *   }
+ *
+ *   @SuppressLint("NewApi")
+ *   public void saveData() {
+ *     try {
+ *       FileOutputStream file = openFileOutput("mydictionary.txt", MODE_APPEND);
+ *       OutputStreamWriter outputStreamWriter = new OutputStreamWriter(file);
+ *
+ *       outputStreamWriter.write("OKAY " + Instant.now());
+ *
+ *       outputStreamWriter.flush();
+ *       outputStreamWriter.close();
+ *       Toast.makeText(MainActivity.this, "Successfully saved", LENGTH_SHORT)
+ *           .show();
+ *     }
+ *     catch (IOException e) {
+ *       Toast.makeText(MainActivity.this, e.getMessage(), Toast.LENGTH_SHORT)
+ *           .show();
+ *     }
+ *   }
+ */
