@@ -5,9 +5,8 @@ import static android.view.View.VISIBLE;
 import static android.widget.Toast.LENGTH_SHORT;
 import static com.android.volley.Request.Method.POST;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
-import static org.apache.commons.lang3.StringUtils.deleteWhitespace;
+import static org.apache.commons.lang3.StringUtils.SPACE;
 import static org.apache.commons.lang3.StringUtils.isBlank;
-import static org.apache.commons.lang3.StringUtils.lowerCase;
 import static java.lang.String.format;
 import static java.lang.System.lineSeparator;
 import static java.util.stream.Collectors.joining;
@@ -41,6 +40,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -55,6 +55,7 @@ public class MainActivity extends AppCompatActivity {
   private static final String CLOSE_CURLY = "}";
   private static final String MONGO_FILTER = "\"filter\": {  \"word\" : \"%s\" } ";
   private static final String MONGO_DOCUMENT = "\"document\" : {  \"word\": \"%s\",\"lookupTime\": {  \"$date\" : {  \"$numberLong\" : \"%d\"} }, \"reminded\": %s }";
+  private static final String REGEX_WHITE_SPACES = "\\s+";
 
   private Properties properties;
   private static final String MERRIAM_WEBSTER_KEY = "dictionary.merriamWebster.key";
@@ -177,7 +178,8 @@ public class MainActivity extends AppCompatActivity {
   private void setLookupWordListener() {
     lookupWord.setOnKeyListener((view, code, event) -> {
       if ((event.getAction() == KeyEvent.ACTION_DOWN) && (code == KeyEvent.KEYCODE_ENTER)) {
-        originalLookupWord = lowerCase(deleteWhitespace(lookupWord.getText().toString()));
+        originalLookupWord = Arrays.stream(lookupWord.getText().toString().split(REGEX_WHITE_SPACES))
+            .map(String::trim).map(String::toLowerCase).collect(joining(SPACE));
         lookupWord.setText(null);
         googleLink.setVisibility(INVISIBLE);
         saveView.setVisibility(INVISIBLE);
