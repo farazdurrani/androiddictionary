@@ -41,7 +41,7 @@ public class MainActivity2 extends AppCompatActivity {
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.activity_main2);
-//    mailjetClient();
+    mailjetClient();
   }
 
   public void mailjetClient() {
@@ -52,10 +52,18 @@ public class MainActivity2 extends AppCompatActivity {
     }
   }
 
+
   public void backupData(View view) throws MailjetSocketTimeoutException, JSONException, MailjetException {
     System.out.println("Welp backup data now!");
     System.out.println("Sending email!");
-    sendEmail("Bismillah", "Bismillah", loadProperty(MAIL_FROM), loadProperty(MAIL_TO));
+    Thread thread = new Thread(() -> {
+      try {
+        sendEmail("Bismillah", "Bismillah", loadProperty(MAIL_FROM), loadProperty(MAIL_TO));
+      } catch (Exception e) {
+        e.printStackTrace();
+      }
+    });
+    thread.start();
   }
 
   public int sendEmail(String subject, String body, String from, String to) throws MailjetSocketTimeoutException, MailjetException, JSONException {
@@ -64,14 +72,17 @@ public class MainActivity2 extends AppCompatActivity {
         .put(FROM, new JSONObject().put("Email", from).put("Name", "Personal Dictionary")).put(TO, new JSONArray()
             .put(new JSONObject().put("Email", to).put("Name", "Personal Dictionary"))).put(SUBJECT, subject)
         .put(HTMLPART, body)));
-    MailjetResponse response = getMailJet().post(request);
+    MailjetResponse response = mailjetClient.post(request);
     return response.getStatus();
   }
 
+  @Deprecated
   private MailjetClient getMailJet() {
     String mailKey = loadProperty(MAIL_KEY);
     String mailSecret = loadProperty(MAIL_SECRET);
-    return new MailjetClient(mailKey, mailSecret, new ClientOptions("v3.1"));
+    MailjetClient client = new MailjetClient(mailKey, mailSecret, new ClientOptions("v3.1"));
+    client.setDebug(MailjetClient.VERBOSE_DEBUG);
+    return client;
   }
 
   private String loadProperty(String property) {

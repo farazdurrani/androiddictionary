@@ -25,21 +25,34 @@
     android:layout_width="61dp"
     android:layout_height="39dp"
     android:text="google"
-    android:visibility="invisible"
     android:textSize="6sp"
+    android:visibility="invisible"
     app:layout_constraintBottom_toBottomOf="parent"
     app:layout_constraintEnd_toEndOf="parent"
     app:layout_constraintHorizontal_bias="0.882"
     app:layout_constraintStart_toStartOf="parent"
     app:layout_constraintTop_toTopOf="parent"
-    app:layout_constraintVertical_bias="0.802" />
+    app:layout_constraintVertical_bias="0.796" />
+
+  <Button
+    android:id="@+id/secondActivity"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:onClick="goTo2ndActivity"
+    android:text="Backup"
+    app:layout_constraintBottom_toBottomOf="parent"
+    app:layout_constraintEnd_toEndOf="parent"
+    app:layout_constraintHorizontal_bias="0.882"
+    app:layout_constraintStart_toStartOf="parent"
+    app:layout_constraintTop_toTopOf="parent"
+    app:layout_constraintVertical_bias="0.057" />
 
   <EditText
     android:id="@+id/wordBox"
     android:layout_width="340dp"
     android:layout_height="70dp"
     android:layout_marginBottom="29dp"
-    android:layout_marginTop="2dp"
+    android:layout_marginTop="16dp"
     android:ems="10"
     android:focusable="true"
     android:hint="Enter a word..."
@@ -53,17 +66,16 @@
 
   <TextView
     android:id="@+id/definitions"
-    android:layout_width="340dp"
-    android:layout_height="542dp"
-    android:layout_marginBottom="10dp"
-    android:layout_marginTop="10dp"
+    android:layout_width="341dp"
+    android:layout_height="508dp"
+    android:layout_marginTop="30dp"
     android:maxLines="30"
     android:maxWidth="50dp"
     android:minWidth="50dp"
     android:textSize="24sp"
     app:layout_constraintBottom_toTopOf="@+id/wordBox"
     app:layout_constraintEnd_toEndOf="parent"
-    app:layout_constraintHorizontal_bias="0.535"
+    app:layout_constraintHorizontal_bias="0.471"
     app:layout_constraintStart_toStartOf="parent"
     app:layout_constraintTop_toTopOf="parent"
     tools:ignore="MissingConstraints" />
