@@ -38,6 +38,7 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
+import java.util.concurrent.CompletableFuture;
 
 public class MainActivity2 extends AppCompatActivity {
 
@@ -66,23 +67,31 @@ public class MainActivity2 extends AppCompatActivity {
     }
   }
 
-  //    StringRequest stringRequest = new MongoStringRequest(POST, format(loadProperty(MONGODB_URI), MONGO_ACTION_FIND_ONE),
-//        requestFuture, requestFuture, operation, loadProperty(MONGODB_API_KEY));
   private void loadAllData() {
     String operation = MONGO_PARTIAL_BODY + "," + format(MONGO_FILTER, "soyboy") + CLOSE_CURLY;
     RequestFuture<JSONObject> requestFuture = RequestFuture.newFuture();
     JsonObjectRequest request = new MongoJsonObjectRequest(POST, format(loadProperty(MONGODB_URI), MONGO_ACTION_FIND_ONE),
         requestFuture, requestFuture, operation, loadProperty(MONGODB_API_KEY));
     this.requestQueue.add(request);
-    new Thread(() -> {
-      try {
-        JSONObject ans = requestFuture.get();
-        System.out.println(ans);
-      }
-      catch (Exception e) {
-        e.printStackTrace();
-      }
-    }).start();
+    loadData(requestFuture);
+  }
+
+  private void loadData(RequestFuture<JSONObject> request) {
+    try {
+      CompletableFuture.supplyAsync(() -> {
+        try {
+          JSONObject ans = request.get();
+          System.out.println(ans);
+          return ans;
+        }
+        catch (Exception e) {
+          throw new RuntimeException(e);
+        }
+      }).get();
+    }
+    catch (Exception e) {
+      throw new RuntimeException(e);
+    }
   }
 
   public void mailjetClient() {
