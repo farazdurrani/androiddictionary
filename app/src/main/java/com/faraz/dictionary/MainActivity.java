@@ -49,20 +49,20 @@ import java.util.Properties;
 public class MainActivity extends AppCompatActivity {
 
   private static final String CHICAGO = "America/Chicago";
-  private static final String MONGO_PARTIAL_BODY = "{\"collection\":\"dictionary\",\"database\":\"myFirstDatabase\",\"dataSource\":\"Cluster0\"";
+  static final String MONGO_PARTIAL_BODY = "{\"collection\":\"dictionary\",\"database\":\"myFirstDatabase\",\"dataSource\":\"Cluster0\"";
   private static final String NO_DEFINITION_FOUND = "No definitions found for '%s'. Perhaps, you meant:";
-  private static final String MONGO_ACTION_FIND_ONE = "findOne";
+  static final String MONGO_ACTION_FIND_ONE = "findOne";
   private static final String MONGO_ACTION_INSERT_ONE = "insertOne";
-  private static final String CLOSE_CURLY = "}";
-  private static final String MONGO_FILTER = "\"filter\": {  \"word\" : \"%s\" } ";
+  static final String CLOSE_CURLY = "}";
+  static final String MONGO_FILTER = "\"filter\": {  \"word\" : \"%s\" } ";
   private static final String MONGO_DOCUMENT = "\"document\" : {  \"word\": \"%s\",\"lookupTime\": {  \"$date\" : {  \"$numberLong\" : \"%d\"} }, \"reminded\": %s }";
   private static final String REGEX_WHITE_SPACES = "\\s+";
 
   private Properties properties;
   private static final String MERRIAM_WEBSTER_KEY = "dictionary.merriamWebster.key";
   private static final String MERRIAM_WEBSTER_URL = "dictionary.merriamWebster.url";
-  private static final String MONGODB_URI = "mongodb.data.uri";
-  private static final String MONGODB_API_KEY = "mongodb.data.api.key";
+  static final String MONGODB_URI = "mongodb.data.uri";
+  static final String MONGODB_API_KEY = "mongodb.data.api.key";
 
   private RequestQueue requestQueue;
 

@@ -1,17 +1,29 @@
 package com.faraz.dictionary;
 
+import static com.android.volley.Request.Method.POST;
+import static com.faraz.dictionary.MainActivity.CLOSE_CURLY;
+import static com.faraz.dictionary.MainActivity.MONGODB_API_KEY;
+import static com.faraz.dictionary.MainActivity.MONGODB_URI;
+import static com.faraz.dictionary.MainActivity.MONGO_ACTION_FIND_ONE;
+import static com.faraz.dictionary.MainActivity.MONGO_FILTER;
+import static com.faraz.dictionary.MainActivity.MONGO_PARTIAL_BODY;
 import static com.mailjet.client.resource.Emailv31.MESSAGES;
 import static com.mailjet.client.resource.Emailv31.Message.FROM;
 import static com.mailjet.client.resource.Emailv31.Message.HTMLPART;
 import static com.mailjet.client.resource.Emailv31.Message.SUBJECT;
 import static com.mailjet.client.resource.Emailv31.Message.TO;
 import static com.mailjet.client.resource.Emailv31.resource;
+import static java.lang.String.format;
 
 import android.os.Bundle;
 import android.view.View;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.android.volley.RequestQueue;
+import com.android.volley.toolbox.JsonObjectRequest;
+import com.android.volley.toolbox.RequestFuture;
+import com.android.volley.toolbox.Volley;
 import com.mailjet.client.ClientOptions;
 import com.mailjet.client.MailjetClient;
 import com.mailjet.client.MailjetRequest;
@@ -37,11 +49,40 @@ public class MainActivity2 extends AppCompatActivity {
   private static final String MAIL_FROM = "mailjet.from";
   private static final String MAIL_TO = "mailjet.to";
 
+  private RequestQueue requestQueue;
+
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.activity_main2);
-    mailjetClient();
+    setRequestQueue();
+    loadAllData();
+//    mailjetClient();
+  }
+
+  private void setRequestQueue() {
+    if (this.requestQueue == null) {
+      this.requestQueue = Volley.newRequestQueue(this);
+    }
+  }
+
+  //    StringRequest stringRequest = new MongoStringRequest(POST, format(loadProperty(MONGODB_URI), MONGO_ACTION_FIND_ONE),
+//        requestFuture, requestFuture, operation, loadProperty(MONGODB_API_KEY));
+  private void loadAllData() {
+    String operation = MONGO_PARTIAL_BODY + "," + format(MONGO_FILTER, "soyboy") + CLOSE_CURLY;
+    RequestFuture<JSONObject> requestFuture = RequestFuture.newFuture();
+    JsonObjectRequest request = new MongoJsonObjectRequest(POST, format(loadProperty(MONGODB_URI), MONGO_ACTION_FIND_ONE),
+        requestFuture, requestFuture, operation, loadProperty(MONGODB_API_KEY));
+    this.requestQueue.add(request);
+    new Thread(() -> {
+      try {
+        JSONObject ans = requestFuture.get();
+        System.out.println(ans);
+      }
+      catch (Exception e) {
+        e.printStackTrace();
+      }
+    }).start();
   }
 
   public void mailjetClient() {
@@ -52,14 +93,14 @@ public class MainActivity2 extends AppCompatActivity {
     }
   }
 
-
   public void backupData(View view) throws MailjetSocketTimeoutException, JSONException, MailjetException {
     System.out.println("Welp backup data now!");
     System.out.println("Sending email!");
     Thread thread = new Thread(() -> {
       try {
         sendEmail("Bismillah", "Bismillah", loadProperty(MAIL_FROM), loadProperty(MAIL_TO));
-      } catch (Exception e) {
+      }
+      catch (Exception e) {
         e.printStackTrace();
       }
     });

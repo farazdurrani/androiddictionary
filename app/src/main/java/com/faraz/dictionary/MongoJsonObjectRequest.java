@@ -1,8 +1,7 @@
 package com.faraz.dictionary;
 
-import com.android.volley.Response;
+import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.RequestFuture;
-import com.android.volley.toolbox.StringRequest;
 
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
@@ -15,13 +14,13 @@ import java.util.Map;
  * @author faraz.durrani
  * @author Copyright (c) 2023 MountainView Software, Corp.
  */
-public class MongoStringRequest extends StringRequest {
+public class MongoJsonObjectRequest extends JsonObjectRequest {
   private final String body;
   private final String apiKey;
 
-  public MongoStringRequest(int post, String uri, Response.Listener<String> handleMongoResponse,
-      Response.ErrorListener handleMongoError, String body, String apiKey) {
-    super(post, uri, handleMongoResponse, handleMongoError);
+  public MongoJsonObjectRequest(int post, String uri, RequestFuture handleMongoResponse,
+      RequestFuture handleMongoError, String body, String apiKey) {
+    super(post, uri, null, handleMongoResponse, handleMongoError);
     this.body = body;
     this.apiKey = apiKey;
   }
