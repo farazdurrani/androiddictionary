@@ -52,6 +52,7 @@ public class MainActivity extends AppCompatActivity {
   static final String MONGO_PARTIAL_BODY = "{\"collection\":\"dictionary\",\"database\":\"myFirstDatabase\",\"dataSource\":\"Cluster0\"";
   private static final String NO_DEFINITION_FOUND = "No definitions found for '%s'. Perhaps, you meant:";
   static final String MONGO_ACTION_FIND_ONE = "findOne";
+  static final String MONGO_ACTION_FIND_ALL = "find";
   private static final String MONGO_ACTION_INSERT_ONE = "insertOne";
   static final String CLOSE_CURLY = "}";
   static final String MONGO_FILTER = "\"filter\": {  \"word\" : \"%s\" } ";

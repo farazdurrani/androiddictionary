@@ -32,6 +32,8 @@ public class MongoJsonObjectRequest extends JsonObjectRequest {
 
   @Override
   public byte[] getBody() {
+    System.out.println("Sending body -> " );
+    System.out.println(this.body);
     return this.body.getBytes(StandardCharsets.UTF_8);
   }
 

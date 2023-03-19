@@ -78,16 +78,15 @@ public class MainActivity2 extends AppCompatActivity {
 
   private void loadData(RequestFuture<JSONObject> request) {
     try {
-      CompletableFuture.supplyAsync(() -> {
+      new Thread(() -> {
         try {
           JSONObject ans = request.get();
-          System.out.println(ans);
-          return ans;
+          System.out.println("sir" + ans);
         }
         catch (Exception e) {
           throw new RuntimeException(e);
         }
-      }).get();
+      }).start();
     }
     catch (Exception e) {
       throw new RuntimeException(e);
