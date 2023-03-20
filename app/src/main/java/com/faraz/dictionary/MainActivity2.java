@@ -13,6 +13,7 @@ import static com.mailjet.client.resource.Emailv31.Message.SUBJECT;
 import static com.mailjet.client.resource.Emailv31.Message.TO;
 import static com.mailjet.client.resource.Emailv31.resource;
 import static java.lang.String.format;
+import static java.util.stream.Collectors.toList;
 
 import android.app.ProgressDialog;
 import android.os.AsyncTask;
@@ -38,10 +39,13 @@ import org.json.JSONObject;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Properties;
+import java.util.stream.IntStream;
 
 public class MainActivity2 extends AppCompatActivity {
-
   private Properties properties;
   private MailjetClient mailjetClient;
 
@@ -151,19 +155,45 @@ public class MainActivity2 extends AppCompatActivity {
     @Override
     protected String doInBackground(String... params) {
       publishProgress("Sleeping..."); // Calls onProgressUpdate()
+      List<String> allWords = new ArrayList<>();
       try {
-        int time = Integer.parseInt(params[0])*1000;
-
-        Thread.sleep(time);
-        resp = "Slept for " + params[0] + " seconds";
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-        resp = e.getMessage();
-      } catch (Exception e) {
+        String skip = ", \"skip\": %d";
+        int previousSkip = 0;
+        do {
+          String _skip = format(skip, previousSkip * 1000);
+          String operation = MONGO_PARTIAL_BODY + _skip + CLOSE_CURLY;
+          RequestFuture<JSONObject> requestFuture = RequestFuture.newFuture();
+          JsonObjectRequest request = new MongoJsonObjectRequest(POST, format(loadProperty(MONGODB_URI), MONGO_ACTION_FIND_ALL),
+              requestFuture, requestFuture, operation, loadProperty(MONGODB_API_KEY));
+          requestQueue.add(request);
+          JSONArray ans = requestFuture.get().getJSONArray("documents");
+          List<String> list = IntStream.range(0, ans.length()).mapToObj(i -> getItem(i, ans)).collect(toList());
+          allWords.addAll(list);
+          if (list.size() == 0) {
+            previousSkip = -1;
+          }
+          else {
+            previousSkip++;
+          }
+        } while (previousSkip != -1);
+        Collections.reverse(allWords);
+        resp = "Sending " + allWords.size();
+        sendEmail("Word Backup", );
+      }
+      catch (Exception e) {
         e.printStackTrace();
         resp = e.getMessage();
       }
       return resp;
+    }
+
+    private String getItem(int index, JSONArray ans) {
+      try {
+        return ans.getJSONObject(index).getString("word");
+      }
+      catch (Exception e) {
+        throw new RuntimeException(e);
+      }
     }
 
 
