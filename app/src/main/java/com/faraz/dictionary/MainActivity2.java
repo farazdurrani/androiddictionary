@@ -4,8 +4,7 @@ import static com.android.volley.Request.Method.POST;
 import static com.faraz.dictionary.MainActivity.CLOSE_CURLY;
 import static com.faraz.dictionary.MainActivity.MONGODB_API_KEY;
 import static com.faraz.dictionary.MainActivity.MONGODB_URI;
-import static com.faraz.dictionary.MainActivity.MONGO_ACTION_FIND_ONE;
-import static com.faraz.dictionary.MainActivity.MONGO_FILTER;
+import static com.faraz.dictionary.MainActivity.MONGO_ACTION_FIND_ALL;
 import static com.faraz.dictionary.MainActivity.MONGO_PARTIAL_BODY;
 import static com.mailjet.client.resource.Emailv31.MESSAGES;
 import static com.mailjet.client.resource.Emailv31.Message.FROM;
@@ -15,6 +14,8 @@ import static com.mailjet.client.resource.Emailv31.Message.TO;
 import static com.mailjet.client.resource.Emailv31.resource;
 import static java.lang.String.format;
 
+import android.app.ProgressDialog;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.view.View;
 
@@ -38,7 +39,6 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
-import java.util.concurrent.CompletableFuture;
 
 public class MainActivity2 extends AppCompatActivity {
 
@@ -58,7 +58,9 @@ public class MainActivity2 extends AppCompatActivity {
     setContentView(R.layout.activity_main2);
     mailjetClient();
     setRequestQueue();
-    loadAllData();
+    AsyncTaskRunner runner = new AsyncTaskRunner();
+    String sleepTime = "10";
+    runner.execute(sleepTime);
   }
 
   private void setRequestQueue() {
@@ -68,9 +70,10 @@ public class MainActivity2 extends AppCompatActivity {
   }
 
   private void loadAllData() {
-    String operation = MONGO_PARTIAL_BODY + "," + format(MONGO_FILTER, "soyboy") + CLOSE_CURLY;
+    String skip = "\"skip\": %d";
+    String operation = MONGO_PARTIAL_BODY + CLOSE_CURLY;
     RequestFuture<JSONObject> requestFuture = RequestFuture.newFuture();
-    JsonObjectRequest request = new MongoJsonObjectRequest(POST, format(loadProperty(MONGODB_URI), MONGO_ACTION_FIND_ONE),
+    JsonObjectRequest request = new MongoJsonObjectRequest(POST, format(loadProperty(MONGODB_URI), MONGO_ACTION_FIND_ALL),
         requestFuture, requestFuture, operation, loadProperty(MONGODB_API_KEY));
     this.requestQueue.add(request);
     loadData(requestFuture);
@@ -138,5 +141,50 @@ public class MainActivity2 extends AppCompatActivity {
       }
     }
     return this.properties.getProperty(property);
+  }
+
+  private class AsyncTaskRunner extends AsyncTask<String, String, String> {
+
+    private String resp;
+    ProgressDialog progressDialog;
+
+    @Override
+    protected String doInBackground(String... params) {
+      publishProgress("Sleeping..."); // Calls onProgressUpdate()
+      try {
+        int time = Integer.parseInt(params[0])*1000;
+
+        Thread.sleep(time);
+        resp = "Slept for " + params[0] + " seconds";
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+        resp = e.getMessage();
+      } catch (Exception e) {
+        e.printStackTrace();
+        resp = e.getMessage();
+      }
+      return resp;
+    }
+
+
+    @Override
+    protected void onPostExecute(String result) {
+      // execution of result of Long time consuming operation
+      progressDialog.dismiss();
+      System.out.println("onPostExecute " + result);
+    }
+
+
+    @Override
+    protected void onPreExecute() {
+      progressDialog = ProgressDialog.show(MainActivity2.this,
+          "ProgressDialog", "Wait for seconds");
+    }
+
+
+    @Override
+    protected void onProgressUpdate(String... text) {
+      System.out.println("onProgressUpdate " + text);
+    }
   }
 }
