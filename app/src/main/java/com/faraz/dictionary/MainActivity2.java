@@ -56,9 +56,9 @@ public class MainActivity2 extends AppCompatActivity {
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.activity_main2);
+    mailjetClient();
     setRequestQueue();
     loadAllData();
-//    mailjetClient();
   }
 
   private void setRequestQueue() {
@@ -82,6 +82,7 @@ public class MainActivity2 extends AppCompatActivity {
         try {
           JSONObject ans = request.get();
           System.out.println("sir" + ans);
+          sendEmail("Bismillah", ans.toString(), loadProperty(MAIL_FROM), loadProperty(MAIL_TO));
         }
         catch (Exception e) {
           throw new RuntimeException(e);
@@ -104,15 +105,7 @@ public class MainActivity2 extends AppCompatActivity {
   public void backupData(View view) throws MailjetSocketTimeoutException, JSONException, MailjetException {
     System.out.println("Welp backup data now!");
     System.out.println("Sending email!");
-    Thread thread = new Thread(() -> {
-      try {
-        sendEmail("Bismillah", "Bismillah", loadProperty(MAIL_FROM), loadProperty(MAIL_TO));
-      }
-      catch (Exception e) {
-        e.printStackTrace();
-      }
-    });
-    thread.start();
+    loadAllData();
   }
 
   public int sendEmail(String subject, String body, String from, String to) throws MailjetSocketTimeoutException, MailjetException, JSONException {
