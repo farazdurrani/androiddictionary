@@ -13,6 +13,7 @@ import static com.mailjet.client.resource.Emailv31.Message.SUBJECT;
 import static com.mailjet.client.resource.Emailv31.Message.TO;
 import static com.mailjet.client.resource.Emailv31.resource;
 import static java.lang.String.format;
+import static java.lang.String.join;
 import static java.util.stream.Collectors.toList;
 
 import android.app.ProgressDialog;
@@ -60,44 +61,14 @@ public class MainActivity2 extends AppCompatActivity {
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.activity_main2);
+
     mailjetClient();
     setRequestQueue();
-    AsyncTaskRunner runner = new AsyncTaskRunner();
-    String sleepTime = "10";
-    runner.execute(sleepTime);
   }
 
   private void setRequestQueue() {
     if (this.requestQueue == null) {
       this.requestQueue = Volley.newRequestQueue(this);
-    }
-  }
-
-  private void loadAllData() {
-    String skip = "\"skip\": %d";
-    String operation = MONGO_PARTIAL_BODY + CLOSE_CURLY;
-    RequestFuture<JSONObject> requestFuture = RequestFuture.newFuture();
-    JsonObjectRequest request = new MongoJsonObjectRequest(POST, format(loadProperty(MONGODB_URI), MONGO_ACTION_FIND_ALL),
-        requestFuture, requestFuture, operation, loadProperty(MONGODB_API_KEY));
-    this.requestQueue.add(request);
-    loadData(requestFuture);
-  }
-
-  private void loadData(RequestFuture<JSONObject> request) {
-    try {
-      new Thread(() -> {
-        try {
-          JSONObject ans = request.get();
-          System.out.println("sir" + ans);
-          sendEmail("Bismillah", ans.toString(), loadProperty(MAIL_FROM), loadProperty(MAIL_TO));
-        }
-        catch (Exception e) {
-          throw new RuntimeException(e);
-        }
-      }).start();
-    }
-    catch (Exception e) {
-      throw new RuntimeException(e);
     }
   }
 
@@ -109,29 +80,8 @@ public class MainActivity2 extends AppCompatActivity {
     }
   }
 
-  public void backupData(View view) throws MailjetSocketTimeoutException, JSONException, MailjetException {
-    System.out.println("Welp backup data now!");
-    System.out.println("Sending email!");
-    loadAllData();
-  }
-
-  public int sendEmail(String subject, String body, String from, String to) throws MailjetSocketTimeoutException, MailjetException, JSONException {
-    body = "<div style=\"font-size:20px\">" + body + "</div>";
-    MailjetRequest request = new MailjetRequest(resource).property(MESSAGES, new JSONArray().put(new JSONObject()
-        .put(FROM, new JSONObject().put("Email", from).put("Name", "Personal Dictionary")).put(TO, new JSONArray()
-            .put(new JSONObject().put("Email", to).put("Name", "Personal Dictionary"))).put(SUBJECT, subject)
-        .put(HTMLPART, body)));
-    MailjetResponse response = mailjetClient.post(request);
-    return response.getStatus();
-  }
-
-  @Deprecated
-  private MailjetClient getMailJet() {
-    String mailKey = loadProperty(MAIL_KEY);
-    String mailSecret = loadProperty(MAIL_SECRET);
-    MailjetClient client = new MailjetClient(mailKey, mailSecret, new ClientOptions("v3.1"));
-    client.setDebug(MailjetClient.VERBOSE_DEBUG);
-    return client;
+  public void backupData(View view) {
+    new AsyncTaskRunner().execute();
   }
 
   private String loadProperty(String property) {
@@ -147,15 +97,14 @@ public class MainActivity2 extends AppCompatActivity {
     return this.properties.getProperty(property);
   }
 
-  private class AsyncTaskRunner extends AsyncTask<String, String, String> {
+  private class AsyncTaskRunner extends AsyncTask<String, String, Void> {
 
-    private String resp;
     ProgressDialog progressDialog;
 
     @Override
-    protected String doInBackground(String... params) {
-      publishProgress("Sleeping..."); // Calls onProgressUpdate()
-      List<String> allWords = new ArrayList<>();
+    protected Void doInBackground(String... params) {
+      publishProgress("Backing up definitions..."); // Calls onProgressUpdate()
+      List<String> definitions = new ArrayList<>();
       try {
         String skip = ", \"skip\": %d";
         int previousSkip = 0;
@@ -168,23 +117,50 @@ public class MainActivity2 extends AppCompatActivity {
           requestQueue.add(request);
           JSONArray ans = requestFuture.get().getJSONArray("documents");
           List<String> list = IntStream.range(0, ans.length()).mapToObj(i -> getItem(i, ans)).collect(toList());
-          allWords.addAll(list);
+          definitions.addAll(list);
           if (list.size() == 0) {
             previousSkip = -1;
           }
           else {
             previousSkip++;
           }
+          publishProgress(format("Loaded '%s' words...", definitions.size()));
         } while (previousSkip != -1);
-        Collections.reverse(allWords);
-        resp = "Sending " + allWords.size();
-        sendEmail("Word Backup", );
+        publishProgress(format("Sending '%s' words...", definitions.size()));
+        Collections.reverse(definitions);
+        definitions.add(0, "Count: " + definitions.size());
+        String subject = "Words Backup";
+        if (sendEmail(subject, join("<br>", definitions)) == 200) {
+          publishProgress(format("'%d' words sent for backup.", definitions.size()));
+        }
+        else {
+          publishProgress(format("Error occured while backing up words."));
+        }
       }
       catch (Exception e) {
         e.printStackTrace();
-        resp = e.getMessage();
       }
-      return resp;
+      return null;
+    }
+
+    @Override
+    protected void onPostExecute(Void v) {
+      // execution of result of Long time consuming operation
+      progressDialog.dismiss();
+    }
+
+
+    @Override
+    protected void onPreExecute() {
+    }
+
+    @Override
+    protected void onProgressUpdate(String... text) {
+      if (progressDialog != null) {
+        progressDialog.dismiss();
+        progressDialog = null;
+      }
+      progressDialog = ProgressDialog.show(MainActivity2.this, "ProgressDialog", text[0]);
     }
 
     private String getItem(int index, JSONArray ans) {
@@ -196,25 +172,16 @@ public class MainActivity2 extends AppCompatActivity {
       }
     }
 
-
-    @Override
-    protected void onPostExecute(String result) {
-      // execution of result of Long time consuming operation
-      progressDialog.dismiss();
-      System.out.println("onPostExecute " + result);
-    }
-
-
-    @Override
-    protected void onPreExecute() {
-      progressDialog = ProgressDialog.show(MainActivity2.this,
-          "ProgressDialog", "Wait for seconds");
-    }
-
-
-    @Override
-    protected void onProgressUpdate(String... text) {
-      System.out.println("onProgressUpdate " + text);
+    public int sendEmail(String subject, String body) throws MailjetSocketTimeoutException, MailjetException, JSONException {
+      String from = loadProperty(MAIL_FROM);
+      String to = loadProperty(MAIL_TO);
+      body = "<div style=\"font-size:20px\">" + body + "</div>";
+      MailjetRequest request = new MailjetRequest(resource).property(MESSAGES, new JSONArray().put(new JSONObject()
+          .put(FROM, new JSONObject().put("Email", from).put("Name", "Personal Dictionary")).put(TO, new JSONArray()
+              .put(new JSONObject().put("Email", to).put("Name", "Personal Dictionary"))).put(SUBJECT, subject)
+          .put(HTMLPART, body)));
+      MailjetResponse response = mailjetClient.post(request);
+      return response.getStatus();
     }
   }
 }
