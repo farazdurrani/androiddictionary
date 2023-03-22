@@ -1,5 +1,6 @@
 package com.faraz.dictionary;
 
+import static android.app.ProgressDialog.show;
 import static com.android.volley.Request.Method.POST;
 import static com.faraz.dictionary.MainActivity.CLOSE_CURLY;
 import static com.faraz.dictionary.MainActivity.MONGODB_API_KEY;
@@ -15,6 +16,7 @@ import static com.mailjet.client.resource.Emailv31.resource;
 import static java.lang.String.format;
 import static java.lang.String.join;
 import static java.lang.Thread.sleep;
+import static java.util.Collections.reverse;
 import static java.util.stream.Collectors.toList;
 
 import android.app.Dialog;
@@ -43,7 +45,6 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
 import java.util.stream.IntStream;
@@ -128,7 +129,7 @@ public class MainActivity2 extends AppCompatActivity {
         } while (previousSkip != -1);
         publishProgress(format("Sending '%s' words...", definitions.size()));
         int size = definitions.size();
-        Collections.reverse(definitions);
+        reverse(definitions);
         definitions.add(0, "Count: " + size);
         String subject = "Words Backup";
         if (sendEmail(subject, join("<br>", definitions)) == 200) {
@@ -136,7 +137,7 @@ public class MainActivity2 extends AppCompatActivity {
           sleep(2000L);
         }
         else {
-          publishProgress(format("Error occured while backing up words."));
+          publishProgress(format("Error occurred while backing up words."));
         }
       }
       catch (Exception e) {
@@ -148,10 +149,10 @@ public class MainActivity2 extends AppCompatActivity {
     @Override
     protected void onPostExecute(Void v) {
       // execution of result of Long time consuming operation
-      Collections.reverse(progressDialogs);
+      reverse(progressDialogs);
       progressDialogs.forEach(Dialog::dismiss);
+      progressDialogs.clear();
     }
-
 
     @Override
     protected void onPreExecute() {
@@ -159,7 +160,7 @@ public class MainActivity2 extends AppCompatActivity {
 
     @Override
     protected void onProgressUpdate(String... text) {
-      progressDialogs.add(ProgressDialog.show(MainActivity2.this, "ProgressDialog", text[0]));
+      progressDialogs.add(show(MainActivity2.this, "ProgressDialog", text[0]));
     }
 
     private String getItem(int index, JSONArray ans) {
@@ -171,7 +172,7 @@ public class MainActivity2 extends AppCompatActivity {
       }
     }
 
-    public int sendEmail(String subject, String body) throws MailjetSocketTimeoutException, MailjetException, JSONException {
+    private int sendEmail(String subject, String body) throws MailjetSocketTimeoutException, MailjetException, JSONException {
       String from = loadProperty(MAIL_FROM);
       String to = loadProperty(MAIL_TO);
       body = "<div style=\"font-size:20px\">" + body + "</div>";
