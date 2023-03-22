@@ -14,8 +14,10 @@ import static com.mailjet.client.resource.Emailv31.Message.TO;
 import static com.mailjet.client.resource.Emailv31.resource;
 import static java.lang.String.format;
 import static java.lang.String.join;
+import static java.lang.Thread.sleep;
 import static java.util.stream.Collectors.toList;
 
+import android.app.Dialog;
 import android.app.ProgressDialog;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -47,14 +49,12 @@ import java.util.Properties;
 import java.util.stream.IntStream;
 
 public class MainActivity2 extends AppCompatActivity {
-  private Properties properties;
-  private MailjetClient mailjetClient;
-
   private static final String MAIL_KEY = "mailjet.apiKey";
   private static final String MAIL_SECRET = "mailjet.apiSecret";
   private static final String MAIL_FROM = "mailjet.from";
   private static final String MAIL_TO = "mailjet.to";
-
+  private Properties properties;
+  private MailjetClient mailjetClient;
   private RequestQueue requestQueue;
 
   @Override
@@ -99,7 +99,7 @@ public class MainActivity2 extends AppCompatActivity {
 
   private class AsyncTaskRunner extends AsyncTask<String, String, Void> {
 
-    ProgressDialog progressDialog;
+    List<ProgressDialog> progressDialogs = new ArrayList<>();
 
     @Override
     protected Void doInBackground(String... params) {
@@ -127,11 +127,13 @@ public class MainActivity2 extends AppCompatActivity {
           publishProgress(format("Loaded '%s' words...", definitions.size()));
         } while (previousSkip != -1);
         publishProgress(format("Sending '%s' words...", definitions.size()));
+        int size = definitions.size();
         Collections.reverse(definitions);
-        definitions.add(0, "Count: " + definitions.size());
+        definitions.add(0, "Count: " + size);
         String subject = "Words Backup";
         if (sendEmail(subject, join("<br>", definitions)) == 200) {
-          publishProgress(format("'%d' words sent for backup.", definitions.size()));
+          publishProgress(format("'%d' words sent for backup.", size));
+          sleep(2000L);
         }
         else {
           publishProgress(format("Error occured while backing up words."));
@@ -146,7 +148,8 @@ public class MainActivity2 extends AppCompatActivity {
     @Override
     protected void onPostExecute(Void v) {
       // execution of result of Long time consuming operation
-      progressDialog.dismiss();
+      Collections.reverse(progressDialogs);
+      progressDialogs.forEach(Dialog::dismiss);
     }
 
 
@@ -156,11 +159,7 @@ public class MainActivity2 extends AppCompatActivity {
 
     @Override
     protected void onProgressUpdate(String... text) {
-      if (progressDialog != null) {
-        progressDialog.dismiss();
-        progressDialog = null;
-      }
-      progressDialog = ProgressDialog.show(MainActivity2.this, "ProgressDialog", text[0]);
+      progressDialogs.add(ProgressDialog.show(MainActivity2.this, "ProgressDialog", text[0]));
     }
 
     private String getItem(int index, JSONArray ans) {
