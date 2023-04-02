@@ -6,6 +6,7 @@ import static com.faraz.dictionary.MainActivity.CLOSE_CURLY;
 import static com.faraz.dictionary.MainActivity.MONGODB_API_KEY;
 import static com.faraz.dictionary.MainActivity.MONGODB_URI;
 import static com.faraz.dictionary.MainActivity.MONGO_ACTION_FIND_ALL;
+import static com.faraz.dictionary.MainActivity.MONGO_ACTION_UPDATE_ONE;
 import static com.faraz.dictionary.MainActivity.MONGO_PARTIAL_BODY;
 import static com.mailjet.client.resource.Emailv31.MESSAGES;
 import static com.mailjet.client.resource.Emailv31.Message.FROM;
@@ -13,6 +14,7 @@ import static com.mailjet.client.resource.Emailv31.Message.HTMLPART;
 import static com.mailjet.client.resource.Emailv31.Message.SUBJECT;
 import static com.mailjet.client.resource.Emailv31.Message.TO;
 import static com.mailjet.client.resource.Emailv31.resource;
+import static org.apache.commons.lang3.StringUtils.capitalize;
 import static java.lang.String.format;
 import static java.lang.String.join;
 import static java.lang.Thread.sleep;
@@ -45,8 +47,10 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Properties;
+import java.util.Set;
 import java.util.stream.IntStream;
 
 public class MainActivity2 extends AppCompatActivity {
@@ -57,6 +61,10 @@ public class MainActivity2 extends AppCompatActivity {
   private Properties properties;
   private MailjetClient mailjetClient;
   private RequestQueue requestQueue;
+
+  public static String anchor(String word) {
+    return "<a href='https://www.google.com/search?q=define: " + word + "' target='_blank'>" + capitalize(word) + "</a>";
+  }
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
@@ -85,6 +93,10 @@ public class MainActivity2 extends AppCompatActivity {
     new AsyncTaskRunner().execute();
   }
 
+  public void send5(View view) {
+    new Send5AsyncTaskRunner().execute();
+  }
+
   private String loadProperty(String property) {
     if (this.properties == null) {
       this.properties = new Properties();
@@ -96,6 +108,146 @@ public class MainActivity2 extends AppCompatActivity {
       }
     }
     return this.properties.getProperty(property);
+  }
+
+  private String getItem(int index, JSONArray ans) {
+    try {
+      return ans.getJSONObject(index).getString("word");
+    }
+    catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  private int sendEmail(String subject, String body) throws MailjetSocketTimeoutException, MailjetException, JSONException {
+    String from = loadProperty(MAIL_FROM);
+    String to = loadProperty(MAIL_TO);
+    body = "<div style=\"font-size:20px\">" + body + "</div>";
+    MailjetRequest request = new MailjetRequest(resource).property(MESSAGES, new JSONArray().put(new JSONObject()
+        .put(FROM, new JSONObject().put("Email", from).put("Name", "Personal Dictionary")).put(TO, new JSONArray()
+            .put(new JSONObject().put("Email", to).put("Name", "Personal Dictionary"))).put(SUBJECT, subject)
+        .put(HTMLPART, body)));
+    MailjetResponse response = mailjetClient.post(request);
+    return response.getStatus();
+  }
+
+  private List<String> getWordsFromMongo(String operation) {
+    List<String> definitions = new ArrayList<>();
+    RequestFuture<JSONObject> requestFuture = RequestFuture.newFuture();
+    JsonObjectRequest request = new MongoJsonObjectRequest(POST, format(loadProperty(MONGODB_URI), MONGO_ACTION_FIND_ALL),
+        requestFuture, requestFuture, operation, loadProperty(MONGODB_API_KEY));
+    requestQueue.add(request);
+    try {
+      JSONArray ans = requestFuture.get().getJSONArray("documents");
+      List<String> list = IntStream.range(0, ans.length()).mapToObj(i -> getItem(i, ans)).collect(toList());
+      definitions.addAll(list);
+    }
+    catch (Exception e) {
+      e.printStackTrace();
+    }
+    return definitions;
+  }
+
+  private List<String> anchor(List<String> definitions) {
+    return definitions.stream().map(MainActivity2::anchor).collect(toList());
+  }
+
+  private void updateData(String query) {
+    RequestFuture<JSONObject> requestFuture = RequestFuture.newFuture();
+    JsonObjectRequest request = new MongoJsonObjectRequest(POST, format(loadProperty(MONGODB_URI), MONGO_ACTION_UPDATE_ONE),
+        requestFuture, requestFuture, query, loadProperty(MONGODB_API_KEY));
+    requestQueue.add(request);
+    try {
+      JSONObject ans = requestFuture.get();
+      int matchedCount = Integer.parseInt(ans.getString("matchedCount"));
+      int modifiedCount = Integer.parseInt(ans.getString("modifiedCount"));
+      //TODO not sure what to do with these counts. But okay.
+    }
+    catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
+
+  private class Send5AsyncTaskRunner extends AsyncTask<String, String, Void> {
+    List<ProgressDialog> progressDialogs = new ArrayList<>();
+
+    @Override
+    protected Void doInBackground(String... strings) {
+      publishProgress("Sending 5 words...");
+      //mongo steps
+      //1 get 5 words where reminded = false
+      //2 if no words found, set all words to false
+      //3 if found, email them, and set reminded = true
+      String query = createQueryForRandomWords();
+      List<String> words = getWordsFromMongo(query);
+      if (words.isEmpty()) { //TODO undo !
+        //If all word count and reminded = true count is same,
+        //then set all reminded = false;
+        //TODO Implement
+        publishProgress("No words left to remind of.");
+        return null;
+      }
+      boolean success = sendRandomWords(anchor(words));
+      if (success) {
+        markWordsAsReminded(words);
+      }
+      return null;
+    }
+
+    private void markWordsAsReminded(List<String> words) {
+      for (String word : words) {
+        String query = setRemindedQuery(true, word);
+        updateData(query);
+      }
+    }
+
+    private String setRemindedQuery(boolean reminded, String word) {
+      String filter = format(", \"filter\": { \"word\" : \"%s\"}", word);
+      String set = format("\"$set\": { \"reminded\" : %b }", reminded);
+      String update = format(", \"update\" : {%s}", set);
+      return MONGO_PARTIAL_BODY + filter + update + CLOSE_CURLY;
+    }
+
+    private boolean sendRandomWords(List<String> definitions) {
+      String subject = "Random Words";
+      try {
+        if (sendEmail(subject, join("<br><br>", definitions)) == 200) {
+          publishProgress(format("'%d' random words sent.", definitions.size()));
+          sleep(2000L);
+        }
+        else {
+          publishProgress(format("Error occurred while sending random words."));
+        }
+      }
+      catch (Exception e) {
+        publishProgress(format("Error occurred while sending random words."));
+        return false;
+      }
+      return true;
+    }
+
+    private String createQueryForRandomWords() {
+      String filter = ",\"filter\": { \"reminded\": false }";
+      String limit = ", \"limit\": 5";
+      return MONGO_PARTIAL_BODY + filter + limit + CLOSE_CURLY;
+    }
+
+    @Override
+    protected void onPostExecute(Void v) {
+      // execution of result of Long time consuming operation
+      reverse(progressDialogs);
+      progressDialogs.forEach(Dialog::dismiss);
+      progressDialogs.clear();
+    }
+
+    @Override
+    protected void onPreExecute() {
+    }
+
+    @Override
+    protected void onProgressUpdate(String... text) {
+      progressDialogs.add(show(MainActivity2.this, "ProgressDialog", text[0]));
+    }
   }
 
   private class AsyncTaskRunner extends AsyncTask<String, String, Void> {
@@ -130,9 +282,11 @@ public class MainActivity2 extends AppCompatActivity {
         publishProgress(format("Sending '%s' words...", definitions.size()));
         int size = definitions.size();
         reverse(definitions);
+
         definitions.add(0, "Count: " + size);
+        Set<String> defiSet = new LinkedHashSet<>(definitions);
         String subject = "Words Backup";
-        if (sendEmail(subject, join("<br>", definitions)) == 200) {
+        if (sendEmail(subject, join("<br>", defiSet)) == 200) {
           publishProgress(format("'%d' words sent for backup.", size));
           sleep(2000L);
         }
@@ -161,27 +315,6 @@ public class MainActivity2 extends AppCompatActivity {
     @Override
     protected void onProgressUpdate(String... text) {
       progressDialogs.add(show(MainActivity2.this, "ProgressDialog", text[0]));
-    }
-
-    private String getItem(int index, JSONArray ans) {
-      try {
-        return ans.getJSONObject(index).getString("word");
-      }
-      catch (Exception e) {
-        throw new RuntimeException(e);
-      }
-    }
-
-    private int sendEmail(String subject, String body) throws MailjetSocketTimeoutException, MailjetException, JSONException {
-      String from = loadProperty(MAIL_FROM);
-      String to = loadProperty(MAIL_TO);
-      body = "<div style=\"font-size:20px\">" + body + "</div>";
-      MailjetRequest request = new MailjetRequest(resource).property(MESSAGES, new JSONArray().put(new JSONObject()
-          .put(FROM, new JSONObject().put("Email", from).put("Name", "Personal Dictionary")).put(TO, new JSONArray()
-              .put(new JSONObject().put("Email", to).put("Name", "Personal Dictionary"))).put(SUBJECT, subject)
-          .put(HTMLPART, body)));
-      MailjetResponse response = mailjetClient.post(request);
-      return response.getStatus();
     }
   }
 }

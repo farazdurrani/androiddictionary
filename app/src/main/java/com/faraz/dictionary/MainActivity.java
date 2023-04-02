@@ -53,6 +53,7 @@ public class MainActivity extends AppCompatActivity {
   private static final String NO_DEFINITION_FOUND = "No definitions found for '%s'. Perhaps, you meant:";
   static final String MONGO_ACTION_FIND_ONE = "findOne";
   static final String MONGO_ACTION_FIND_ALL = "find";
+  static final String MONGO_ACTION_UPDATE_ONE = "updateOne";
   private static final String MONGO_ACTION_INSERT_ONE = "insertOne";
   static final String CLOSE_CURLY = "}";
   static final String MONGO_FILTER = "\"filter\": {  \"word\" : \"%s\" } ";
