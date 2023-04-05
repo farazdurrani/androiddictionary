@@ -90,11 +90,11 @@ public class MainActivity2 extends AppCompatActivity {
   }
 
   public void backupData(View view) {
-    new AsyncTaskRunner().execute();
+    new BackupDataAsyncTaskRunner().execute();
   }
 
   public void send5(View view) {
-    new Send5AsyncTaskRunner().execute();
+    new SendRandomWordsAsyncTaskRunner().execute();
   }
 
   private String loadProperty(String property) {
@@ -168,7 +168,7 @@ public class MainActivity2 extends AppCompatActivity {
     }
   }
 
-  private class Send5AsyncTaskRunner extends AsyncTask<String, String, Void> {
+  private class SendRandomWordsAsyncTaskRunner extends AsyncTask<String, String, Void> {
     List<ProgressDialog> progressDialogs = new ArrayList<>();
 
     @Override
@@ -250,7 +250,7 @@ public class MainActivity2 extends AppCompatActivity {
     }
   }
 
-  private class AsyncTaskRunner extends AsyncTask<String, String, Void> {
+  private class BackupDataAsyncTaskRunner extends AsyncTask<String, String, Void> {
 
     List<ProgressDialog> progressDialogs = new ArrayList<>();
 
@@ -259,31 +259,21 @@ public class MainActivity2 extends AppCompatActivity {
       publishProgress("Backing up definitions..."); // Calls onProgressUpdate()
       List<String> definitions = new ArrayList<>();
       try {
-        String skip = ", \"skip\": %d";
-        int previousSkip = 0;
-        do {
-          String _skip = format(skip, previousSkip * 1000);
-          String operation = MONGO_PARTIAL_BODY + _skip + CLOSE_CURLY;
-          RequestFuture<JSONObject> requestFuture = RequestFuture.newFuture();
-          JsonObjectRequest request = new MongoJsonObjectRequest(POST, format(loadProperty(MONGODB_URI), MONGO_ACTION_FIND_ALL),
-              requestFuture, requestFuture, operation, loadProperty(MONGODB_API_KEY));
-          requestQueue.add(request);
-          JSONArray ans = requestFuture.get().getJSONArray("documents");
-          List<String> list = IntStream.range(0, ans.length()).mapToObj(i -> getItem(i, ans)).collect(toList());
-          definitions.addAll(list);
-          if (list.size() == 0) {
-            previousSkip = -1;
-          }
-          else {
-            previousSkip++;
-          }
-          publishProgress(format("Loaded '%s' words...", definitions.size()));
-        } while (previousSkip != -1);
+        String limit = ", \"limit\": 20000 ";
+        String operation = MONGO_PARTIAL_BODY + limit + CLOSE_CURLY;
+        RequestFuture<JSONObject> requestFuture = RequestFuture.newFuture();
+        JsonObjectRequest request = new MongoJsonObjectRequest(POST, format(loadProperty(MONGODB_URI), MONGO_ACTION_FIND_ALL),
+            requestFuture, requestFuture, operation, loadProperty(MONGODB_API_KEY));
+        requestQueue.add(request);
+        JSONArray ans = requestFuture.get().getJSONArray("documents");
+        List<String> list = IntStream.range(0, ans.length()).mapToObj(i -> getItem(i, ans)).collect(toList());
+        definitions.addAll(list);
+        publishProgress(format("Loaded '%s' words...", definitions.size()));
         publishProgress(format("Sending '%s' words...", definitions.size()));
         int size = definitions.size();
         reverse(definitions);
-
-        definitions.add(0, "Count: " + size);
+        String firstline = "Count: " + size + ". (Beware of 20K max words and other data limitations)";
+        definitions.add(0, firstline);
         Set<String> defiSet = new LinkedHashSet<>(definitions);
         String subject = "Words Backup";
         if (sendEmail(subject, join("<br>", defiSet)) == 200) {
