@@ -195,6 +195,7 @@ public class MainActivity2 extends AppCompatActivity {
     }
 
     private void markWordsAsReminded(List<String> words) {
+      //TODO too many calls here. Make it into 1 call that updates all the words in a single go.
       for (String word : words) {
         String query = setRemindedQuery(true, word);
         updateData(query);
@@ -252,27 +253,36 @@ public class MainActivity2 extends AppCompatActivity {
 
   private class BackupDataAsyncTaskRunner extends AsyncTask<String, String, Void> {
 
-    List<ProgressDialog> progressDialogs = new ArrayList<>();
+    private final List<ProgressDialog> progressDialogs = new ArrayList<>();
 
     @Override
     protected Void doInBackground(String... params) {
       publishProgress("Backing up definitions..."); // Calls onProgressUpdate()
       List<String> definitions = new ArrayList<>();
       try {
-        String limit = ", \"limit\": 20000 ";
-        String operation = MONGO_PARTIAL_BODY + limit + CLOSE_CURLY;
-        RequestFuture<JSONObject> requestFuture = RequestFuture.newFuture();
-        JsonObjectRequest request = new MongoJsonObjectRequest(POST, format(loadProperty(MONGODB_URI), MONGO_ACTION_FIND_ALL),
-            requestFuture, requestFuture, operation, loadProperty(MONGODB_API_KEY));
-        requestQueue.add(request);
-        JSONArray ans = requestFuture.get().getJSONArray("documents");
-        List<String> list = IntStream.range(0, ans.length()).mapToObj(i -> getItem(i, ans)).collect(toList());
-        definitions.addAll(list);
-        publishProgress(format("Loaded '%s' words...", definitions.size()));
+        int limitNum = 10000;
+        String limit = format(", \"limit\": %d ", limitNum);
+        String skip = ", \"skip\": %d";
+        int previousSkip = 0;
+        do {
+          String _skip = format(skip, previousSkip * limitNum);
+          String operation = MONGO_PARTIAL_BODY + _skip + limit + CLOSE_CURLY;
+          System.out.println("query: " + operation);
+          RequestFuture<JSONObject> requestFuture = RequestFuture.newFuture();
+          JsonObjectRequest request = new MongoJsonObjectRequest(POST, format(loadProperty(MONGODB_URI), MONGO_ACTION_FIND_ALL),
+              requestFuture, requestFuture, operation, loadProperty(MONGODB_API_KEY));
+          requestQueue.add(request);
+          JSONArray ans = requestFuture.get().getJSONArray("documents");
+          List<String> list = IntStream.range(0, ans.length()).mapToObj(i -> getItem(i, ans)).distinct()
+              .collect(toList());
+          definitions.addAll(list);
+          previousSkip = list.size() == 0 ? -1 : previousSkip + 1;
+          publishProgress(format("Loaded '%s' words...", definitions.size()));
+        } while (previousSkip != -1);
         publishProgress(format("Sending '%s' words...", definitions.size()));
         int size = definitions.size();
         reverse(definitions);
-        String firstline = "Count: " + size + ". (Beware of 20K max words and other data limitations)";
+        String firstline = format("Count: '%d'.", size);
         definitions.add(0, firstline);
         Set<String> defiSet = new LinkedHashSet<>(definitions);
         String subject = "Words Backup";
