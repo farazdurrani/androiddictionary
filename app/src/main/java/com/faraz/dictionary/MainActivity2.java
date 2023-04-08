@@ -6,7 +6,7 @@ import static com.faraz.dictionary.MainActivity.CLOSE_CURLY;
 import static com.faraz.dictionary.MainActivity.MONGODB_API_KEY;
 import static com.faraz.dictionary.MainActivity.MONGODB_URI;
 import static com.faraz.dictionary.MainActivity.MONGO_ACTION_FIND_ALL;
-import static com.faraz.dictionary.MainActivity.MONGO_ACTION_UPDATE_ONE;
+import static com.faraz.dictionary.MainActivity.MONGO_ACTION_UPDATE_MANY;
 import static com.faraz.dictionary.MainActivity.MONGO_PARTIAL_BODY;
 import static com.mailjet.client.resource.Emailv31.MESSAGES;
 import static com.mailjet.client.resource.Emailv31.Message.FROM;
@@ -51,6 +51,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.stream.IntStream;
 
 public class MainActivity2 extends AppCompatActivity {
@@ -152,16 +153,17 @@ public class MainActivity2 extends AppCompatActivity {
     return definitions.stream().map(MainActivity2::anchor).collect(toList());
   }
 
-  private void updateData(String query) {
+  private void updateData(String query, Consumer consumer) {
     RequestFuture<JSONObject> requestFuture = RequestFuture.newFuture();
-    JsonObjectRequest request = new MongoJsonObjectRequest(POST, format(loadProperty(MONGODB_URI), MONGO_ACTION_UPDATE_ONE),
-        requestFuture, requestFuture, query, loadProperty(MONGODB_API_KEY));
+    JsonObjectRequest request = new MongoJsonObjectRequest(POST, format(loadProperty(MONGODB_URI),
+        MONGO_ACTION_UPDATE_MANY), requestFuture, requestFuture, query, loadProperty(MONGODB_API_KEY));
     requestQueue.add(request);
     try {
       JSONObject ans = requestFuture.get();
       int matchedCount = Integer.parseInt(ans.getString("matchedCount"));
       int modifiedCount = Integer.parseInt(ans.getString("modifiedCount"));
-      //TODO not sure what to do with these counts. But okay.
+      consumer.accept(modifiedCount);
+      sleep(2000L);
     }
     catch (Exception e) {
       e.printStackTrace();
@@ -187,26 +189,31 @@ public class MainActivity2 extends AppCompatActivity {
         publishProgress("No words left to remind of.");
         return null;
       }
-      boolean success = sendRandomWords(anchor(words));
-      if (success) {
-        markWordsAsReminded(words);
+      if (sendRandomWords(anchor(words))) {
+        markWordsAsReminded_(words);
       }
       return null;
     }
 
-    private void markWordsAsReminded(List<String> words) {
-      //TODO too many calls here. Make it into 1 call that updates all the words in a single go.
-      for (String word : words) {
-        String query = setRemindedQuery(true, word);
-        updateData(query);
-      }
+    private void markWordsAsReminded_(List<String> words) {
+      String filterSubQuery = getFilterQueryToUpdateReminded(words);
+      String updateSubQuery = getUpdateQueryToUpdateReminded();
+      String query = MONGO_PARTIAL_BODY + "," + filterSubQuery + ", " + updateSubQuery + CLOSE_CURLY;
+      Consumer consumer = documentsModified -> publishProgress(format("Marked %d words as reminded.", documentsModified));
+      updateData(query, consumer);
     }
 
-    private String setRemindedQuery(boolean reminded, String word) {
-      String filter = format(", \"filter\": { \"word\" : \"%s\"}", word);
-      String set = format("\"$set\": { \"reminded\" : %b }", reminded);
-      String update = format(", \"update\" : {%s}", set);
-      return MONGO_PARTIAL_BODY + filter + update + CLOSE_CURLY;
+    private String getUpdateQueryToUpdateReminded() {
+      return format("\"update\": { \"$set\" : { \"reminded\" : %b } }", true);
+    }
+
+    private String getFilterQueryToUpdateReminded(List<String> words) {
+      String in = "";
+      for (String word : words) {
+        in = in + format("\"%s\",", word);
+      }
+      in = in.replaceAll(",$", "");
+      return format("\"filter\": { \"word\" : { \"$in\" : [%s] } }", in);
     }
 
     private boolean sendRandomWords(List<String> definitions) {
@@ -214,14 +221,14 @@ public class MainActivity2 extends AppCompatActivity {
       try {
         if (sendEmail(subject, join("<br><br>", definitions)) == 200) {
           publishProgress(format("'%d' random words sent.", definitions.size()));
-          sleep(2000L);
         }
         else {
-          publishProgress(format("Error occurred while sending random words."));
+          publishProgress("Error occurred while sending random words.");
         }
+        sleep(2000L);
       }
       catch (Exception e) {
-        publishProgress(format("Error occurred while sending random words."));
+        publishProgress("Error occurred while sending random words.");
         return false;
       }
       return true;
@@ -282,8 +289,8 @@ public class MainActivity2 extends AppCompatActivity {
         publishProgress(format("Sending '%s' words...", definitions.size()));
         int size = definitions.size();
         reverse(definitions);
-        String firstline = format("Count: '%d'.", size);
-        definitions.add(0, firstline);
+        String firstLine = format("Count: '%d'.", size);
+        definitions.add(0, firstLine);
         Set<String> defiSet = new LinkedHashSet<>(definitions);
         String subject = "Words Backup";
         if (sendEmail(subject, join("<br>", defiSet)) == 200) {
@@ -319,16 +326,6 @@ public class MainActivity2 extends AppCompatActivity {
   }
 }
 /**
- * Aggregation Query to get reminded count:
- * [
- *   {
- *     $match: {
- *       reminded: true,
- *     },
- *   },
- *   {
- *     $count: "reminded",
- *   },
- * ]
- * --2918 as of today 04/08/23
+ * Aggregation Query to get reminded count: [ { $match: { reminded: true, }, }, { $count:
+ * "reminded", }, ] --2918 as of today 04/08/23
  */

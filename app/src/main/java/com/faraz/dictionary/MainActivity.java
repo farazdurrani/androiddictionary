@@ -48,24 +48,22 @@ import java.util.Properties;
 
 public class MainActivity extends AppCompatActivity {
 
-  private static final String CHICAGO = "America/Chicago";
   static final String MONGO_PARTIAL_BODY = "{\"collection\":\"dictionary\",\"database\":\"myFirstDatabase\",\"dataSource\":\"Cluster0\"";
-  private static final String NO_DEFINITION_FOUND = "No definitions found for '%s'. Perhaps, you meant:";
   static final String MONGO_ACTION_FIND_ONE = "findOne";
   static final String MONGO_ACTION_FIND_ALL = "find";
-  static final String MONGO_ACTION_UPDATE_ONE = "updateOne";
-  private static final String MONGO_ACTION_INSERT_ONE = "insertOne";
+  static final String MONGO_ACTION_UPDATE_MANY = "updateMany";
   static final String CLOSE_CURLY = "}";
   static final String MONGO_FILTER = "\"filter\": {  \"word\" : \"%s\" } ";
-  private static final String MONGO_DOCUMENT = "\"document\" : {  \"word\": \"%s\",\"lookupTime\": {  \"$date\" : {  \"$numberLong\" : \"%d\"} }, \"reminded\": %s }";
-  private static final String REGEX_WHITE_SPACES = "\\s+";
-
-  private Properties properties;
-  private static final String MERRIAM_WEBSTER_KEY = "dictionary.merriamWebster.key";
-  private static final String MERRIAM_WEBSTER_URL = "dictionary.merriamWebster.url";
   static final String MONGODB_URI = "mongodb.data.uri";
   static final String MONGODB_API_KEY = "mongodb.data.api.key";
-
+  private static final String CHICAGO = "America/Chicago";
+  private static final String NO_DEFINITION_FOUND = "No definitions found for '%s'. Perhaps, you meant:";
+  private static final String MONGO_ACTION_INSERT_ONE = "insertOne";
+  private static final String MONGO_DOCUMENT = "\"document\" : {  \"word\": \"%s\",\"lookupTime\": {  \"$date\" : {  \"$numberLong\" : \"%d\"} }, \"reminded\": %s }";
+  private static final String REGEX_WHITE_SPACES = "\\s+";
+  private static final String MERRIAM_WEBSTER_KEY = "dictionary.merriamWebster.key";
+  private static final String MERRIAM_WEBSTER_URL = "dictionary.merriamWebster.url";
+  private Properties properties;
   private RequestQueue requestQueue;
 
   private EditText lookupWord;
@@ -241,43 +239,23 @@ public class MainActivity extends AppCompatActivity {
   }
 }
 /**
- *   public void loadData() {
- *     File file = getApplicationContext().getFileStreamPath("mydictionary.txt");
- *     String lineFromfile;
+ * public void loadData() { File file =
+ * getApplicationContext().getFileStreamPath("mydictionary.txt"); String lineFromfile;
+ * <p>
+ * if (file.exists()) { try { BufferedReader reader = new BufferedReader(new
+ * InputStreamReader(openFileInput("mydictionary.txt")));
+ * <p>
+ * while ((lineFromfile = reader.readLine()) != null) { System.out.println("Just print: " +
+ * lineFromfile); System.out.println(); } reader.close(); } catch (IOException e) {
+ * Toast.makeText(MainActivity.this, e.getMessage(), Toast.LENGTH_SHORT) .show(); } } }
  *
- *     if (file.exists()) {
- *       try {
- *         BufferedReader reader = new BufferedReader(new InputStreamReader(openFileInput("mydictionary.txt")));
- *
- *         while ((lineFromfile = reader.readLine()) != null) {
- *           System.out.println("Just print: " + lineFromfile);
- *           System.out.println();
- *         }
- *         reader.close();
- *       }
- *       catch (IOException e) {
- *         Toast.makeText(MainActivity.this, e.getMessage(), Toast.LENGTH_SHORT)
- *             .show();
- *       }
- *     }
- *   }
- *
- *   @SuppressLint("NewApi")
- *   public void saveData() {
- *     try {
- *       FileOutputStream file = openFileOutput("mydictionary.txt", MODE_APPEND);
- *       OutputStreamWriter outputStreamWriter = new OutputStreamWriter(file);
- *
- *       outputStreamWriter.write("OKAY " + Instant.now());
- *
- *       outputStreamWriter.flush();
- *       outputStreamWriter.close();
- *       Toast.makeText(MainActivity.this, "Successfully saved", LENGTH_SHORT)
- *           .show();
- *     }
- *     catch (IOException e) {
- *       Toast.makeText(MainActivity.this, e.getMessage(), Toast.LENGTH_SHORT)
- *           .show();
- *     }
- *   }
+ * @SuppressLint("NewApi") public void saveData() { try { FileOutputStream file =
+ *     openFileOutput("mydictionary.txt", MODE_APPEND); OutputStreamWriter outputStreamWriter = new
+ *     OutputStreamWriter(file);
+ *     <p>
+ *     outputStreamWriter.write("OKAY " + Instant.now());
+ *     <p>
+ *     outputStreamWriter.flush(); outputStreamWriter.close(); Toast.makeText(MainActivity.this,
+ *     "Successfully saved", LENGTH_SHORT) .show(); } catch (IOException e) {
+ *     Toast.makeText(MainActivity.this, e.getMessage(), Toast.LENGTH_SHORT) .show(); } }
  */
