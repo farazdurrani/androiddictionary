@@ -318,3 +318,17 @@ public class MainActivity2 extends AppCompatActivity {
     }
   }
 }
+/**
+ * Aggregation Query to get reminded count:
+ * [
+ *   {
+ *     $match: {
+ *       reminded: true,
+ *     },
+ *   },
+ *   {
+ *     $count: "reminded",
+ *   },
+ * ]
+ * --2918 as of today 04/08/23
+ */
