@@ -1,0 +1,9 @@
+Find Duplicates: It works!:
+
+[{"$group" : { "_id": "$word", "count": { "$sum": 1 } } },
+    {"$match": {"_id" :{ "$ne" : null } , "count" : {"$gt": 1} } },
+    {"$project": {"word" : "$_id", "_id" : 0} }]
+
+Aggregation Query to get reminded count:
+
+[ { $match: { reminded: true, }, }, { $count: "reminded", }, ] --2918 as of today 04/08/23

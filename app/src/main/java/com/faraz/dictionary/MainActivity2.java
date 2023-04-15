@@ -26,6 +26,7 @@ import android.app.ProgressDialog;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.view.View;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -65,6 +66,15 @@ public class MainActivity2 extends AppCompatActivity {
 
   public static String anchor(String word) {
     return "<a href='https://www.google.com/search?q=define: " + word + "' target='_blank'>" + capitalize(word) + "</a>";
+  }
+
+  public static String getItem(int index, JSONArray ans) {
+    try {
+      return ans.getJSONObject(index).getString("word");
+    }
+    catch (Exception e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Override
@@ -111,15 +121,6 @@ public class MainActivity2 extends AppCompatActivity {
     return this.properties.getProperty(property);
   }
 
-  private String getItem(int index, JSONArray ans) {
-    try {
-      return ans.getJSONObject(index).getString("word");
-    }
-    catch (Exception e) {
-      throw new RuntimeException(e);
-    }
-  }
-
   private int sendEmail(String subject, String body) throws MailjetSocketTimeoutException, MailjetException, JSONException {
     String from = loadProperty(MAIL_FROM);
     String to = loadProperty(MAIL_TO);
@@ -153,7 +154,7 @@ public class MainActivity2 extends AppCompatActivity {
     return definitions.stream().map(MainActivity2::anchor).collect(toList());
   }
 
-  private void updateData(String query, Consumer consumer) {
+  private void updateData(String query, Consumer<Integer> consumer) {
     RequestFuture<JSONObject> requestFuture = RequestFuture.newFuture();
     JsonObjectRequest request = new MongoJsonObjectRequest(POST, format(loadProperty(MONGODB_URI),
         MONGO_ACTION_UPDATE_MANY), requestFuture, requestFuture, query, loadProperty(MONGODB_API_KEY));
@@ -166,7 +167,7 @@ public class MainActivity2 extends AppCompatActivity {
       sleep(2000L);
     }
     catch (Exception e) {
-      e.printStackTrace();
+      Toast.makeText(this, "Mongo's belly up!", Toast.LENGTH_LONG).show();
     }
   }
 
@@ -199,7 +200,7 @@ public class MainActivity2 extends AppCompatActivity {
       String filterSubQuery = getFilterQueryToUpdateReminded(words);
       String updateSubQuery = getUpdateQueryToUpdateReminded();
       String query = MONGO_PARTIAL_BODY + "," + filterSubQuery + ", " + updateSubQuery + CLOSE_CURLY;
-      Consumer consumer = documentsModified -> publishProgress(format("Marked %d words as reminded.", documentsModified));
+      Consumer<Integer> consumer = documentsModified -> publishProgress(format("Marked %d words as reminded.", documentsModified));
       updateData(query, consumer);
     }
 
@@ -325,7 +326,3 @@ public class MainActivity2 extends AppCompatActivity {
     }
   }
 }
-/**
- * Aggregation Query to get reminded count: [ { $match: { reminded: true, }, }, { $count:
- * "reminded", }, ] --2918 as of today 04/08/23
- */

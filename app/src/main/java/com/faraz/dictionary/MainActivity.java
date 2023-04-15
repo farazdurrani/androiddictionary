@@ -1,19 +1,20 @@
 package com.faraz.dictionary;
 
-import static android.view.View.INVISIBLE;
-import static android.view.View.VISIBLE;
 import static android.widget.Toast.LENGTH_SHORT;
 import static com.android.volley.Request.Method.POST;
+import static com.faraz.dictionary.MainActivity2.getItem;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.apache.commons.lang3.StringUtils.SPACE;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static java.lang.String.format;
 import static java.lang.System.lineSeparator;
 import static java.util.stream.Collectors.joining;
+import static java.util.stream.Collectors.toList;
 
 import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.view.KeyEvent;
 import android.view.View;
@@ -26,7 +27,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
 import com.android.volley.toolbox.JsonArrayRequest;
-import com.android.volley.toolbox.StringRequest;
+import com.android.volley.toolbox.JsonObjectRequest;
+import com.android.volley.toolbox.RequestFuture;
 import com.android.volley.toolbox.Volley;
 import com.github.wnameless.json.flattener.JsonFlattener;
 
@@ -45,15 +47,14 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.stream.IntStream;
 
 public class MainActivity extends AppCompatActivity {
 
   static final String MONGO_PARTIAL_BODY = "{\"collection\":\"dictionary\",\"database\":\"myFirstDatabase\",\"dataSource\":\"Cluster0\"";
-  static final String MONGO_ACTION_FIND_ONE = "findOne";
   static final String MONGO_ACTION_FIND_ALL = "find";
   static final String MONGO_ACTION_UPDATE_MANY = "updateMany";
   static final String CLOSE_CURLY = "}";
-  static final String MONGO_FILTER = "\"filter\": {  \"word\" : \"%s\" } ";
   static final String MONGODB_URI = "mongodb.data.uri";
   static final String MONGODB_API_KEY = "mongodb.data.api.key";
   private static final String CHICAGO = "America/Chicago";
@@ -85,7 +86,7 @@ public class MainActivity extends AppCompatActivity {
 
     setRequestQueue();
     setOpenInBrowserListener();
-    setLookupWordListener();
+    setLookupWordListenerNew();
     setStoreWordListener();
   }
 
@@ -101,56 +102,55 @@ public class MainActivity extends AppCompatActivity {
   }
 
   private void setStoreWordListener() {
-    saveView.setOnClickListener((view) -> saveWordInMongo());
+    saveView.setOnClickListener(view -> new SaveWordsAsyncTaskRunner().execute());
+  }
+
+  private boolean alreadyStored() {
+    String query = wordExistsQuery();
+    return !getWordsFromMongo(query).isEmpty();
+  }
+
+  private String wordExistsQuery() {
+    String filter = format(",\"filter\": { \"word\": \"%s\" }", originalLookupWord);
+    return MONGO_PARTIAL_BODY + filter + CLOSE_CURLY;
   }
 
   private void setOpenInBrowserListener() {
     googleLink.setOnClickListener((view) -> {
+      if (isBlank(originalLookupWord)) {
+        Toast.makeText(this, "Nothing to lookup", LENGTH_SHORT).show();
+        return;
+      }
       Uri uri = Uri.parse(format("https://www.google.com/search?q=define: %s", originalLookupWord));
       startActivity(new Intent(Intent.ACTION_VIEW, uri));
     });
   }
 
-  void mongoSearchOperation() {
-    String operation = MONGO_PARTIAL_BODY + "," + format(MONGO_FILTER, originalLookupWord) + CLOSE_CURLY;
-    StringRequest stringRequest = new MongoStringRequest(POST, format(loadProperty(MONGODB_URI), MONGO_ACTION_FIND_ONE),
-        handleMongoFindResponse(), handleMongoError(), operation, loadProperty(MONGODB_API_KEY));
-    requestQueue.add(stringRequest);
-  }
-
   private Response.ErrorListener handleMongoError() {
-    return ignore -> {
-      definitionsView.setText("Welp... Mongo has gone belly up.");
-      googleLink.setVisibility(VISIBLE);
-    };
+    return ignore -> definitionsView.setText("Welp... Mongo's gone belly up.");
   }
 
-  private Response.Listener<String> handleMongoFindResponse() {
-    return response -> {
-      try {
-        JSONObject jsonObject = new JSONObject(response);
-        if (jsonObject.optJSONObject("document") == null) {
-          lookupInMerriamWebster();
-        }
-        else {
-          definitionsView.setText(format("'%s' already looked-up", originalLookupWord));
-          Toast.makeText(this, format("Not storing '%s'", originalLookupWord), LENGTH_SHORT).show();
-        }
-      }
-      catch (JSONException e) {
-        definitionsView.setText("Welp... Mongo has gone belly up.");
-      }
-      googleLink.setVisibility(VISIBLE);
-    };
+  private void saveWordInMongo() {
+    String body = getSaveQuery();
+    RequestFuture<JSONObject> requestFuture = RequestFuture.newFuture();
+    JsonObjectRequest stringRequest = new MongoJsonObjectRequest(POST, format(loadProperty(MONGODB_URI), MONGO_ACTION_INSERT_ONE),
+        requestFuture, requestFuture, body, loadProperty(MONGODB_API_KEY));
+    requestQueue.add(stringRequest);
+    try {
+      JSONObject ans = requestFuture.get();
+      int matchedCount = Integer.parseInt(ans.getString("matchedCount"));
+      int modifiedCount = Integer.parseInt(ans.getString("modifiedCount"));
+      Toast.makeText(this, format("'%s' saved!", originalLookupWord), LENGTH_SHORT).show();
+    }
+    catch (Exception e) {
+      Toast.makeText(this, "Mongo's belly up!", Toast.LENGTH_LONG).show();
+    }
   }
 
   @SuppressLint("NewApi")
-  private void saveWordInMongo() {
-    String body = MONGO_PARTIAL_BODY + "," + format(MONGO_DOCUMENT, originalLookupWord,
+  private String getSaveQuery() {
+    return MONGO_PARTIAL_BODY + "," + format(MONGO_DOCUMENT, originalLookupWord,
         Instant.now(Clock.system(ZoneId.of(CHICAGO))).toEpochMilli(), false) + CLOSE_CURLY;
-    StringRequest stringRequest = new MongoStringRequest(POST, format(loadProperty(MONGODB_URI), MONGO_ACTION_INSERT_ONE),
-        handleMongoInsertResponse(), handleMongoError(), body, loadProperty(MONGODB_API_KEY));
-    requestQueue.add(stringRequest);
   }
 
   private Response.Listener<String> handleMongoInsertResponse() {
@@ -170,59 +170,67 @@ public class MainActivity extends AppCompatActivity {
     };
   }
 
-  private void lookupInMerriamWebster() {
+  private String[] parseMerriamWebsterResponse(String json) {
+    Map<String, Object> flattenJson = JsonFlattener.flattenAsMap(json);
+    List<Object> orig = new ArrayList<>(flattenJson.values());
+    flattenJson.keySet().removeIf(x -> !x.contains("shortdef"));
+    if (flattenJson.values().isEmpty()) {
+      orig.add(0, format(NO_DEFINITION_FOUND, originalLookupWord));
+      String alternativeWords = orig.stream().filter(String.class::isInstance).map(String.class::cast)
+          .map(lineSeparator()::concat).map("----------"::concat).collect(joining(lineSeparator()));
+      return new String[]{"false", alternativeWords};
+    }
+    else {
+      String result = flattenJson.values().stream().filter(String.class::isInstance).map(String.class::cast).limit(3)
+          .map(lineSeparator()::concat).map("----------"::concat).collect(joining(lineSeparator()));
+      String definition = result + orig.stream().filter(String.class::isInstance).map(String.class::cast).filter(StringUtils::isNotBlank)
+          .filter(x -> x.contains("\\{wi}") && x.contains("\\{/wi}")).map(x -> x.replaceAll("\\{wi}", EMPTY)).map(x -> x.replaceAll(
+              "\\{/wi}", EMPTY)).map("// "::concat).collect(joining(lineSeparator()));
+      return new String[]{"true", definition};
+    }
+  }
+
+  private String[] lookupInMerriamWebsterNew() {
+    String url = formMerriamWebsterUrl();
+    RequestFuture<JSONArray> requestFuture = RequestFuture.newFuture();
+    JsonArrayRequest jsonObjectRequest = new JsonArrayRequest(url, requestFuture, requestFuture);
+    requestQueue.add(jsonObjectRequest);
+    try {
+      return parseMerriamWebsterResponse(requestFuture.get().toString());
+    }
+    catch (Exception e) {
+      definitionsView.setText("Welp... merriam webster call's gone belly up!");
+    }
+    throw new RuntimeException("Do something");
+  }
+
+  private String formMerriamWebsterUrl() {
     String word = originalLookupWord;
     String mk = loadProperty(MERRIAM_WEBSTER_KEY);
     String mUrl = loadProperty(MERRIAM_WEBSTER_URL);
-    String url = format(mUrl, word, mk);
-    JsonArrayRequest jsonObjectRequest = new JsonArrayRequest(url, this.merriamWebsterResponse(word),
-        ignoreError -> definitionsView.setText("Welp... merriam webster call has gone belly up!"));
-    requestQueue.add(jsonObjectRequest);
+    return format(mUrl, word, mk);
   }
 
-  private void setLookupWordListener() {
+  private void setLookupWordListenerNew() {
     lookupWord.setOnKeyListener((view, code, event) -> {
       if ((event.getAction() == KeyEvent.ACTION_DOWN) && (code == KeyEvent.KEYCODE_ENTER)) {
-        originalLookupWord = Arrays.stream(lookupWord.getText().toString().split(REGEX_WHITE_SPACES))
-            .map(String::trim).map(String::toLowerCase).collect(joining(SPACE));
-        lookupWord.setText(null);
-        googleLink.setVisibility(INVISIBLE);
-        saveView.setVisibility(INVISIBLE);
-        Toast.makeText(this, format("Sending '%s'", originalLookupWord), LENGTH_SHORT).show();
-        mongoSearchOperation();
+        doInitialWork();
+        new LookupWordsAsyncTaskRunner().execute();
         return true;
       }
       return false;
     });
   }
 
-  private Response.Listener<JSONArray> merriamWebsterResponse(String word) {
-    return response -> {
-      try {
-        String json = response.toString();
-        Map<String, Object> flattenJson = JsonFlattener.flattenAsMap(json);
-        List<Object> orig = new ArrayList<>(flattenJson.values());
-        flattenJson.keySet().removeIf(x -> !x.contains("shortdef"));
-        if (flattenJson.values().isEmpty()) {
-          orig.add(0, format(NO_DEFINITION_FOUND, word));
-          definitionsView.setText(orig.stream().filter(String.class::isInstance).map(String.class::cast)
-              .map(lineSeparator()::concat).map("----------"::concat).collect(joining(lineSeparator())));
-          saveView.setVisibility(VISIBLE);
-        }
-        else {
-          String result = flattenJson.values().stream().filter(String.class::isInstance).map(String.class::cast).limit(3)
-              .map(lineSeparator()::concat).map("----------"::concat).collect(joining(lineSeparator()));
-          String stringResult = result + orig.stream().filter(String.class::isInstance).map(String.class::cast).filter(StringUtils::isNotBlank)
-              .filter(x -> x.contains("\\{wi}") && x.contains("\\{/wi}")).map(x -> x.replaceAll("\\{wi}", EMPTY)).map(x -> x.replaceAll(
-                  "\\{/wi}", EMPTY)).map("// "::concat).collect(joining(lineSeparator()));
-          definitionsView.setText(stringResult);
-          saveWordInMongo();
-        }
-      }
-      catch (Exception e) {
-        e.printStackTrace();
-      }
-    };
+  private void doInitialWork() {
+    originalLookupWord = cleanWord();
+    lookupWord.setText(null);
+    Toast.makeText(MainActivity.this, format("Sending '%s'", originalLookupWord), LENGTH_SHORT).show();
+  }
+
+  private String cleanWord() {
+    return Arrays.stream(lookupWord.getText().toString().split(REGEX_WHITE_SPACES))
+        .map(String::trim).map(String::toLowerCase).collect(joining(SPACE));
   }
 
   private String loadProperty(String property) {
@@ -236,6 +244,58 @@ public class MainActivity extends AppCompatActivity {
       }
     }
     return this.properties.getProperty(property);
+  }
+
+  private List<String> getWordsFromMongo(String operation) {
+    RequestFuture<JSONObject> requestFuture = RequestFuture.newFuture();
+    JsonObjectRequest request = new MongoJsonObjectRequest(POST, format(loadProperty(MONGODB_URI),
+        MONGO_ACTION_FIND_ALL), requestFuture, requestFuture, operation, loadProperty(MONGODB_API_KEY));
+    request.setShouldCache(false);
+    requestQueue.add(request);
+    try {
+      JSONArray ans = requestFuture.get().getJSONArray("documents");
+      return IntStream.range(0, ans.length()).mapToObj(i -> getItem(i, ans)).collect(toList());
+    }
+    catch (Exception e) {
+      definitionsView.setText("Mongo's gone belly up!");
+    }
+    throw new RuntimeException();
+  }
+
+  private class LookupWordsAsyncTaskRunner extends AsyncTask<String, String, Void> {
+
+    @Override
+    protected Void doInBackground(String... strings) {
+      if (alreadyStored()) {
+        definitionsView.setText(format("'%s' already looked-up", originalLookupWord));
+        runOnUiThread(() -> Toast.makeText(MainActivity.this, format("Not storing '%s'", originalLookupWord), LENGTH_SHORT).show());
+      }
+      else {
+        String[] definition = lookupInMerriamWebsterNew();
+        definitionsView.setText(definition[1]);
+        if (definition[0].equalsIgnoreCase("true")) {
+          saveWordInMongo();
+        }
+      }
+      return null;
+    }
+  }
+
+  private class SaveWordsAsyncTaskRunner extends AsyncTask<String, String, Void> {
+
+    @Override
+    protected Void doInBackground(String... strings) {
+      if (isBlank(originalLookupWord)) {
+        runOnUiThread(() -> Toast.makeText(MainActivity.this, "Nothing to save.", LENGTH_SHORT).show());
+      }
+      else if (alreadyStored()) {
+        runOnUiThread(() -> Toast.makeText(MainActivity.this, format("'%s''s already stored", originalLookupWord), LENGTH_SHORT).show());
+      }
+      else {
+        saveWordInMongo();
+      }
+      return null;
+    }
   }
 }
 /**
