@@ -1,5 +1,6 @@
 package com.faraz.dictionary;
 
+import static android.widget.Toast.LENGTH_LONG;
 import static android.widget.Toast.LENGTH_SHORT;
 import static com.android.volley.Request.Method.POST;
 import static com.faraz.dictionary.MainActivity2.getItem;
@@ -142,7 +143,7 @@ public class MainActivity extends AppCompatActivity {
       Toast.makeText(this, format("'%s' saved!", originalLookupWord), LENGTH_SHORT).show();
     }
     catch (Exception e) {
-      Toast.makeText(this, "Mongo's belly up!", Toast.LENGTH_LONG).show();
+      Toast.makeText(this, "Mongo's belly up!", LENGTH_LONG).show();
     }
   }
 
@@ -261,7 +262,9 @@ public class MainActivity extends AppCompatActivity {
           }
         }
       }
-      catch (Exception e) {}
+      catch (Exception e) {
+        runOnUiThread(() -> Toast.makeText(MainActivity.this, "Not sure what went wrong.", LENGTH_LONG).show());
+      }
       return null;
     }
   }
@@ -270,14 +273,19 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected Void doInBackground(String... strings) {
-      if (isBlank(originalLookupWord)) {
-        runOnUiThread(() -> Toast.makeText(MainActivity.this, "Nothing to save.", LENGTH_SHORT).show());
+      try {
+        if (isBlank(originalLookupWord)) {
+          runOnUiThread(() -> Toast.makeText(MainActivity.this, "Nothing to save.", LENGTH_SHORT).show());
+        }
+        else if (alreadyStored()) {
+          runOnUiThread(() -> Toast.makeText(MainActivity.this, format("'%s''s already stored", originalLookupWord), LENGTH_SHORT).show());
+        }
+        else {
+          saveWordInMongo();
+        }
       }
-      else if (alreadyStored()) {
-        runOnUiThread(() -> Toast.makeText(MainActivity.this, format("'%s''s already stored", originalLookupWord), LENGTH_SHORT).show());
-      }
-      else {
-        saveWordInMongo();
+      catch (Exception e) {
+        runOnUiThread(() -> Toast.makeText(MainActivity.this, "Not sure what went wrong.", LENGTH_LONG).show());
       }
       return null;
     }

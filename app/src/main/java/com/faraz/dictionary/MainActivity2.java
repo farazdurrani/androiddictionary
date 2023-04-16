@@ -1,6 +1,7 @@
 package com.faraz.dictionary;
 
 import static android.app.ProgressDialog.show;
+import static android.widget.Toast.LENGTH_LONG;
 import static com.android.volley.Request.Method.POST;
 import static com.faraz.dictionary.MainActivity.CLOSE_CURLY;
 import static com.faraz.dictionary.MainActivity.MONGODB_API_KEY;
@@ -145,7 +146,7 @@ public class MainActivity2 extends AppCompatActivity {
       definitions.addAll(list);
     }
     catch (Exception e) {
-      Toast.makeText(this, "Mongo's gone belly up!", Toast.LENGTH_LONG).show();
+      Toast.makeText(this, "Mongo's gone belly up!", LENGTH_LONG).show();
     }
     throw new RuntimeException();
   }
@@ -167,7 +168,7 @@ public class MainActivity2 extends AppCompatActivity {
       sleep(2000L);
     }
     catch (Exception e) {
-      Toast.makeText(this, "Mongo's belly up!", Toast.LENGTH_LONG).show();
+      Toast.makeText(this, "Mongo's belly up!", LENGTH_LONG).show();
     }
   }
 
@@ -195,7 +196,9 @@ public class MainActivity2 extends AppCompatActivity {
           markWordsAsReminded_(words);
         }
       }
-      catch (Exception e) {}
+      catch (Exception e) {
+        runOnUiThread(() -> Toast.makeText(MainActivity2.this, "Not sure what went wrong.", LENGTH_LONG).show());
+      }
       return null;
     }
 
@@ -307,7 +310,7 @@ public class MainActivity2 extends AppCompatActivity {
       }
       catch (Exception e) {
         runOnUiThread(() -> Toast.makeText(MainActivity2.this, "Something unknown happened!",
-            Toast.LENGTH_LONG).show());
+            LENGTH_LONG).show());
       }
       return null;
     }
