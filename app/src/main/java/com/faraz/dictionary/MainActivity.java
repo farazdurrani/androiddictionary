@@ -34,7 +34,6 @@ import com.github.wnameless.json.flattener.JsonFlattener;
 
 import org.apache.commons.lang3.StringUtils;
 import org.json.JSONArray;
-import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
@@ -153,23 +152,6 @@ public class MainActivity extends AppCompatActivity {
         Instant.now(Clock.system(ZoneId.of(CHICAGO))).toEpochMilli(), false) + CLOSE_CURLY;
   }
 
-  private Response.Listener<String> handleMongoInsertResponse() {
-    return response -> {
-      try {
-        JSONObject jsonObject = new JSONObject(response);
-        if (isBlank(jsonObject.optString("insertedId"))) {
-          Toast.makeText(this, format("'%s' is not saved for some reason...", originalLookupWord), LENGTH_SHORT).show();
-        }
-        else {
-          Toast.makeText(this, format("%s's been stored.", originalLookupWord), LENGTH_SHORT).show();
-        }
-      }
-      catch (JSONException e) {
-        throw new RuntimeException(e);
-      }
-    };
-  }
-
   private String[] parseMerriamWebsterResponse(String json) {
     Map<String, Object> flattenJson = JsonFlattener.flattenAsMap(json);
     List<Object> orig = new ArrayList<>(flattenJson.values());
@@ -199,9 +181,9 @@ public class MainActivity extends AppCompatActivity {
       return parseMerriamWebsterResponse(requestFuture.get().toString());
     }
     catch (Exception e) {
-      definitionsView.setText("Welp... merriam webster call's gone belly up!");
+      definitionsView.setText("Welp... merriam webster's gone belly up!");
     }
-    throw new RuntimeException("Do something");
+    throw new RuntimeException();
   }
 
   private String formMerriamWebsterUrl() {
@@ -250,7 +232,7 @@ public class MainActivity extends AppCompatActivity {
     RequestFuture<JSONObject> requestFuture = RequestFuture.newFuture();
     JsonObjectRequest request = new MongoJsonObjectRequest(POST, format(loadProperty(MONGODB_URI),
         MONGO_ACTION_FIND_ALL), requestFuture, requestFuture, operation, loadProperty(MONGODB_API_KEY));
-    request.setShouldCache(false);
+    request.setShouldCache(true);
     requestQueue.add(request);
     try {
       JSONArray ans = requestFuture.get().getJSONArray("documents");
@@ -266,17 +248,20 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected Void doInBackground(String... strings) {
-      if (alreadyStored()) {
-        definitionsView.setText(format("'%s' already looked-up", originalLookupWord));
-        runOnUiThread(() -> Toast.makeText(MainActivity.this, format("Not storing '%s'", originalLookupWord), LENGTH_SHORT).show());
-      }
-      else {
-        String[] definition = lookupInMerriamWebsterNew();
-        definitionsView.setText(definition[1]);
-        if (definition[0].equalsIgnoreCase("true")) {
-          saveWordInMongo();
+      try {
+        if (alreadyStored()) {
+          definitionsView.setText(format("'%s' already looked-up", originalLookupWord));
+          runOnUiThread(() -> Toast.makeText(MainActivity.this, format("Not storing '%s'", originalLookupWord), LENGTH_SHORT).show());
+        }
+        else {
+          String[] definition = lookupInMerriamWebsterNew();
+          definitionsView.setText(definition[1]);
+          if (definition[0].equalsIgnoreCase("true")) {
+            saveWordInMongo();
+          }
         }
       }
+      catch (Exception e) {}
       return null;
     }
   }

@@ -145,9 +145,9 @@ public class MainActivity2 extends AppCompatActivity {
       definitions.addAll(list);
     }
     catch (Exception e) {
-      e.printStackTrace();
+      Toast.makeText(this, "Mongo's gone belly up!", Toast.LENGTH_LONG).show();
     }
-    return definitions;
+    throw new RuntimeException();
   }
 
   private List<String> anchor(List<String> definitions) {
@@ -182,17 +182,20 @@ public class MainActivity2 extends AppCompatActivity {
       //2 if no words found, set all words to false
       //3 if found, email them, and set reminded = true
       String query = createQueryForRandomWords();
-      List<String> words = getWordsFromMongo(query);
-      if (words.isEmpty()) { //TODO undo !
-        //If all word count and reminded = true count is same,
-        //then set all reminded = false;
-        //TODO Implement
-        publishProgress("No words left to remind of.");
-        return null;
+      try {
+        List<String> words = getWordsFromMongo(query);
+        if (words.isEmpty()) { //TODO undo !
+          //If all word count and reminded = true count is same,
+          //then set all reminded = false;
+          //TODO Implement
+          publishProgress("No words left to remind of.");
+          return null;
+        }
+        if (sendRandomWords(anchor(words))) {
+          markWordsAsReminded_(words);
+        }
       }
-      if (sendRandomWords(anchor(words))) {
-        markWordsAsReminded_(words);
-      }
+      catch (Exception e) {}
       return null;
     }
 
@@ -303,7 +306,8 @@ public class MainActivity2 extends AppCompatActivity {
         }
       }
       catch (Exception e) {
-        e.printStackTrace();
+        runOnUiThread(() -> Toast.makeText(MainActivity2.this, "Something unknown happened!",
+            Toast.LENGTH_LONG).show());
       }
       return null;
     }
