@@ -146,7 +146,7 @@ public class MainActivity2 extends AppCompatActivity {
       definitions.addAll(list);
     }
     catch (Exception e) {
-      Toast.makeText(this, "Mongo's gone belly up!", LENGTH_LONG).show();
+      runOnUiThread(() -> Toast.makeText(this, "Mongo's gone belly up!", LENGTH_LONG).show());
     }
     throw new RuntimeException();
   }
@@ -168,7 +168,7 @@ public class MainActivity2 extends AppCompatActivity {
       sleep(2000L);
     }
     catch (Exception e) {
-      Toast.makeText(this, "Mongo's belly up!", LENGTH_LONG).show();
+      runOnUiThread(() -> Toast.makeText(this, "Mongo's belly up!", LENGTH_LONG).show());
     }
   }
 

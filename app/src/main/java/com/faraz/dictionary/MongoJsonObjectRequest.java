@@ -1,5 +1,7 @@
 package com.faraz.dictionary;
 
+import com.android.volley.DefaultRetryPolicy;
+import com.android.volley.RetryPolicy;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.RequestFuture;
 
@@ -42,5 +44,12 @@ public class MongoJsonObjectRequest extends JsonObjectRequest {
     headers.put("Access-Control-Request-Headers", "*");
     headers.put("api-key", this.apiKey);
     return headers;
+  }
+
+  @Override
+  public RetryPolicy getRetryPolicy(){
+    return new DefaultRetryPolicy(10000,
+        DefaultRetryPolicy.DEFAULT_MAX_RETRIES,
+        DefaultRetryPolicy.DEFAULT_BACKOFF_MULT);
   }
 }

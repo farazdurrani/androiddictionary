@@ -138,12 +138,11 @@ public class MainActivity extends AppCompatActivity {
     requestQueue.add(stringRequest);
     try {
       JSONObject ans = requestFuture.get();
-      int matchedCount = Integer.parseInt(ans.getString("matchedCount"));
-      int modifiedCount = Integer.parseInt(ans.getString("modifiedCount"));
-      Toast.makeText(this, format("'%s' saved!", originalLookupWord), LENGTH_SHORT).show();
+      String ignore = ans.getString("insertedId");
+      runOnUiThread(() -> Toast.makeText(MainActivity.this, format("'%s' saved!", originalLookupWord), LENGTH_SHORT).show());
     }
     catch (Exception e) {
-      Toast.makeText(this, "Mongo's belly up!", LENGTH_LONG).show();
+      runOnUiThread(() -> Toast.makeText(MainActivity.this, "Mongo's belly up!", LENGTH_LONG).show());
     }
   }
 
