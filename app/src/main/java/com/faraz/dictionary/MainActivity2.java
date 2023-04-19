@@ -18,7 +18,6 @@ import static com.mailjet.client.resource.Emailv31.resource;
 import static org.apache.commons.lang3.StringUtils.capitalize;
 import static java.lang.String.format;
 import static java.lang.String.join;
-import static java.lang.Thread.sleep;
 import static java.util.Collections.reverse;
 import static java.util.stream.Collectors.toList;
 
@@ -135,15 +134,13 @@ public class MainActivity2 extends AppCompatActivity {
   }
 
   private List<String> getWordsFromMongo(String operation) {
-    List<String> definitions = new ArrayList<>();
     RequestFuture<JSONObject> requestFuture = RequestFuture.newFuture();
     JsonObjectRequest request = new MongoJsonObjectRequest(POST, format(loadProperty(MONGODB_URI), MONGO_ACTION_FIND_ALL),
         requestFuture, requestFuture, operation, loadProperty(MONGODB_API_KEY));
     requestQueue.add(request);
     try {
       JSONArray ans = requestFuture.get().getJSONArray("documents");
-      List<String> list = IntStream.range(0, ans.length()).mapToObj(i -> getItem(i, ans)).collect(toList());
-      definitions.addAll(list);
+      return IntStream.range(0, ans.length()).mapToObj(i -> getItem(i, ans)).collect(toList());
     }
     catch (Exception e) {
       runOnUiThread(() -> Toast.makeText(this, "Mongo's gone belly up!", LENGTH_LONG).show());
@@ -165,7 +162,6 @@ public class MainActivity2 extends AppCompatActivity {
       int matchedCount = Integer.parseInt(ans.getString("matchedCount"));
       int modifiedCount = Integer.parseInt(ans.getString("modifiedCount"));
       consumer.accept(modifiedCount);
-      sleep(2000L);
     }
     catch (Exception e) {
       runOnUiThread(() -> Toast.makeText(this, "Mongo's belly up!", LENGTH_LONG).show());
@@ -228,17 +224,16 @@ public class MainActivity2 extends AppCompatActivity {
       try {
         if (sendEmail(subject, join("<br><br>", definitions)) == 200) {
           publishProgress(format("'%d' random words sent.", definitions.size()));
+          return true;
         }
         else {
           publishProgress("Error occurred while sending random words.");
         }
-        sleep(2000L);
       }
       catch (Exception e) {
         publishProgress("Error occurred while sending random words.");
-        return false;
       }
-      return true;
+      return false;
     }
 
     private String createQueryForRandomWords() {
@@ -302,7 +297,6 @@ public class MainActivity2 extends AppCompatActivity {
         String subject = "Words Backup";
         if (sendEmail(subject, join("<br>", defiSet)) == 200) {
           publishProgress(format("'%d' words sent for backup.", size));
-          sleep(2000L);
         }
         else {
           publishProgress(format("Error occurred while backing up words."));
