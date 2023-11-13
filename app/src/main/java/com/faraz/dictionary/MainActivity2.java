@@ -21,6 +21,7 @@ import static java.lang.String.join;
 import static java.util.Collections.reverse;
 import static java.util.stream.Collectors.toList;
 
+import android.annotation.SuppressLint;
 import android.app.Dialog;
 import android.app.ProgressDialog;
 import android.os.AsyncTask;
@@ -41,6 +42,7 @@ import com.mailjet.client.MailjetResponse;
 import com.mailjet.client.errors.MailjetException;
 import com.mailjet.client.errors.MailjetSocketTimeoutException;
 
+import org.apache.commons.collections4.ListUtils;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -55,6 +57,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.IntStream;
 
+@SuppressLint("DefaultLocale")
 public class MainActivity2 extends AppCompatActivity {
   private static final String MAIL_KEY = "mailjet.apiKey";
   private static final String MAIL_SECRET = "mailjet.apiSecret";
@@ -294,19 +297,30 @@ public class MainActivity2 extends AppCompatActivity {
         String firstLine = format("Count: '%d'.", size);
         definitions.add(0, firstLine);
         Set<String> defiSet = new LinkedHashSet<>(definitions);
-        String subject = "Words Backup";
-        if (sendEmail(subject, join("<br>", defiSet)) == 200) {
-          publishProgress(format("'%d' words sent for backup.", size));
-        }
-        else {
-          publishProgress(format("Error occurred while backing up words."));
-        }
+        List<List<String>> definitionPartitions = ListUtils.partition(new ArrayList<>(defiSet), 3500);
+        IntStream.range(0, definitionPartitions.size()).forEach(index -> sendEmailsInStep(index,
+            definitionPartitions.get(index)));
       }
       catch (Exception e) {
         runOnUiThread(() -> Toast.makeText(MainActivity2.this, "Something unknown happened!",
             LENGTH_LONG).show());
       }
       return null;
+    }
+
+    private void sendEmailsInStep(int index, List<String> words) {
+      String subject = format("Words Backup Part %d:", index + 1);
+      try {
+        if (sendEmail(subject, join("<br>", words)) == 200) {
+          publishProgress(format("'%d' words sent for backup.", words.size()));
+        }
+        else {
+          publishProgress("Error occurred while backing up words.");
+        }
+      }
+      catch (MailjetSocketTimeoutException | MailjetException | JSONException e) {
+        throw new RuntimeException(e);
+      }
     }
 
     @Override
