@@ -26,6 +26,7 @@ import android.app.Dialog;
 import android.app.ProgressDialog;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
 
@@ -57,12 +58,20 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.IntStream;
 
+import javax.mail.AuthenticationFailedException;
+import javax.mail.MessagingException;
+
 @SuppressLint("DefaultLocale")
 public class MainActivity2 extends AppCompatActivity {
-  private static final String MAIL_KEY = "mailjet.apiKey";
-  private static final String MAIL_SECRET = "mailjet.apiSecret";
-  private static final String MAIL_FROM = "mailjet.from";
-  private static final String MAIL_TO = "mailjet.to";
+  private static final String MAIL_KEY_DEPRECATED = "mailjet.apiKey";
+  private static final String MAIL_SECRET_DEPRECATED = "mailjet.apiSecret";
+  private static final String MAIL_FROM_DEPRECATED = "mailjet.from";
+  private static final String MAIL_TO_DEPRECATED = "mailjet.to";
+  private static final String JAVAMAIL_USER = "javamail.user";
+  private static final String JAVAMAIL_PASS = "javamail.pass";
+  private static final String JAVAMAIL_FROM = "javamail.from";
+  private static final String JAVAMAIL_TO = "javamail.to";
+
   private Properties properties;
   private MailjetClient mailjetClient;
   private RequestQueue requestQueue;
@@ -97,8 +106,8 @@ public class MainActivity2 extends AppCompatActivity {
 
   public void mailjetClient() {
     if (mailjetClient == null) {
-      String mailKey = loadProperty(MAIL_KEY);
-      String mailSecret = loadProperty(MAIL_SECRET);
+      String mailKey = loadProperty(MAIL_KEY_DEPRECATED);
+      String mailSecret = loadProperty(MAIL_SECRET_DEPRECATED);
       mailjetClient = new MailjetClient(mailKey, mailSecret, new ClientOptions("v3.1"));
     }
   }
@@ -124,9 +133,13 @@ public class MainActivity2 extends AppCompatActivity {
     return this.properties.getProperty(property);
   }
 
-  private int sendEmail(String subject, String body) throws MailjetSocketTimeoutException, MailjetException, JSONException {
-    String from = loadProperty(MAIL_FROM);
-    String to = loadProperty(MAIL_TO);
+  /**
+   * Mailjet api just goes into this bounce/restart/soft bounce thing.
+   */
+  @Deprecated
+  private int sendEmailUsingMailJetClient(String subject, String body) throws MailjetSocketTimeoutException, MailjetException, JSONException {
+    String from = loadProperty(MAIL_FROM_DEPRECATED);
+    String to = loadProperty(MAIL_TO_DEPRECATED);
     body = "<div style=\"font-size:20px\">" + body + "</div>";
     MailjetRequest request = new MailjetRequest(resource).property(MESSAGES, new JSONArray().put(new JSONObject()
         .put(FROM, new JSONObject().put("Email", from).put("Name", "Personal Dictionary")).put(TO, new JSONArray()
@@ -134,6 +147,18 @@ public class MainActivity2 extends AppCompatActivity {
         .put(HTMLPART, body)));
     MailjetResponse response = mailjetClient.post(request);
     return response.getStatus();
+  }
+
+  private int sendEmail(String subject, String body) {
+    SendEmailAsyncTask email = new SendEmailAsyncTask();
+    email.activity = this;
+    email.m = new Mail(loadProperty(JAVAMAIL_USER), loadProperty(JAVAMAIL_PASS));
+    email.m.set_from(loadProperty(JAVAMAIL_FROM));
+    email.m.setBody(body);
+    email.m.set_to(new String[]{loadProperty(JAVAMAIL_TO)});
+    email.m.set_subject(subject);
+    email.execute();
+    return 200;
   }
 
   private List<String> getWordsFromMongo(String operation) {
@@ -169,6 +194,10 @@ public class MainActivity2 extends AppCompatActivity {
     catch (Exception e) {
       runOnUiThread(() -> Toast.makeText(this, "Mongo's belly up!", LENGTH_LONG).show());
     }
+  }
+
+  public void displayMessage(String message) {
+    runOnUiThread(() -> Toast.makeText(this, message, LENGTH_LONG).show());
   }
 
   private class SendRandomWordsAsyncTaskRunner extends AsyncTask<String, String, Void> {
@@ -310,16 +339,11 @@ public class MainActivity2 extends AppCompatActivity {
 
     private void sendEmailsInStep(int index, List<String> words) {
       String subject = format("Words Backup Part %d:", index + 1);
-      try {
-        if (sendEmail(subject, join("<br>", words)) == 200) {
-          publishProgress(format("'%d' words sent for backup.", words.size()));
-        }
-        else {
-          publishProgress("Error occurred while backing up words.");
-        }
+      if (sendEmail(subject, join("<br>", words)) == 200) {
+        publishProgress(format("'%d' words sent for backup.", words.size()));
       }
-      catch (MailjetSocketTimeoutException | MailjetException | JSONException e) {
-        throw new RuntimeException(e);
+      else {
+        publishProgress("Error occurred while backing up words.");
       }
     }
 
@@ -338,6 +362,44 @@ public class MainActivity2 extends AppCompatActivity {
     @Override
     protected void onProgressUpdate(String... text) {
       progressDialogs.add(show(MainActivity2.this, "ProgressDialog", text[0]));
+    }
+  }
+
+  private class SendEmailAsyncTask extends AsyncTask<Void, Void, Boolean> {
+    Mail m;
+    MainActivity2 activity;
+
+    public SendEmailAsyncTask() {}
+
+    @Override
+    protected Boolean doInBackground(Void... params) {
+      try {
+        if (m.send()) {
+          activity.displayMessage("Email sent.");
+        }
+        else {
+          activity.displayMessage("Email failed to send.");
+        }
+
+        return true;
+      }
+      catch (AuthenticationFailedException e) {
+        Log.e(SendEmailAsyncTask.class.getName(), "Bad account details");
+        e.printStackTrace();
+        activity.displayMessage("Authentication failed.");
+        return false;
+      }
+      catch (MessagingException e) {
+        Log.e(SendEmailAsyncTask.class.getName(), "Email failed");
+        e.printStackTrace();
+        activity.displayMessage("Email failed to send.");
+        return false;
+      }
+      catch (Exception e) {
+        e.printStackTrace();
+        activity.displayMessage("Unexpected error occured.");
+        return false;
+      }
     }
   }
 }
