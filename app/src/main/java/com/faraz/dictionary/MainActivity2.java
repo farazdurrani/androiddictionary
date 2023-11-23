@@ -18,8 +18,8 @@ import static com.mailjet.client.resource.Emailv31.resource;
 import static org.apache.commons.lang3.StringUtils.capitalize;
 import static java.lang.String.format;
 import static java.lang.String.join;
+import static java.lang.System.currentTimeMillis;
 import static java.util.Collections.reverse;
-import static java.util.Collections.reverseOrder;
 import static java.util.Optional.ofNullable;
 import static java.util.stream.Collectors.toList;
 
@@ -32,12 +32,15 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.RequestFuture;
 import com.android.volley.toolbox.Volley;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
 import com.mailjet.client.ClientOptions;
 import com.mailjet.client.MailjetClient;
 import com.mailjet.client.MailjetRequest;
@@ -45,7 +48,6 @@ import com.mailjet.client.MailjetResponse;
 import com.mailjet.client.errors.MailjetException;
 import com.mailjet.client.errors.MailjetSocketTimeoutException;
 
-import org.apache.commons.collections4.ListUtils;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -89,12 +91,15 @@ public class MainActivity2 extends AppCompatActivity {
     }
   }
 
+  @NonNull
+  private String addDivStyling(List<String> words) {
+    return "<div style=\"font-size:20px\">" + join("<br>", words) + "</div>";
+  }
+
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.activity_main2);
-
-    mailjetClient();
     setRequestQueue();
   }
 
@@ -104,6 +109,7 @@ public class MainActivity2 extends AppCompatActivity {
     }
   }
 
+  @Deprecated
   public void mailjetClient() {
     if (mailjetClient == null) {
       String mailKey = loadProperty(MAIL_KEY_DEPRECATED);
@@ -153,7 +159,7 @@ public class MainActivity2 extends AppCompatActivity {
     SendEmailAsyncTask email = new SendEmailAsyncTask();
     email.activity = this;
     email.mail = new Mail(loadProperty(JAVAMAIL_USER), loadProperty(JAVAMAIL_PASS));
-    email.mail.set_from(loadProperty(JAVAMAIL_FROM));
+    email.mail.set_from(format(loadProperty(JAVAMAIL_FROM), currentTimeMillis()));
     email.mail.setBody(body);
     email.mail.set_to(new String[]{loadProperty(JAVAMAIL_TO)});
     email.mail.set_subject(subject);
@@ -251,11 +257,11 @@ public class MainActivity2 extends AppCompatActivity {
       return format("\"filter\": { \"word\" : { \"$in\" : [%s] } }", in);
     }
 
-    private boolean sendRandomWords(List<String> definitions) {
+    private boolean sendRandomWords(List<String> randomWords) {
       String subject = "Random Words";
       try {
-        if (sendEmail(subject, join("<br><br>", definitions)) == 200) {
-          publishProgress(format("'%d' random words sent.", definitions.size()));
+        if (sendEmail(subject, addDivStyling(randomWords)) == 200) {
+          publishProgress(format("'%d' random words sent.", randomWords.size()));
           return true;
         }
         else {
@@ -321,7 +327,7 @@ public class MainActivity2 extends AppCompatActivity {
         } while (previousSkip != -1);
         publishProgress(format("Sending '%s' words...", words.size()));
         reverse(words);
-        List<List<String>> wordPartitions = ListUtils.partition(words.stream().distinct().collect(toList()), 3500);
+        List<List<String>> wordPartitions = Lists.partition(words.stream().distinct().collect(toList()), 3500);
         IntStream.range(0, wordPartitions.size()).forEach(index ->
             ofNullable(wordPartitions.get(index)).filter(wordPartition -> !wordPartition.isEmpty())
                 .map(wordPartition -> addCountToFirstLine(wordPartition, words.size()))
@@ -334,17 +340,15 @@ public class MainActivity2 extends AppCompatActivity {
       return null;
     }
 
-    private List<String> addCountToFirstLine(List<String> wordDefinition, int size) {
-      String firstLine = format("Total Count: '%d'. (%d in this part-backup).", size, wordDefinition.size());
-      List<String> newWordPartition = new ArrayList<>(wordDefinition);
-      newWordPartition.add(0, firstLine);
-      return newWordPartition;
+    private List<String> addCountToFirstLine(List<String> partWords, int totalWordCount) {
+      String firstLine = format("Total Count: '%d'. (%d in this part-backup).", totalWordCount, partWords.size());
+      return ImmutableList.<String>builder().add(firstLine).addAll(partWords).build();
     }
 
-    private void sendEmailsInStep(int index, List<String> words) {
+    private void sendEmailsInStep(int index, List<String> backup_words) {
       String subject = format("Words Backup Part %d:", index + 1);
-      if (sendEmail(subject, join("<br>", words)) == 200) {
-        publishProgress(format("'%d' words sent for backup.", words.size()));
+      if (sendEmail(subject, addDivStyling(backup_words)) == 200) {
+        publishProgress(format("'%d' words sent for backup.", backup_words.size()));
       }
       else {
         publishProgress("Error occurred while backing up words.");
