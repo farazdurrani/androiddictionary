@@ -6,6 +6,7 @@ import static com.android.volley.Request.Method.POST;
 import static com.faraz.dictionary.MainActivity.CLOSE_CURLY;
 import static com.faraz.dictionary.MainActivity.MONGODB_API_KEY;
 import static com.faraz.dictionary.MainActivity.MONGODB_URI;
+import static com.faraz.dictionary.MainActivity.MONGO_ACTION_AGGREGATE;
 import static com.faraz.dictionary.MainActivity.MONGO_ACTION_FIND_ALL;
 import static com.faraz.dictionary.MainActivity.MONGO_ACTION_UPDATE_MANY;
 import static com.faraz.dictionary.MainActivity.MONGO_PARTIAL_BODY;
@@ -101,6 +102,8 @@ public class MainActivity2 extends AppCompatActivity {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.activity_main2);
     setRequestQueue();
+    //todo undo
+    new SendRandomWordsAsyncTaskRunner().execute();
   }
 
   private void setRequestQueue() {
@@ -167,9 +170,10 @@ public class MainActivity2 extends AppCompatActivity {
     return 200;
   }
 
-  private List<String> getWordsFromMongo(String operation) {
+  private List<String> executeQuery(String operation, String action) {
+    System.out.println("Query " + operation + ". action: " + action);
     RequestFuture<JSONObject> requestFuture = RequestFuture.newFuture();
-    JsonObjectRequest request = new MongoJsonObjectRequest(POST, format(loadProperty(MONGODB_URI), MONGO_ACTION_FIND_ALL),
+    JsonObjectRequest request = new MongoJsonObjectRequest(POST, format(loadProperty(MONGODB_URI), action),
         requestFuture, requestFuture, operation, loadProperty(MONGODB_API_KEY));
     requestQueue.add(request);
     try {
@@ -177,6 +181,7 @@ public class MainActivity2 extends AppCompatActivity {
       return IntStream.range(0, ans.length()).mapToObj(i -> getItem(i, ans)).collect(toList());
     }
     catch (Exception e) {
+      e.printStackTrace();
       runOnUiThread(() -> Toast.makeText(this, "Mongo's gone belly up!", LENGTH_LONG).show());
     }
     throw new RuntimeException();
@@ -216,9 +221,10 @@ public class MainActivity2 extends AppCompatActivity {
       //1 get 5 words where reminded = false
       //2 if no words found, set all words to false
       //3 if found, email them, and set reminded = true
-      String query = createQueryForRandomWords();
       try {
-        List<String> words = getWordsFromMongo(query);
+        List<String> words = executeQuery(createQueryForRandomWords(), MONGO_ACTION_FIND_ALL);
+        List<String> ok = executeQuery(getRemindedCountQuery(), MONGO_ACTION_AGGREGATE);
+//        words.add();
         if (words.isEmpty()) { //TODO undo !
           //If all word count and reminded = true count is same,
           //then set all reminded = false;
@@ -278,6 +284,11 @@ public class MainActivity2 extends AppCompatActivity {
       String filter = ",\"filter\": { \"reminded\": false }";
       String limit = ", \"limit\": 5";
       return MONGO_PARTIAL_BODY + filter + limit + CLOSE_CURLY;
+    }
+
+    private String getRemindedCountQuery() {
+      String pipeline = ", \"pipeline\": [ { \"$match\": { \"reminded\": true } }, { \"$count\": \"reminded\" } ]";
+      return MONGO_PARTIAL_BODY + pipeline + CLOSE_CURLY;
     }
 
     @Override

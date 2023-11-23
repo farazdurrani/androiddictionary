@@ -53,6 +53,7 @@ public class MainActivity extends AppCompatActivity {
 
   static final String MONGO_PARTIAL_BODY = "{\"collection\":\"dictionary\",\"database\":\"myFirstDatabase\",\"dataSource\":\"Cluster0\"";
   static final String MONGO_ACTION_FIND_ALL = "find";
+  static final String MONGO_ACTION_AGGREGATE = "aggregate";
   static final String MONGO_ACTION_UPDATE_MANY = "updateMany";
   static final String CLOSE_CURLY = "}";
   static final String MONGODB_URI = "mongodb.data.uri";
