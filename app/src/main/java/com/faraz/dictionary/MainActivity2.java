@@ -335,7 +335,7 @@ public class MainActivity2 extends AppCompatActivity {
     }
 
     private List<String> addCountToFirstLine(List<String> wordDefinition, int size) {
-      String firstLine = format("Total Count: '%d'. This Part Count: '%d'.", size, wordDefinition.size());
+      String firstLine = format("Total Count: '%d'. (%d in this part-backup).", size, wordDefinition.size());
       List<String> newWordPartition = new ArrayList<>(wordDefinition);
       newWordPartition.add(0, firstLine);
       return newWordPartition;
