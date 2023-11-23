@@ -19,6 +19,7 @@ import static org.apache.commons.lang3.StringUtils.capitalize;
 import static java.lang.String.format;
 import static java.lang.String.join;
 import static java.util.Collections.reverse;
+import static java.util.Optional.ofNullable;
 import static java.util.stream.Collectors.toList;
 
 import android.annotation.SuppressLint;
@@ -51,10 +52,8 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Properties;
-import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.IntStream;
 
@@ -298,8 +297,8 @@ public class MainActivity2 extends AppCompatActivity {
 
     @Override
     protected Void doInBackground(String... params) {
-      publishProgress("Backing up definitions..."); // Calls onProgressUpdate()
-      List<String> definitions = new ArrayList<>();
+      publishProgress("Backing up words..."); // Calls onProgressUpdate()
+      List<String> words = new ArrayList<>();
       try {
         int limitNum = 10000;
         String limit = format(", \"limit\": %d ", limitNum);
@@ -316,25 +315,30 @@ public class MainActivity2 extends AppCompatActivity {
           JSONArray ans = requestFuture.get().getJSONArray("documents");
           List<String> list = IntStream.range(0, ans.length()).mapToObj(i -> getItem(i, ans)).distinct()
               .collect(toList());
-          definitions.addAll(list);
+          words.addAll(list);
           previousSkip = list.size() == 0 ? -1 : previousSkip + 1;
-          publishProgress(format("Loaded '%s' words...", definitions.size()));
+          publishProgress(format("Loaded '%s' words...", words.size()));
         } while (previousSkip != -1);
-        publishProgress(format("Sending '%s' words...", definitions.size()));
-        int size = definitions.size();
-        reverse(definitions);
-        String firstLine = format("Count: '%d'.", size);
-        definitions.add(0, firstLine);
-        Set<String> defiSet = new LinkedHashSet<>(definitions);
-        List<List<String>> definitionPartitions = ListUtils.partition(new ArrayList<>(defiSet), 3500);
-        IntStream.range(0, definitionPartitions.size()).forEach(index -> sendEmailsInStep(index,
-            definitionPartitions.get(index)));
+        publishProgress(format("Sending '%s' words...", words.size()));
+        reverse(words);
+        List<List<String>> wordPartitions = ListUtils.partition(words.stream().distinct().collect(toList()), 3500);
+        IntStream.range(0, wordPartitions.size()).forEach(index ->
+            ofNullable(wordPartitions.get(index)).filter(wordPartition -> !wordPartition.isEmpty())
+                .map(wordPartition -> addCountToFirstLine(wordPartition, words.size()))
+                .ifPresent(wordPartition -> sendEmailsInStep(index, wordPartition)));
       }
       catch (Exception e) {
         runOnUiThread(() -> Toast.makeText(MainActivity2.this, "Something unknown happened!",
             LENGTH_LONG).show());
       }
       return null;
+    }
+
+    private List<String> addCountToFirstLine(List<String> wordDefinition, int size) {
+      String firstLine = format("Total Count: '%d'. This Part Count: '%d'.", size, wordDefinition.size());
+      List<String> newWordPartition = new ArrayList<>(wordDefinition);
+      newWordPartition.add(0, firstLine);
+      return newWordPartition;
     }
 
     private void sendEmailsInStep(int index, List<String> words) {

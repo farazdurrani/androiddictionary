@@ -42,7 +42,6 @@ public class Mail extends javax.mail.Authenticator {
   public Mail() {
     _host = "smtp.gmail.com"; // default smtp server
     _port = "465"; // default smtp port
-//    _port = "587"; // default smtp port
     _sport = "465"; // default socketfactory port
 
     _user = ""; // username
@@ -94,16 +93,13 @@ public class Mail extends javax.mail.Authenticator {
 
       msg.setSubject(_subject);
       msg.setSentDate(new Date());
-
-      // setup message body
-      BodyPart messageBodyPart = new MimeBodyPart();
-      messageBodyPart.setText(_body);
-      _multipart.addBodyPart(messageBodyPart);
-
+      msg.setHeader("Content-Type", "text/html");
       msg.setHeader("X-Priority", "1");
-      // Put parts in message
-      msg.setContent(_multipart);
-
+      Multipart mp = new MimeMultipart();
+      MimeBodyPart htmlPart = new MimeBodyPart();
+      htmlPart.setContent(_body, "text/html");
+      mp.addBodyPart(htmlPart);
+      msg.setContent(mp, "text/html");
       // send email
       Transport.send(msg);
 
