@@ -19,6 +19,7 @@ import static org.apache.commons.lang3.StringUtils.capitalize;
 import static java.lang.String.format;
 import static java.lang.String.join;
 import static java.util.Collections.reverse;
+import static java.util.Collections.reverseOrder;
 import static java.util.Optional.ofNullable;
 import static java.util.stream.Collectors.toList;
 
@@ -313,8 +314,7 @@ public class MainActivity2 extends AppCompatActivity {
               requestFuture, requestFuture, operation, loadProperty(MONGODB_API_KEY));
           requestQueue.add(request);
           JSONArray ans = requestFuture.get().getJSONArray("documents");
-          List<String> list = IntStream.range(0, ans.length()).mapToObj(i -> getItem(i, ans)).distinct()
-              .collect(toList());
+          List<String> list = IntStream.range(0, ans.length()).mapToObj(i -> getItem(i, ans)).distinct().collect(toList());
           words.addAll(list);
           previousSkip = list.size() == 0 ? -1 : previousSkip + 1;
           publishProgress(format("Loaded '%s' words...", words.size()));
