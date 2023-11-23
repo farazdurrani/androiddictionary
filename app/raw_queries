@@ -7,3 +7,6 @@ Find Duplicates: It works!:
 Aggregation Query to get reminded count:
 
 [ { $match: { reminded: true, }, }, { $count: "reminded", }, ] --2918 as of today 04/08/23
+
+To find docs that have 'quotes' (in this case at least).
+{ word: { $regex: "\"" } }
