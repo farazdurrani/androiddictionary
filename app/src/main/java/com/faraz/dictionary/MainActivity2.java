@@ -2,6 +2,7 @@ package com.faraz.dictionary;
 
 import static android.app.ProgressDialog.show;
 import static android.widget.Toast.LENGTH_LONG;
+import static android.widget.Toast.LENGTH_SHORT;
 import static com.android.volley.Request.Method.POST;
 import static com.faraz.dictionary.MainActivity.CLOSE_CURLY;
 import static com.faraz.dictionary.MainActivity.MONGODB_API_KEY;
@@ -83,9 +84,9 @@ public class MainActivity2 extends AppCompatActivity {
     return "<a href='https://www.google.com/search?q=define: " + word + "' target='_blank'>" + capitalize(word) + "</a>";
   }
 
-  public static String getItem(int index, JSONArray ans) {
+  public static String getItem(int index, JSONArray ans, String extractionTarget) {
     try {
-      return ans.getJSONObject(index).getString("word");
+      return ans.getJSONObject(index).getString(extractionTarget);
     }
     catch (Exception e) {
       throw new RuntimeException(e);
@@ -102,8 +103,6 @@ public class MainActivity2 extends AppCompatActivity {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.activity_main2);
     setRequestQueue();
-    //todo undo
-    new SendRandomWordsAsyncTaskRunner().execute();
   }
 
   private void setRequestQueue() {
@@ -170,7 +169,7 @@ public class MainActivity2 extends AppCompatActivity {
     return 200;
   }
 
-  private List<String> executeQuery(String operation, String action) {
+  private List<String> executeQuery(String operation, String action, String extractionTarget) {
     System.out.println("Query " + operation + ". action: " + action);
     RequestFuture<JSONObject> requestFuture = RequestFuture.newFuture();
     JsonObjectRequest request = new MongoJsonObjectRequest(POST, format(loadProperty(MONGODB_URI), action),
@@ -178,7 +177,7 @@ public class MainActivity2 extends AppCompatActivity {
     requestQueue.add(request);
     try {
       JSONArray ans = requestFuture.get().getJSONArray("documents");
-      return IntStream.range(0, ans.length()).mapToObj(i -> getItem(i, ans)).collect(toList());
+      return IntStream.range(0, ans.length()).mapToObj(i -> getItem(i, ans, extractionTarget)).collect(toList());
     }
     catch (Exception e) {
       e.printStackTrace();
@@ -187,14 +186,15 @@ public class MainActivity2 extends AppCompatActivity {
     throw new RuntimeException();
   }
 
-  private List<String> anchor(List<String> definitions) {
-    return definitions.stream().map(MainActivity2::anchor).collect(toList());
+  private List<String> anchor(List<String> words) {
+    return words.stream().map(MainActivity2::anchor).collect(toList());
   }
 
-  private void updateData(String query, Consumer<Integer> consumer) {
+  private void updateData(String query, Consumer<Integer> consumer, String action) {
+    System.out.println("Query " + query + ". Action " + MONGO_ACTION_UPDATE_MANY);
     RequestFuture<JSONObject> requestFuture = RequestFuture.newFuture();
     JsonObjectRequest request = new MongoJsonObjectRequest(POST, format(loadProperty(MONGODB_URI),
-        MONGO_ACTION_UPDATE_MANY), requestFuture, requestFuture, query, loadProperty(MONGODB_API_KEY));
+        action), requestFuture, requestFuture, query, loadProperty(MONGODB_API_KEY));
     requestQueue.add(request);
     try {
       JSONObject ans = requestFuture.get();
@@ -203,12 +203,26 @@ public class MainActivity2 extends AppCompatActivity {
       consumer.accept(modifiedCount);
     }
     catch (Exception e) {
+      e.printStackTrace();
       runOnUiThread(() -> Toast.makeText(this, "Mongo's belly up!", LENGTH_LONG).show());
     }
   }
 
   public void displayMessage(String message) {
     runOnUiThread(() -> Toast.makeText(this, message, LENGTH_LONG).show());
+  }
+
+  private List<String> addReminderCount(List<String> words) {
+    List<String> remindedWords = executeQuery(getRemindedCountQuery(), MONGO_ACTION_AGGREGATE, "reminded");
+    words = !words.isEmpty() ? words
+        : ImmutableList.of("Seems like words to remind of has been exhausted?");
+    return ImmutableList.<String>builder().addAll(words).add("Reminders for '" + remindedWords.stream().findFirst()
+        .orElse("(Something's wrong? Check Query!)") + "' words have been sent already.").build();
+  }
+
+  private String getRemindedCountQuery() {
+    String pipeline = ", \"pipeline\": [ { \"$match\": { \"reminded\": true } }, { \"$count\": \"reminded\" } ]";
+    return MONGO_PARTIAL_BODY + pipeline + CLOSE_CURLY;
   }
 
   private class SendRandomWordsAsyncTaskRunner extends AsyncTask<String, String, Void> {
@@ -222,17 +236,8 @@ public class MainActivity2 extends AppCompatActivity {
       //2 if no words found, set all words to false
       //3 if found, email them, and set reminded = true
       try {
-        List<String> words = executeQuery(createQueryForRandomWords(), MONGO_ACTION_FIND_ALL);
-        List<String> ok = executeQuery(getRemindedCountQuery(), MONGO_ACTION_AGGREGATE);
-//        words.add();
-        if (words.isEmpty()) { //TODO undo !
-          //If all word count and reminded = true count is same,
-          //then set all reminded = false;
-          //TODO Implement
-          publishProgress("No words left to remind of.");
-          return null;
-        }
-        if (sendRandomWords(anchor(words))) {
+        List<String> words = executeQuery(createQueryForRandomWords(), MONGO_ACTION_FIND_ALL, "word");
+        if (sendRandomWords(addReminderCount(anchor(words)))) {
           markWordsAsReminded_(words);
         }
       }
@@ -243,11 +248,18 @@ public class MainActivity2 extends AppCompatActivity {
     }
 
     private void markWordsAsReminded_(List<String> words) {
+      //must to an empty check!
+      if (words.isEmpty()) {
+        //If all word count and reminded = true count is same, (we will know this if words.isempty)
+        //then set all reminded = false;
+        runOnUiThread(() -> Toast.makeText(MainActivity2.this, "TODO: set all words to 'reminded=false'.", LENGTH_SHORT).show());
+        return;
+      }
       String filterSubQuery = getFilterQueryToUpdateReminded(words);
       String updateSubQuery = getUpdateQueryToUpdateReminded();
       String query = MONGO_PARTIAL_BODY + "," + filterSubQuery + ", " + updateSubQuery + CLOSE_CURLY;
-      Consumer<Integer> consumer = documentsModified -> publishProgress(format("Marked %d words as reminded.", documentsModified));
-      updateData(query, consumer);
+      Consumer<Integer> consumer = documentsModified -> runOnUiThread(() -> Toast.makeText(MainActivity2.this, format("Marked %d words as reminded.", documentsModified), LENGTH_SHORT).show());
+      updateData(query, consumer, MONGO_ACTION_UPDATE_MANY);
     }
 
     private String getUpdateQueryToUpdateReminded() {
@@ -267,15 +279,15 @@ public class MainActivity2 extends AppCompatActivity {
       String subject = "Random Words";
       try {
         if (sendEmail(subject, addDivStyling(randomWords)) == 200) {
-          publishProgress(format("'%d' random words sent.", randomWords.size()));
+          runOnUiThread(() -> Toast.makeText(MainActivity2.this, format("'%d' random words sent.", randomWords.size()), LENGTH_SHORT).show());
           return true;
         }
         else {
-          publishProgress("Error occurred while sending random words.");
+          runOnUiThread(() -> Toast.makeText(MainActivity2.this, "Error occurred while sending random words.", LENGTH_SHORT).show());
         }
       }
       catch (Exception e) {
-        publishProgress("Error occurred while sending random words.");
+        runOnUiThread(() -> Toast.makeText(MainActivity2.this, "Error occurred while sending random words.", LENGTH_SHORT).show());
       }
       return false;
     }
@@ -284,11 +296,6 @@ public class MainActivity2 extends AppCompatActivity {
       String filter = ",\"filter\": { \"reminded\": false }";
       String limit = ", \"limit\": 5";
       return MONGO_PARTIAL_BODY + filter + limit + CLOSE_CURLY;
-    }
-
-    private String getRemindedCountQuery() {
-      String pipeline = ", \"pipeline\": [ { \"$match\": { \"reminded\": true } }, { \"$count\": \"reminded\" } ]";
-      return MONGO_PARTIAL_BODY + pipeline + CLOSE_CURLY;
     }
 
     @Override
@@ -331,7 +338,7 @@ public class MainActivity2 extends AppCompatActivity {
               requestFuture, requestFuture, operation, loadProperty(MONGODB_API_KEY));
           requestQueue.add(request);
           JSONArray ans = requestFuture.get().getJSONArray("documents");
-          List<String> list = IntStream.range(0, ans.length()).mapToObj(i -> getItem(i, ans)).distinct().collect(toList());
+          List<String> list = IntStream.range(0, ans.length()).mapToObj(i -> getItem(i, ans, "word")).distinct().collect(toList());
           words.addAll(list);
           previousSkip = list.size() == 0 ? -1 : previousSkip + 1;
           publishProgress(format("Loaded '%s' words...", words.size()));
@@ -345,6 +352,7 @@ public class MainActivity2 extends AppCompatActivity {
                 .ifPresent(wordPartition -> sendEmailsInStep(index, wordPartition)));
       }
       catch (Exception e) {
+        e.printStackTrace();
         runOnUiThread(() -> Toast.makeText(MainActivity2.this, "Something unknown happened!",
             LENGTH_LONG).show());
       }
@@ -359,10 +367,10 @@ public class MainActivity2 extends AppCompatActivity {
     private void sendEmailsInStep(int index, List<String> backup_words) {
       String subject = format("Words Backup Part %d:", index + 1);
       if (sendEmail(subject, addDivStyling(backup_words)) == 200) {
-        publishProgress(format("'%d' words sent for backup.", backup_words.size()));
+        runOnUiThread(() -> Toast.makeText(MainActivity2.this, format("'%d' words sent for backup.", backup_words.size()), LENGTH_SHORT).show());
       }
       else {
-        publishProgress("Error occurred while backing up words.");
+        runOnUiThread(() -> Toast.makeText(MainActivity2.this, "Error occurred while backing up words.", LENGTH_SHORT).show());
       }
     }
 
@@ -394,7 +402,7 @@ public class MainActivity2 extends AppCompatActivity {
     protected Boolean doInBackground(Void... params) {
       try {
         if (mail.send()) {
-          activity.displayMessage("Email sent.");
+          activity.displayMessage("Email(s) sent.");
         }
         else {
           activity.displayMessage("Failed to send an email!");

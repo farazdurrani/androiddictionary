@@ -237,7 +237,7 @@ public class MainActivity extends AppCompatActivity {
     requestQueue.add(request);
     try {
       JSONArray ans = requestFuture.get().getJSONArray("documents");
-      return IntStream.range(0, ans.length()).mapToObj(i -> getItem(i, ans)).collect(toList());
+      return IntStream.range(0, ans.length()).mapToObj(i -> getItem(i, ans, "word")).collect(toList());
     }
     catch (Exception e) {
       definitionsView.setText("Mongo's gone belly up!");
