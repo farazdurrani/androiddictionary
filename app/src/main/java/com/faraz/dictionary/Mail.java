@@ -19,36 +19,23 @@ import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimeMultipart;
 
 public class Mail extends javax.mail.Authenticator {
+  private final String _port;
+  private final String _sport;
+  private final String _host;
+  private final boolean _auth;
+  private final boolean _debuggable;
+  private final Multipart _multipart;
   private String _user;
   private String _pass;
-
   private String[] _to;
   private String _from;
-
-  private String _port;
-  private String _sport;
-
-  private String _host;
-
   private String _subject;
   private String _body;
-
-  private boolean _auth;
-
-  private boolean _debuggable;
-
-  private Multipart _multipart;
 
   public Mail() {
     _host = "smtp.gmail.com"; // default smtp server
     _port = "465"; // default smtp port
     _sport = "465"; // default socketfactory port
-
-    _user = ""; // username
-    _pass = ""; // password
-    _from = "studentmanagementportal@gmail.com"; // email sent from
-    _subject = "Words Backup!"; // email subject
-    _body = ""; // email body
 
     _debuggable = false; // debug mode on or off - default off
     _auth = true; // smtp authentication - default on
@@ -83,14 +70,13 @@ public class Mail extends javax.mail.Authenticator {
 
       MimeMessage msg = new MimeMessage(session);
 
-      msg.setFrom(new InternetAddress(_from));
+      msg.setFrom(new InternetAddress(_from, "Personal Dictionary"));
 
       InternetAddress[] addressTo = new InternetAddress[_to.length];
       for (int i = 0; i < _to.length; i++) {
         addressTo[i] = new InternetAddress(_to[i]);
       }
       msg.setRecipients(MimeMessage.RecipientType.TO, addressTo);
-
       msg.setSubject(_subject);
       msg.setSentDate(new Date());
       msg.setHeader("Content-Type", "text/html");
@@ -102,7 +88,6 @@ public class Mail extends javax.mail.Authenticator {
       msg.setContent(mp, "text/html");
       // send email
       Transport.send(msg);
-
       return true;
     }
     else {
@@ -146,100 +131,19 @@ public class Mail extends javax.mail.Authenticator {
     return props;
   }
 
-  // the getters and setters
-  public String getBody() {
-    return _body;
-  }
-
   public void setBody(String _body) {
     this._body = _body;
-  }
-
-  public String get_user() {
-    return _user;
-  }
-
-  public void set_user(String _user) {
-    this._user = _user;
-  }
-
-  public String get_pass() {
-    return _pass;
-  }
-
-  public void set_pass(String _pass) {
-    this._pass = _pass;
-  }
-
-  public String[] get_to() {
-    return _to;
   }
 
   public void set_to(String[] _to) {
     this._to = _to;
   }
 
-  public String get_from() {
-    return _from;
-  }
-
   public void set_from(String _from) {
     this._from = _from;
   }
 
-  public String get_port() {
-    return _port;
-  }
-
-  public void set_port(String _port) {
-    this._port = _port;
-  }
-
-  public String get_sport() {
-    return _sport;
-  }
-
-  public void set_sport(String _sport) {
-    this._sport = _sport;
-  }
-
-  public String get_host() {
-    return _host;
-  }
-
-  public void set_host(String _host) {
-    this._host = _host;
-  }
-
-  public String get_subject() {
-    return _subject;
-  }
-
   public void set_subject(String _subject) {
     this._subject = _subject;
-  }
-
-  public boolean is_auth() {
-    return _auth;
-  }
-
-  public void set_auth(boolean _auth) {
-    this._auth = _auth;
-  }
-
-  public boolean is_debuggable() {
-    return _debuggable;
-  }
-
-  public void set_debuggable(boolean _debuggable) {
-    this._debuggable = _debuggable;
-  }
-
-  public Multipart get_multipart() {
-    return _multipart;
-  }
-
-  public void set_multipart(Multipart _multipart) {
-    this._multipart = _multipart;
   }
 }

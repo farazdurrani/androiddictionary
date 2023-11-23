@@ -151,11 +151,11 @@ public class MainActivity2 extends AppCompatActivity {
   private int sendEmail(String subject, String body) {
     SendEmailAsyncTask email = new SendEmailAsyncTask();
     email.activity = this;
-    email.m = new Mail(loadProperty(JAVAMAIL_USER), loadProperty(JAVAMAIL_PASS));
-    email.m.set_from(loadProperty(JAVAMAIL_FROM));
-    email.m.setBody(body);
-    email.m.set_to(new String[]{loadProperty(JAVAMAIL_TO)});
-    email.m.set_subject(subject);
+    email.mail = new Mail(loadProperty(JAVAMAIL_USER), loadProperty(JAVAMAIL_PASS));
+    email.mail.set_from(loadProperty(JAVAMAIL_FROM));
+    email.mail.setBody(body);
+    email.mail.set_to(new String[]{loadProperty(JAVAMAIL_TO)});
+    email.mail.set_subject(subject);
     email.execute();
     return 200;
   }
@@ -370,7 +370,7 @@ public class MainActivity2 extends AppCompatActivity {
   }
 
   private class SendEmailAsyncTask extends AsyncTask<Void, Void, Boolean> {
-    Mail m;
+    Mail mail;
     MainActivity2 activity;
 
     public SendEmailAsyncTask() {}
@@ -378,11 +378,11 @@ public class MainActivity2 extends AppCompatActivity {
     @Override
     protected Boolean doInBackground(Void... params) {
       try {
-        if (m.send()) {
+        if (mail.send()) {
           activity.displayMessage("Email sent.");
         }
         else {
-          activity.displayMessage("Email failed to send.");
+          activity.displayMessage("Failed to send an email!");
         }
 
         return true;
@@ -396,12 +396,12 @@ public class MainActivity2 extends AppCompatActivity {
       catch (MessagingException e) {
         Log.e(SendEmailAsyncTask.class.getName(), "Email failed");
         e.printStackTrace();
-        activity.displayMessage("Email failed to send.");
+        activity.displayMessage("Failed to send an email!");
         return false;
       }
       catch (Exception e) {
         e.printStackTrace();
-        activity.displayMessage("Unexpected error occured.");
+        activity.displayMessage("Unexpected error occurred.");
         return false;
       }
     }
