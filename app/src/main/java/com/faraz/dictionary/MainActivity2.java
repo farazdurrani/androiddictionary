@@ -407,7 +407,6 @@ public class MainActivity2 extends AppCompatActivity {
         else {
           activity.displayMessage("Failed to send an email!");
         }
-
         return true;
       }
       catch (AuthenticationFailedException e) {
