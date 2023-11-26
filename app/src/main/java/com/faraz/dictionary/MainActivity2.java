@@ -367,7 +367,7 @@ public class MainActivity2 extends AppCompatActivity {
     private void sendEmailsInStep(int index, List<String> backup_words) {
       String subject = format("Words Backup Part %d:", index + 1);
       if (sendEmail(subject, addDivStyling(backup_words)) == 200) {
-        runOnUiThread(() -> Toast.makeText(MainActivity2.this, format("'%d' words sent for backup.", backup_words.size()), LENGTH_SHORT).show());
+        runOnUiThread(() -> Toast.makeText(MainActivity2.this, format("'%d' words sent for backup.", Math.max(backup_words.size() - 1, 0)), LENGTH_SHORT).show());
       }
       else {
         runOnUiThread(() -> Toast.makeText(MainActivity2.this, "Error occurred while backing up words.", LENGTH_SHORT).show());
