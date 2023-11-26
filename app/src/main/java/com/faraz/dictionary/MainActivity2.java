@@ -279,7 +279,7 @@ public class MainActivity2 extends AppCompatActivity {
       String subject = "Random Words";
       try {
         if (sendEmail(subject, addDivStyling(randomWords)) == 200) {
-          runOnUiThread(() -> Toast.makeText(MainActivity2.this, format("'%d' random words sent.", randomWords.size()), LENGTH_SHORT).show());
+          runOnUiThread(() -> Toast.makeText(MainActivity2.this, format("'%d' random words sent.", Math.max(randomWords.size() - 1, 0)), LENGTH_SHORT).show());
           return true;
         }
         else {
@@ -345,7 +345,7 @@ public class MainActivity2 extends AppCompatActivity {
         } while (previousSkip != -1);
         publishProgress(format("Sending '%s' words...", words.size()));
         reverse(words);
-        List<List<String>> wordPartitions = Lists.partition(words.stream().distinct().collect(toList()), 3500);
+        List<List<String>> wordPartitions = Lists.partition(words.stream().distinct().collect(toList()), 10000);
         IntStream.range(0, wordPartitions.size()).forEach(index ->
             ofNullable(wordPartitions.get(index)).filter(wordPartition -> !wordPartition.isEmpty())
                 .map(wordPartition -> addCountToFirstLine(wordPartition, words.size()))
