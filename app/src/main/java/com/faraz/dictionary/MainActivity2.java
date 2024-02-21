@@ -48,7 +48,7 @@ import com.mailjet.client.MailjetClient;
 import com.mailjet.client.MailjetRequest;
 import com.mailjet.client.MailjetResponse;
 import com.mailjet.client.errors.MailjetException;
-import com.mailjet.client.errors.MailjetSocketTimeoutException;
+import com.mailjet.client.transactional.response.SendEmailsResponse;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -102,6 +102,7 @@ public class MainActivity2 extends AppCompatActivity {
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.activity_main2);
+    mailjetClient();
     setRequestQueue();
   }
 
@@ -111,21 +112,28 @@ public class MainActivity2 extends AppCompatActivity {
     }
   }
 
-  @Deprecated
   public void mailjetClient() {
     if (mailjetClient == null) {
-      String mailKey = loadProperty(MAIL_KEY_DEPRECATED);
-      String mailSecret = loadProperty(MAIL_SECRET_DEPRECATED);
-      mailjetClient = new MailjetClient(mailKey, mailSecret, new ClientOptions("v3.1"));
+      ClientOptions options = ClientOptions.builder().apiKey(loadProperty(MAIL_KEY_DEPRECATED))
+              .apiSecretKey(loadProperty(MAIL_SECRET_DEPRECATED)).build();
+      mailjetClient = new MailjetClient(options);
     }
   }
 
   public void backupData(View view) {
-    new BackupDataAsyncTaskRunner().execute();
+    BackupDataAsyncTaskRunner runner = new BackupDataAsyncTaskRunner();
+    runner.activity = this;
+    runner.execute();
   }
 
   public void send5(View view) {
     new SendRandomWordsAsyncTaskRunner().execute();
+  }
+
+  public void testEmail(View view) {
+    SendTestEmailAsyncTaskRunner runner = new SendTestEmailAsyncTaskRunner();
+    runner.activity = this;
+    runner.execute();
   }
 
   private String loadProperty(String property) {
@@ -144,20 +152,30 @@ public class MainActivity2 extends AppCompatActivity {
   /**
    * Mailjet api just goes into this bounce/restart/soft bounce thing.
    */
-  @Deprecated
-  private int sendEmailUsingMailJetClient(String subject, String body) throws MailjetSocketTimeoutException, MailjetException, JSONException {
+  private int sendEmailUsingMailJetClient(String subject, String body) {
     String from = loadProperty(MAIL_FROM_DEPRECATED);
     String to = loadProperty(MAIL_TO_DEPRECATED);
     body = "<div style=\"font-size:20px\">" + body + "</div>";
-    MailjetRequest request = new MailjetRequest(resource).property(MESSAGES, new JSONArray().put(new JSONObject()
-        .put(FROM, new JSONObject().put("Email", from).put("Name", "Personal Dictionary")).put(TO, new JSONArray()
-            .put(new JSONObject().put("Email", to).put("Name", "Personal Dictionary"))).put(SUBJECT, subject)
-        .put(HTMLPART, body)));
-    MailjetResponse response = mailjetClient.post(request);
-    return response.getStatus();
+      MailjetRequest request = null;
+      try {
+          request = new MailjetRequest(resource).property(MESSAGES, new JSONArray().put(new JSONObject()
+              .put(FROM, new JSONObject().put("Email", from).put("Name", "Personal Dictionary")).put(TO, new JSONArray()
+                  .put(new JSONObject().put("Email", to).put("Name", "Personal Dictionary"))).put(SUBJECT, subject)
+              .put(HTMLPART, body)));
+
+      MailjetResponse response = mailjetClient.post(request);
+      return response.getStatus();
+      }
+      catch (JSONException | MailjetException e) {
+          e.printStackTrace();
+      }
+      return -1;
   }
 
-  private int sendEmail(String subject, String body) {
+  /**
+   * It doesn't return the status.
+   */
+  private int sendEmailUsingJavaMailAPI(String subject, String body) {
     SendEmailAsyncTask email = new SendEmailAsyncTask();
     email.activity = this;
     email.mail = new Mail(loadProperty(JAVAMAIL_USER), loadProperty(JAVAMAIL_PASS));
@@ -166,7 +184,7 @@ public class MainActivity2 extends AppCompatActivity {
     email.mail.set_to(new String[]{loadProperty(JAVAMAIL_TO)});
     email.mail.set_subject(subject);
     email.execute();
-    return 200;
+    return 200; //TODO Cleanup: trying to support legacy code. Don't really need 200 I suppose.
   }
 
   private List<String> executeQuery(String operation, String action, String extractionTarget) {
@@ -225,6 +243,32 @@ public class MainActivity2 extends AppCompatActivity {
     return MONGO_PARTIAL_BODY + pipeline + CLOSE_CURLY;
   }
 
+  private class SendTestEmailAsyncTaskRunner extends AsyncTask<String, String, Void> {
+
+    MainActivity2 activity;
+
+    @Override
+    protected Void doInBackground(String... strings) {
+//      sendEmailUsingJavaMailAPI("Email server is up!", "Yes.");
+      sendEmailUsingMailJetClient("Email server is up!", "Yes.");
+      activity.displayMessage("Check email...");
+      return null;
+    }
+
+    @Override
+    protected void onPostExecute(Void v) {
+    }
+
+    @Override
+    protected void onPreExecute() {
+    }
+
+    @Override
+    protected void onProgressUpdate(String... text) {
+    }
+  }
+
+
   private class SendRandomWordsAsyncTaskRunner extends AsyncTask<String, String, Void> {
     List<ProgressDialog> progressDialogs = new ArrayList<>();
 
@@ -278,7 +322,7 @@ public class MainActivity2 extends AppCompatActivity {
     private boolean sendRandomWords(List<String> randomWords) {
       String subject = "Random Words";
       try {
-        if (sendEmail(subject, addDivStyling(randomWords)) == 200) {
+        if (sendEmailUsingMailJetClient(subject, addDivStyling(randomWords)) == 200) {
           runOnUiThread(() -> Toast.makeText(MainActivity2.this, format("'%d' random words sent.", Math.max(randomWords.size() - 1, 0)), LENGTH_SHORT).show());
           return true;
         }
@@ -320,6 +364,8 @@ public class MainActivity2 extends AppCompatActivity {
 
     private final List<ProgressDialog> progressDialogs = new ArrayList<>();
 
+    MainActivity2 activity;
+
     @Override
     protected Void doInBackground(String... params) {
       publishProgress("Backing up words..."); // Calls onProgressUpdate()
@@ -349,12 +395,11 @@ public class MainActivity2 extends AppCompatActivity {
         IntStream.range(0, wordPartitions.size()).forEach(index ->
             ofNullable(wordPartitions.get(index)).filter(wordPartition -> !wordPartition.isEmpty())
                 .map(wordPartition -> addCountToFirstLine(wordPartition, words.size()))
-                .ifPresent(wordPartition -> sendEmailsInStep(index, wordPartition)));
+                .ifPresent(wordPartition -> sendBackupEmails(index, wordPartition)));
       }
       catch (Exception e) {
         e.printStackTrace();
-        runOnUiThread(() -> Toast.makeText(MainActivity2.this, "Something unknown happened!",
-            LENGTH_LONG).show());
+        activity.displayMessage("Something unknown happened!");
       }
       return null;
     }
@@ -364,14 +409,13 @@ public class MainActivity2 extends AppCompatActivity {
       return ImmutableList.<String>builder().add(firstLine).addAll(partWords).build();
     }
 
-    private void sendEmailsInStep(int index, List<String> backup_words) {
+    private void sendBackupEmails(int index, List<String> backup_words) {
       String subject = format("Words Backup Part %d:", index + 1);
-      if (sendEmail(subject, addDivStyling(backup_words)) == 200) {
-        runOnUiThread(() -> Toast.makeText(MainActivity2.this, format("'%d' words sent for backup.", Math.max(backup_words.size() - 1, 0)), LENGTH_SHORT).show());
-      }
-      else {
-        runOnUiThread(() -> Toast.makeText(MainActivity2.this, "Error occurred while backing up words.", LENGTH_SHORT).show());
-      }
+        if (sendEmailUsingMailJetClient(subject, addDivStyling(backup_words)) == 200) {
+          activity.displayMessage(format("'%d' words sent for backup.", Math.max(backup_words.size() - 1, 0)));
+        } else {
+          activity.displayMessage("Error occurred while backing up words.");
+        }
     }
 
     @Override
@@ -403,29 +447,27 @@ public class MainActivity2 extends AppCompatActivity {
       try {
         if (mail.send()) {
           activity.displayMessage("Email(s) sent.");
+          return true;
         }
         else {
           activity.displayMessage("Failed to send an email!");
         }
-        return true;
       }
       catch (AuthenticationFailedException e) {
         Log.e(SendEmailAsyncTask.class.getName(), "Bad account details");
         e.printStackTrace();
         activity.displayMessage("Authentication failed.");
-        return false;
       }
       catch (MessagingException e) {
         Log.e(SendEmailAsyncTask.class.getName(), "Email failed");
         e.printStackTrace();
         activity.displayMessage("Failed to send an email!");
-        return false;
       }
       catch (Exception e) {
         e.printStackTrace();
         activity.displayMessage("Unexpected error occurred.");
-        return false;
       }
+      return false;
     }
   }
 }
