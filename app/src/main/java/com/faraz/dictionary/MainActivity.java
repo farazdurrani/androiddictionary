@@ -58,7 +58,7 @@ public class MainActivity extends AppCompatActivity {
   static final String CLOSE_CURLY = "}";
   static final String MONGODB_URI = "mongodb.data.uri";
   static final String MONGODB_API_KEY = "mongodb.data.api.key";
-  private static final String CHICAGO = "America/Chicago";
+  static final String CHICAGO = "America/Chicago";
   private static final String NO_DEFINITION_FOUND = "No definitions found for '%s'. Perhaps, you meant:";
   private static final String MONGO_ACTION_INSERT_ONE = "insertOne";
   private static final String MONGO_DOCUMENT = "\"document\" : {  \"word\": \"%s\",\"lookupTime\": {  \"$date\" : {  \"$numberLong\" : \"%d\"} }, \"reminded\": %s }";
@@ -147,7 +147,7 @@ public class MainActivity extends AppCompatActivity {
     }
   }
 
-  @SuppressLint("NewApi")
+  @SuppressLint({"NewApi", "DefaultLocale"})
   private String getSaveQuery() {
     return MONGO_PARTIAL_BODY + "," + format(MONGO_DOCUMENT, originalLookupWord,
         Instant.now(Clock.system(ZoneId.of(CHICAGO))).toEpochMilli(), false) + CLOSE_CURLY;
@@ -213,7 +213,7 @@ public class MainActivity extends AppCompatActivity {
 
   private String cleanWord() {
     return Arrays.stream(lookupWord.getText().toString().split(REGEX_WHITE_SPACES))
-        .map(String::trim).map(String::toLowerCase).collect(joining(SPACE));
+        .map(String::trim).map(String::toLowerCase).collect(joining(SPACE)).trim();
   }
 
   private String loadProperty(String property) {
@@ -271,7 +271,7 @@ public class MainActivity extends AppCompatActivity {
 
   private class SaveWordsAsyncTaskRunner extends AsyncTask<String, String, Void> {
 
-    @Override
+    @Override @SuppressLint("NewApi")
     protected Void doInBackground(String... strings) {
       try {
         if (isBlank(originalLookupWord)) {

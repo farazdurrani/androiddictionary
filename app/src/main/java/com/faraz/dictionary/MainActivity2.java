@@ -4,6 +4,7 @@ import static android.app.ProgressDialog.show;
 import static android.widget.Toast.LENGTH_LONG;
 import static android.widget.Toast.LENGTH_SHORT;
 import static com.android.volley.Request.Method.POST;
+import static com.faraz.dictionary.MainActivity.CHICAGO;
 import static com.faraz.dictionary.MainActivity.CLOSE_CURLY;
 import static com.faraz.dictionary.MainActivity.MONGODB_API_KEY;
 import static com.faraz.dictionary.MainActivity.MONGODB_URI;
@@ -11,12 +12,7 @@ import static com.faraz.dictionary.MainActivity.MONGO_ACTION_AGGREGATE;
 import static com.faraz.dictionary.MainActivity.MONGO_ACTION_FIND_ALL;
 import static com.faraz.dictionary.MainActivity.MONGO_ACTION_UPDATE_MANY;
 import static com.faraz.dictionary.MainActivity.MONGO_PARTIAL_BODY;
-import static com.mailjet.client.resource.Emailv31.MESSAGES;
-import static com.mailjet.client.resource.Emailv31.Message.FROM;
-import static com.mailjet.client.resource.Emailv31.Message.HTMLPART;
-import static com.mailjet.client.resource.Emailv31.Message.SUBJECT;
-import static com.mailjet.client.resource.Emailv31.Message.TO;
-import static com.mailjet.client.resource.Emailv31.resource;
+import static com.mailjet.client.transactional.response.SentMessageStatus.SUCCESS;
 import static org.apache.commons.lang3.StringUtils.capitalize;
 import static java.lang.String.format;
 import static java.lang.String.join;
@@ -32,6 +28,7 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+import android.widget.Button;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -45,21 +42,29 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.mailjet.client.ClientOptions;
 import com.mailjet.client.MailjetClient;
-import com.mailjet.client.MailjetRequest;
-import com.mailjet.client.MailjetResponse;
 import com.mailjet.client.errors.MailjetException;
+import com.mailjet.client.transactional.SendContact;
+import com.mailjet.client.transactional.SendEmailsRequest;
+import com.mailjet.client.transactional.TrackOpens;
+import com.mailjet.client.transactional.TransactionalEmail;
+import com.mailjet.client.transactional.response.MessageResult;
 import com.mailjet.client.transactional.response.SendEmailsResponse;
 
+import org.apache.commons.lang3.ObjectUtils;
 import org.json.JSONArray;
-import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.stream.IntStream;
 
 import javax.mail.AuthenticationFailedException;
@@ -67,10 +72,10 @@ import javax.mail.MessagingException;
 
 @SuppressLint("DefaultLocale")
 public class MainActivity2 extends AppCompatActivity {
-  private static final String MAIL_KEY_DEPRECATED = "mailjet.apiKey";
-  private static final String MAIL_SECRET_DEPRECATED = "mailjet.apiSecret";
-  private static final String MAIL_FROM_DEPRECATED = "mailjet.from";
-  private static final String MAIL_TO_DEPRECATED = "mailjet.to";
+  private static final String MAIL_KEY = "mailjet.apiKey";
+  private static final String MAIL_SECRET = "mailjet.apiSecret";
+  private static final String MAIL_FROM = "mailjet.from";
+  private static final String MAIL_TO = "mailjet.to";
   private static final String JAVAMAIL_USER = "javamail.user";
   private static final String JAVAMAIL_PASS = "javamail.pass";
   private static final String JAVAMAIL_FROM = "javamail.from";
@@ -104,6 +109,7 @@ public class MainActivity2 extends AppCompatActivity {
     setContentView(R.layout.activity_main2);
     mailjetClient();
     setRequestQueue();
+    findViewById(R.id.undoLast5Reminded).setEnabled(false);
   }
 
   private void setRequestQueue() {
@@ -114,8 +120,8 @@ public class MainActivity2 extends AppCompatActivity {
 
   public void mailjetClient() {
     if (mailjetClient == null) {
-      ClientOptions options = ClientOptions.builder().apiKey(loadProperty(MAIL_KEY_DEPRECATED))
-              .apiSecretKey(loadProperty(MAIL_SECRET_DEPRECATED)).build();
+      ClientOptions options = ClientOptions.builder().apiKey(loadProperty(MAIL_KEY))
+              .apiSecretKey(loadProperty(MAIL_SECRET)).build();
       mailjetClient = new MailjetClient(options);
     }
   }
@@ -127,11 +133,13 @@ public class MainActivity2 extends AppCompatActivity {
   }
 
   public void send5(View view) {
-    new SendRandomWordsAsyncTaskRunner().execute();
+    SendRandomWordsAsyncTaskRunner sendRandomWordsAsyncTaskRunner = new SendRandomWordsAsyncTaskRunner();
+    sendRandomWordsAsyncTaskRunner.undoLast5RemindedButton = findViewById(R.id.undoLast5Reminded);
+    sendRandomWordsAsyncTaskRunner.execute();
   }
 
-  public void testEmail(View view) {
-    SendTestEmailAsyncTaskRunner runner = new SendTestEmailAsyncTaskRunner();
+  public void undoLast5Reminded(View view) {
+    UndoRemindedAsyncTaskRunner runner = new UndoRemindedAsyncTaskRunner();
     runner.activity = this;
     runner.execute();
   }
@@ -151,29 +159,59 @@ public class MainActivity2 extends AppCompatActivity {
 
   /**
    * Mailjet api just goes into this bounce/restart/soft bounce thing.
+   * Update: Switched back. Meh...
    */
   private int sendEmailUsingMailJetClient(String subject, String body) {
-    String from = loadProperty(MAIL_FROM_DEPRECATED);
-    String to = loadProperty(MAIL_TO_DEPRECATED);
+    String from = loadProperty(MAIL_FROM);
+    String to = loadProperty(MAIL_TO);
     body = "<div style=\"font-size:20px\">" + body + "</div>";
-      MailjetRequest request = null;
-      try {
-          request = new MailjetRequest(resource).property(MESSAGES, new JSONArray().put(new JSONObject()
-              .put(FROM, new JSONObject().put("Email", from).put("Name", "Personal Dictionary")).put(TO, new JSONArray()
-                  .put(new JSONObject().put("Email", to).put("Name", "Personal Dictionary"))).put(SUBJECT, subject)
-              .put(HTMLPART, body)));
+//      MailjetRequest request = null;
+//      try {
+//          request = new MailjetRequest(resource).property(MESSAGES, new JSONArray().put(new JSONObject()
+//              .put(FROM, new JSONObject().put("Email", from).put("Name", "Personal Dictionary")).put(TO, new JSONArray()
+//                  .put(new JSONObject().put("Email", to).put("Name", "Personal Dictionary"))).put(SUBJECT, subject)
+//              .put(HTMLPART, body)));
+//
+//      MailjetResponse response = mailjetClient.post(request);
+//      return response.getStatus();
+//      }
+//      catch (JSONException | MailjetException e) {
+//          e.printStackTrace();
+//      }
+    TransactionalEmail message1 = TransactionalEmail
+            .builder()
+            .to(new SendContact(to, "Personal Dictionary"))
+            .from(new SendContact(from, "Personal Dictionary"))
+            .htmlPart(body)
+            .subject(subject)
+            .trackOpens(TrackOpens.ENABLED)
+            .build();
 
-      MailjetResponse response = mailjetClient.post(request);
-      return response.getStatus();
-      }
-      catch (JSONException | MailjetException e) {
-          e.printStackTrace();
-      }
-      return -1;
+    SendEmailsRequest request = SendEmailsRequest
+            .builder()
+            .message(message1) // you can add up to 50 messages per request
+            .build();
+    SendEmailsResponse response = null;
+    // act
+    try {
+      response = request.sendWith(mailjetClient);
+    } catch (MailjetException e) {
+      e.printStackTrace();
+    }
+    return noErrors(response) ? 200 : -1;
+  }
+
+  private static boolean noErrors(SendEmailsResponse response) {
+    Predicate<MessageResult[]> allSuccessAndNoErrors =
+            mr -> Arrays.stream(mr).map(MessageResult::getStatus).allMatch(SUCCESS::equals) &&
+                    Arrays.stream(mr).map(MessageResult::getErrors).allMatch(ObjectUtils::isEmpty);
+    return ofNullable(response).map(SendEmailsResponse::getMessages).filter(allSuccessAndNoErrors)
+            .isPresent();
   }
 
   /**
    * It doesn't return the status.
+   * And sometimes the email never gets sent.
    */
   private int sendEmailUsingJavaMailAPI(String subject, String body) {
     SendEmailAsyncTask email = new SendEmailAsyncTask();
@@ -208,7 +246,7 @@ public class MainActivity2 extends AppCompatActivity {
     return words.stream().map(MainActivity2::anchor).collect(toList());
   }
 
-  private void updateData(String query, Consumer<Integer> consumer, String action) {
+  private boolean updateData(String query, Consumer<Integer> consumer, String action) {
     System.out.println("Query " + query + ". Action " + MONGO_ACTION_UPDATE_MANY);
     RequestFuture<JSONObject> requestFuture = RequestFuture.newFuture();
     JsonObjectRequest request = new MongoJsonObjectRequest(POST, format(loadProperty(MONGODB_URI),
@@ -219,10 +257,12 @@ public class MainActivity2 extends AppCompatActivity {
       int matchedCount = Integer.parseInt(ans.getString("matchedCount"));
       int modifiedCount = Integer.parseInt(ans.getString("modifiedCount"));
       consumer.accept(modifiedCount);
+      return true;
     }
     catch (Exception e) {
       e.printStackTrace();
       runOnUiThread(() -> Toast.makeText(this, "Mongo's belly up!", LENGTH_LONG).show());
+      return false;
     }
   }
 
@@ -231,10 +271,10 @@ public class MainActivity2 extends AppCompatActivity {
   }
 
   private List<String> addReminderCount(List<String> words) {
+    List<String> _words = !words.isEmpty() ? ImmutableList.copyOf(words)
+            : ImmutableList.of("Seems like words to remind of has been exhausted?");
     List<String> remindedWords = executeQuery(getRemindedCountQuery(), MONGO_ACTION_AGGREGATE, "reminded");
-    words = !words.isEmpty() ? words
-        : ImmutableList.of("Seems like words to remind of has been exhausted?");
-    return ImmutableList.<String>builder().addAll(words).add("Reminders for '" + remindedWords.stream().findFirst()
+    return ImmutableList.<String>builder().addAll(_words).add("Reminders for '" + remindedWords.stream().findFirst()
         .orElse("(Something's wrong? Check Query!)") + "' words have been sent already.").build();
   }
 
@@ -268,9 +308,78 @@ public class MainActivity2 extends AppCompatActivity {
     }
   }
 
+  private class UndoRemindedAsyncTaskRunner extends AsyncTask<String, String, Void> {
+
+    MainActivity2 activity;
+
+    @Override
+    protected Void doInBackground(String... strings) {
+//      sendEmailUsingJavaMailAPI("Email server is up!", "Yes."); TODO
+//      sendEmailUsingMailJetClient("Email server is up!", "Yes."); TODO
+//      activity.displayMessage("Check email...");
+
+      try {
+        List<String> words = executeQuery(createQueryToPullLast5RemindedWords(), MONGO_ACTION_FIND_ALL, "word");
+        unsetLookupWords(words);
+      } catch (Exception e) {
+        runOnUiThread(() -> Toast.makeText(MainActivity2.this, "Not sure what went wrong.", LENGTH_LONG).show());
+      }
+      return null;
+    }
+
+    private String createQueryToPullLast5RemindedWords() {
+      String filter = ", \"filter\" : { \"remindedTime\" : { \"$ne\" : null } }";
+      String sort = ",\"sort\": { \"remindedTime\": -1 }";
+      String limit = ", \"limit\": 5";
+      return MONGO_PARTIAL_BODY + filter + sort + limit + CLOSE_CURLY;
+    }
+
+    private void unsetLookupWords(List<String> words) {
+      //must do an empty check!
+      if (words.isEmpty()) {
+        //If all word count and reminded = true count is same, (we will know this if words.isempty)
+        //then set all reminded = false;
+        runOnUiThread(() -> Toast.makeText(MainActivity2.this, "Can't find words to undo reminded!.", LENGTH_SHORT).show());
+        return;
+      }
+      String unsetRemindedFilterInQuery = getFilterInQuery(words);
+      String updateSubQuery = unsetRemindedTime();
+      String query = MONGO_PARTIAL_BODY + "," + unsetRemindedFilterInQuery + ", " + updateSubQuery + CLOSE_CURLY;
+      Consumer<Integer> consumer = documentsModified -> runOnUiThread(() -> Toast.makeText(MainActivity2.this, format("Undid %d words as reminded.", documentsModified), LENGTH_SHORT).show());
+      updateData(query, consumer, MONGO_ACTION_UPDATE_MANY);
+    }
+
+    @SuppressLint({"NewApi", "DefaultLocale"})
+    private String unsetRemindedTime() {
+      return format("\"update\": { \"$set\" : { \"reminded\" : %b },  \"$unset\" : { \"remindedTime\": \"\" } }", false);
+    }
+
+    @Override
+    protected void onPostExecute(Void v) {
+    }
+
+    @Override
+    protected void onPreExecute() {
+    }
+
+    @Override
+    protected void onProgressUpdate(String... text) {
+    }
+  }
+
+  private String getFilterInQuery(List<String> words) {
+    String in = "";
+    for (String word : words) {
+      in = in + format("\"%s\",", word);
+    }
+    in = in.replaceAll(",$", "");
+    return format("\"filter\": { \"word\" : { \"$in\" : [%s] } }", in);
+  }
+
 
   private class SendRandomWordsAsyncTaskRunner extends AsyncTask<String, String, Void> {
     List<ProgressDialog> progressDialogs = new ArrayList<>();
+    Button undoLast5RemindedButton;
 
     @Override
     protected Void doInBackground(String... strings) {
@@ -281,8 +390,8 @@ public class MainActivity2 extends AppCompatActivity {
       //3 if found, email them, and set reminded = true
       try {
         List<String> words = executeQuery(createQueryForRandomWords(), MONGO_ACTION_FIND_ALL, "word");
-        if (sendRandomWords(addReminderCount(anchor(words)))) {
-          markWordsAsReminded_(words);
+        if (sendRandomWords(addReminderCount(anchor(words))) && markWordsAsReminded(words)) {
+          undoLast5RemindedButton.setEnabled(true);
         }
       }
       catch (Exception e) {
@@ -291,32 +400,24 @@ public class MainActivity2 extends AppCompatActivity {
       return null;
     }
 
-    private void markWordsAsReminded_(List<String> words) {
-      //must to an empty check!
+    private boolean markWordsAsReminded(List<String> words) {
+      //must do an empty check!
       if (words.isEmpty()) {
         //If all word count and reminded = true count is same, (we will know this if words.isempty)
         //then set all reminded = false;
         runOnUiThread(() -> Toast.makeText(MainActivity2.this, "TODO: set all words to 'reminded=false'.", LENGTH_SHORT).show());
-        return;
+        return false;
       }
-      String filterSubQuery = getFilterQueryToUpdateReminded(words);
+      String markWordsAsRemindedFilterQuery = getFilterInQuery(words);
       String updateSubQuery = getUpdateQueryToUpdateReminded();
-      String query = MONGO_PARTIAL_BODY + "," + filterSubQuery + ", " + updateSubQuery + CLOSE_CURLY;
+      String query = MONGO_PARTIAL_BODY + "," + markWordsAsRemindedFilterQuery + ", " + updateSubQuery + CLOSE_CURLY;
       Consumer<Integer> consumer = documentsModified -> runOnUiThread(() -> Toast.makeText(MainActivity2.this, format("Marked %d words as reminded.", documentsModified), LENGTH_SHORT).show());
-      updateData(query, consumer, MONGO_ACTION_UPDATE_MANY);
+      return updateData(query, consumer, MONGO_ACTION_UPDATE_MANY);
     }
 
+    @SuppressLint({"NewApi", "DefaultLocale"})
     private String getUpdateQueryToUpdateReminded() {
-      return format("\"update\": { \"$set\" : { \"reminded\" : %b } }", true);
-    }
-
-    private String getFilterQueryToUpdateReminded(List<String> words) {
-      String in = "";
-      for (String word : words) {
-        in = in + format("\"%s\",", word);
-      }
-      in = in.replaceAll(",$", "");
-      return format("\"filter\": { \"word\" : { \"$in\" : [%s] } }", in);
+      return format("\"update\": { \"$set\" : { \"reminded\" : %b, \"remindedTime\" : {  \"$date\" : {  \"$numberLong\" : \"%d\"} } } }", true, Instant.now(Clock.system(ZoneId.of(CHICAGO))).toEpochMilli());
     }
 
     private boolean sendRandomWords(List<String> randomWords) {
