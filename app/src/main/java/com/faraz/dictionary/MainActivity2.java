@@ -81,6 +81,8 @@ public class MainActivity2 extends AppCompatActivity {
   private static final String JAVAMAIL_FROM = "javamail.from";
   private static final String JAVAMAIL_TO = "javamail.to";
 
+  private boolean defaultEmailProvider = true; //default email provider is MailJet. Other option is JavaMail.
+
   private Properties properties;
   private MailjetClient mailjetClient;
   private RequestQueue requestQueue;
@@ -134,6 +136,11 @@ public class MainActivity2 extends AppCompatActivity {
     runner.execute();
   }
 
+  public void switchEmailProvider(View view) {
+    defaultEmailProvider = !defaultEmailProvider;
+    displayMessage(format("Email Provider has been switched to %s", (defaultEmailProvider ? "MailJet" : "JavaMail")));
+  }
+
   public void send5(View view) {
     new SendRandomWordsAsyncTaskRunner().execute();
   }
@@ -157,6 +164,10 @@ public class MainActivity2 extends AppCompatActivity {
     return this.properties.getProperty(property);
   }
 
+  private int sendEmail(String subject, String body) {
+    return defaultEmailProvider ? sendEmailUsingMailJetClient(subject, body) : sendEmailUsingJavaMailAPI(subject, body);
+  }
+
   /**
    * Mailjet api just goes into this bounce/restart/soft bounce thing.
    * Update: Switched back. Meh...
@@ -165,19 +176,6 @@ public class MainActivity2 extends AppCompatActivity {
     String from = loadProperty(MAIL_FROM);
     String to = loadProperty(MAIL_TO);
     body = "<div style=\"font-size:20px\">" + body + "</div>";
-//      MailjetRequest request = null;
-//      try {
-//          request = new MailjetRequest(resource).property(MESSAGES, new JSONArray().put(new JSONObject()
-//              .put(FROM, new JSONObject().put("Email", from).put("Name", "Personal Dictionary")).put(TO, new JSONArray()
-//                  .put(new JSONObject().put("Email", to).put("Name", "Personal Dictionary"))).put(SUBJECT, subject)
-//              .put(HTMLPART, body)));
-//
-//      MailjetResponse response = mailjetClient.post(request);
-//      return response.getStatus();
-//      }
-//      catch (JSONException | MailjetException e) {
-//          e.printStackTrace();
-//      }
     TransactionalEmail message1 = TransactionalEmail
             .builder()
             .to(new SendContact(to, "Personal Dictionary"))
@@ -201,14 +199,6 @@ public class MainActivity2 extends AppCompatActivity {
     return noErrors(response) ? 200 : -1;
   }
 
-  private static boolean noErrors(SendEmailsResponse response) {
-    Predicate<MessageResult[]> allSuccessAndNoErrors =
-            mr -> Arrays.stream(mr).map(MessageResult::getStatus).allMatch(SUCCESS::equals) &&
-                    Arrays.stream(mr).map(MessageResult::getErrors).allMatch(ObjectUtils::isEmpty);
-    return ofNullable(response).map(SendEmailsResponse::getMessages).filter(allSuccessAndNoErrors)
-            .isPresent();
-  }
-
   /**
    * It doesn't return the status.
    * And sometimes the email never gets sent.
@@ -223,6 +213,14 @@ public class MainActivity2 extends AppCompatActivity {
     email.mail.set_subject(subject);
     email.execute();
     return 200; //TODO Cleanup: trying to support legacy code. Don't really need 200 I suppose.
+  }
+
+  private static boolean noErrors(SendEmailsResponse response) {
+    Predicate<MessageResult[]> allSuccessAndNoErrors =
+            mr -> Arrays.stream(mr).map(MessageResult::getStatus).allMatch(SUCCESS::equals) &&
+                    Arrays.stream(mr).map(MessageResult::getErrors).allMatch(ObjectUtils::isEmpty);
+    return ofNullable(response).map(SendEmailsResponse::getMessages).filter(allSuccessAndNoErrors)
+            .isPresent();
   }
 
   private List<String> executeQuery(String operation, String action, String extractionTarget) {
@@ -283,29 +281,13 @@ public class MainActivity2 extends AppCompatActivity {
     return MONGO_PARTIAL_BODY + pipeline + CLOSE_CURLY;
   }
 
-  private class SendTestEmailAsyncTaskRunner extends AsyncTask<String, String, Void> {
-
-    MainActivity2 activity;
-
-    @Override
-    protected Void doInBackground(String... strings) {
-//      sendEmailUsingJavaMailAPI("Email server is up!", "Yes.");
-      sendEmailUsingMailJetClient("Email server is up!", "Yes.");
-      activity.displayMessage("Check email...");
-      return null;
+  private String getFilterInQuery(List<String> words) {
+    String in = "";
+    for (String word : words) {
+      in = in + format("\"%s\",", word);
     }
-
-    @Override
-    protected void onPostExecute(Void v) {
-    }
-
-    @Override
-    protected void onPreExecute() {
-    }
-
-    @Override
-    protected void onProgressUpdate(String... text) {
-    }
+    in = in.replaceAll(",$", "");
+    return format("\"filter\": { \"word\" : { \"$in\" : [%s] } }", in);
   }
 
   private class UndoRemindedAsyncTaskRunner extends AsyncTask<String, String, Void> {
@@ -367,16 +349,6 @@ public class MainActivity2 extends AppCompatActivity {
     }
   }
 
-  private String getFilterInQuery(List<String> words) {
-    String in = "";
-    for (String word : words) {
-      in = in + format("\"%s\",", word);
-    }
-    in = in.replaceAll(",$", "");
-    return format("\"filter\": { \"word\" : { \"$in\" : [%s] } }", in);
-  }
-
-
   private class SendRandomWordsAsyncTaskRunner extends AsyncTask<String, String, Void> {
     List<ProgressDialog> progressDialogs = new ArrayList<>();
 
@@ -422,7 +394,7 @@ public class MainActivity2 extends AppCompatActivity {
     private boolean sendRandomWords(List<String> randomWords) {
       String subject = "Random Words";
       try {
-        if (sendEmailUsingMailJetClient(subject, addDivStyling(randomWords)) == 200) {
+        if (sendEmail(subject, addDivStyling(randomWords)) == 200) {
           runOnUiThread(() -> Toast.makeText(MainActivity2.this, format("'%d' random words sent.", Math.max(randomWords.size() - 1, 0)), LENGTH_SHORT).show());
           return true;
         }
@@ -511,7 +483,7 @@ public class MainActivity2 extends AppCompatActivity {
 
     private void sendBackupEmails(int index, List<String> backup_words) {
       String subject = format("Words Backup Part %d:", index + 1);
-        if (sendEmailUsingMailJetClient(subject, addDivStyling(backup_words)) == 200) {
+        if (sendEmail(subject, addDivStyling(backup_words)) == 200) {
           activity.displayMessage(format("'%d' words sent for backup.", Math.max(backup_words.size() - 1, 0)));
         } else {
           activity.displayMessage("Error occurred while backing up words.");
