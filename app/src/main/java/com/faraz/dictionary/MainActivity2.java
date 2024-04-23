@@ -109,7 +109,9 @@ public class MainActivity2 extends AppCompatActivity {
     setContentView(R.layout.activity_main2);
     mailjetClient();
     setRequestQueue();
-    findViewById(R.id.undoLast5Reminded).setEnabled(false);
+    Button undoLast5Reminded = findViewById(R.id.undoLast5Reminded);
+    undoLast5Reminded.setEnabled(false);
+    undoLast5Reminded.postDelayed(() -> undoLast5Reminded.setEnabled(true), 6000l);
   }
 
   private void setRequestQueue() {
@@ -133,9 +135,7 @@ public class MainActivity2 extends AppCompatActivity {
   }
 
   public void send5(View view) {
-    SendRandomWordsAsyncTaskRunner sendRandomWordsAsyncTaskRunner = new SendRandomWordsAsyncTaskRunner();
-    sendRandomWordsAsyncTaskRunner.undoLast5RemindedButton = findViewById(R.id.undoLast5Reminded);
-    sendRandomWordsAsyncTaskRunner.execute();
+    new SendRandomWordsAsyncTaskRunner().execute();
   }
 
   public void undoLast5Reminded(View view) {
@@ -379,7 +379,6 @@ public class MainActivity2 extends AppCompatActivity {
 
   private class SendRandomWordsAsyncTaskRunner extends AsyncTask<String, String, Void> {
     List<ProgressDialog> progressDialogs = new ArrayList<>();
-    Button undoLast5RemindedButton;
 
     @Override
     protected Void doInBackground(String... strings) {
@@ -390,8 +389,8 @@ public class MainActivity2 extends AppCompatActivity {
       //3 if found, email them, and set reminded = true
       try {
         List<String> words = executeQuery(createQueryForRandomWords(), MONGO_ACTION_FIND_ALL, "word");
-        if (sendRandomWords(addReminderCount(anchor(words))) && markWordsAsReminded(words)) {
-          undoLast5RemindedButton.setEnabled(true);
+        if (sendRandomWords(addReminderCount(anchor(words)))) {
+          markWordsAsReminded(words);
         }
       }
       catch (Exception e) {
