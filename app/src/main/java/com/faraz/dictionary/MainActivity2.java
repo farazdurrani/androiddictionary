@@ -24,6 +24,7 @@ import static java.util.stream.Collectors.toList;
 import android.annotation.SuppressLint;
 import android.app.Dialog;
 import android.app.ProgressDialog;
+import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
@@ -141,8 +142,20 @@ public class MainActivity2 extends AppCompatActivity {
     displayMessage(format("Email Provider has been switched to %s", (defaultEmailProvider ? "MailJet" : "JavaMail")));
   }
 
-  public void send5(View view) {
-    new SendRandomWordsAsyncTaskRunner().execute();
+  public void send5Activity(View view) {
+    Intent intent = new Intent(this, MainActivity3.class);
+    AsyncTask.execute(() -> {
+      List<String> words = addReminderCount(executeQuery(createQueryForRandomWords(), MONGO_ACTION_FIND_ALL, "word"));
+      intent.putExtra("words", words.stream().toArray(String[]::new));
+      startActivity(intent);
+    });
+//    new SendRandomWordsAsyncTaskRunner().execute(); //TODO delete?
+  }
+
+  private String createQueryForRandomWords() {
+    String filter = ",\"filter\": { \"reminded\": false }";
+    String limit = ", \"limit\": 5";
+    return MONGO_PARTIAL_BODY + filter + limit + CLOSE_CURLY;
   }
 
   public void undoLast5Reminded(View view) {
@@ -240,7 +253,7 @@ public class MainActivity2 extends AppCompatActivity {
     throw new RuntimeException();
   }
 
-  private List<String> anchor(List<String> words) {
+  public static List<String> anchor(List<String> words) {
     return words.stream().map(MainActivity2::anchor).collect(toList());
   }
 
@@ -276,7 +289,7 @@ public class MainActivity2 extends AppCompatActivity {
         .orElse("(Something's wrong? Check Query!)") + "' words have been sent already.").build();
   }
 
-  private String getRemindedCountQuery() {
+  public static String getRemindedCountQuery() {
     String pipeline = ", \"pipeline\": [ { \"$match\": { \"reminded\": true } }, { \"$count\": \"reminded\" } ]";
     return MONGO_PARTIAL_BODY + pipeline + CLOSE_CURLY;
   }
@@ -349,6 +362,7 @@ public class MainActivity2 extends AppCompatActivity {
     }
   }
 
+  @Deprecated
   private class SendRandomWordsAsyncTaskRunner extends AsyncTask<String, String, Void> {
     List<ProgressDialog> progressDialogs = new ArrayList<>();
 
@@ -406,12 +420,6 @@ public class MainActivity2 extends AppCompatActivity {
         runOnUiThread(() -> Toast.makeText(MainActivity2.this, "Error occurred while sending random words.", LENGTH_SHORT).show());
       }
       return false;
-    }
-
-    private String createQueryForRandomWords() {
-      String filter = ",\"filter\": { \"reminded\": false }";
-      String limit = ", \"limit\": 5";
-      return MONGO_PARTIAL_BODY + filter + limit + CLOSE_CURLY;
     }
 
     @Override
