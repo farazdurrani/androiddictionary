@@ -17,6 +17,7 @@ import static org.apache.commons.lang3.StringUtils.capitalize;
 import static java.lang.String.format;
 import static java.lang.String.join;
 import static java.lang.System.currentTimeMillis;
+import static java.util.Arrays.asList;
 import static java.util.Collections.reverse;
 import static java.util.Optional.ofNullable;
 import static java.util.stream.Collectors.toList;
@@ -84,9 +85,10 @@ public class MainActivity2 extends AppCompatActivity {
 
   private boolean defaultEmailProvider = true; //default email provider is MailJet. Other option is JavaMail.
 
-  private Properties properties;
   private MailjetClient mailjetClient;
   private RequestQueue requestQueue;
+  private Properties properties;
+  private ApiService apiService;
 
   public static String anchor(String word) {
     return "<a href='https://www.google.com/search?q=define: " + word + "' target='_blank'>" + capitalize(word) + "</a>";
@@ -112,6 +114,7 @@ public class MainActivity2 extends AppCompatActivity {
     setContentView(R.layout.activity_main2);
     mailjetClient();
     setRequestQueue();
+    apiService = new ApiService(requestQueue, properties, getBaseContext());
     Button undoLast5Reminded = findViewById(R.id.undoLast5Reminded);
     undoLast5Reminded.setEnabled(false);
     undoLast5Reminded.postDelayed(() -> undoLast5Reminded.setEnabled(true), 6000l);
@@ -143,10 +146,29 @@ public class MainActivity2 extends AppCompatActivity {
   }
 
   public void send5Activity(View view) {
+
+//    if (true) { //todo delete
+//      AsyncTask.execute(() -> {
+//        ApiService service = new ApiService(requestQueue, properties, getBaseContext());
+//        String markWordsAsRemindedFilterQuery = getFilterInQuery(asList("bifurcation", "facade"));
+//        String updateSubQuery = getUpdateQueryToUpdateReminded();
+//        String query = MONGO_PARTIAL_BODY + "," + markWordsAsRemindedFilterQuery + ", " + updateSubQuery + CLOSE_CURLY;
+//        Consumer<Integer> consumer = documentsModified -> runOnUiThread(() -> Toast.makeText(MainActivity2.this, format("Marked %d words as reminded.", documentsModified), LENGTH_SHORT).show());
+//        Consumer<String> exceptionConsumer = message -> runOnUiThread(() -> Toast.makeText(MainActivity2.this, message, LENGTH_SHORT).show());
+//        service.updateData(query, consumer, MONGO_ACTION_UPDATE_MANY, exceptionConsumer);
+//        return;
+//      });
+//    }
+//    if(true) {
+//      return;
+//    }
     Intent intent = new Intent(this, MainActivity3.class);
     AsyncTask.execute(() -> {
-      List<String> words = addReminderCount(executeQuery(createQueryForRandomWords(), MONGO_ACTION_FIND_ALL, "word"));
-      intent.putExtra("words", words.stream().toArray(String[]::new));
+      Consumer<String> exceptionConsumer = message -> runOnUiThread(() -> Toast.makeText(MainActivity2.this, message, LENGTH_SHORT).show());
+      List<String> words = apiService.executeQuery(createQueryForRandomWords(), MONGO_ACTION_FIND_ALL, "word", exceptionConsumer);
+      intent.putExtra("words", words.toArray(new String[0]));
+      String remindedWordCount = apiService.executeQuery(getRemindedCountQuery(), MONGO_ACTION_AGGREGATE, "reminded", exceptionConsumer).stream().findFirst().get();
+      intent.putExtra("remindedWordCount", remindedWordCount);
       startActivity(intent);
     });
 //    new SendRandomWordsAsyncTaskRunner().execute(); //TODO delete?
@@ -236,46 +258,30 @@ public class MainActivity2 extends AppCompatActivity {
             .isPresent();
   }
 
-  private List<String> executeQuery(String operation, String action, String extractionTarget) {
-    System.out.println("Query " + operation + ". action: " + action);
-    RequestFuture<JSONObject> requestFuture = RequestFuture.newFuture();
-    JsonObjectRequest request = new MongoJsonObjectRequest(POST, format(loadProperty(MONGODB_URI), action),
-        requestFuture, requestFuture, operation, loadProperty(MONGODB_API_KEY));
-    requestQueue.add(request);
-    try {
-      JSONArray ans = requestFuture.get().getJSONArray("documents");
-      return IntStream.range(0, ans.length()).mapToObj(i -> getItem(i, ans, extractionTarget)).collect(toList());
-    }
-    catch (Exception e) {
-      e.printStackTrace();
-      runOnUiThread(() -> Toast.makeText(this, "Mongo's gone belly up!", LENGTH_LONG).show());
-    }
-    throw new RuntimeException();
-  }
-
   public static List<String> anchor(List<String> words) {
     return words.stream().map(MainActivity2::anchor).collect(toList());
   }
 
-  private boolean updateData(String query, Consumer<Integer> consumer, String action) {
-    System.out.println("Query " + query + ". Action " + MONGO_ACTION_UPDATE_MANY);
-    RequestFuture<JSONObject> requestFuture = RequestFuture.newFuture();
-    JsonObjectRequest request = new MongoJsonObjectRequest(POST, format(loadProperty(MONGODB_URI),
-        action), requestFuture, requestFuture, query, loadProperty(MONGODB_API_KEY));
-    requestQueue.add(request);
-    try {
-      JSONObject ans = requestFuture.get();
-      int matchedCount = Integer.parseInt(ans.getString("matchedCount"));
-      int modifiedCount = Integer.parseInt(ans.getString("modifiedCount"));
-      consumer.accept(modifiedCount);
-      return true;
-    }
-    catch (Exception e) {
-      e.printStackTrace();
-      runOnUiThread(() -> Toast.makeText(this, "Mongo's belly up!", LENGTH_LONG).show());
-      return false;
-    }
-  }
+  //TODO moved to ApiService
+//  private boolean updateData(String query, Consumer<Integer> consumer, String action) {
+//    System.out.println("Query " + query + ". Action " + MONGO_ACTION_UPDATE_MANY);
+//    RequestFuture<JSONObject> requestFuture = RequestFuture.newFuture();
+//    JsonObjectRequest request = new MongoJsonObjectRequest(POST, format(loadProperty(MONGODB_URI),
+//        action), requestFuture, requestFuture, query, loadProperty(MONGODB_API_KEY));
+//    requestQueue.add(request);
+//    try {
+//      JSONObject ans = requestFuture.get();
+//      int matchedCount = Integer.parseInt(ans.getString("matchedCount"));
+//      int modifiedCount = Integer.parseInt(ans.getString("modifiedCount"));
+//      consumer.accept(modifiedCount);
+//      return true;
+//    }
+//    catch (Exception e) {
+//      e.printStackTrace();
+//      runOnUiThread(() -> Toast.makeText(this, "Mongo's belly up!", LENGTH_LONG).show());
+//      return false;
+//    }
+//  }
 
   public void displayMessage(String message) {
     runOnUiThread(() -> Toast.makeText(this, message, LENGTH_LONG).show());
@@ -284,7 +290,8 @@ public class MainActivity2 extends AppCompatActivity {
   private List<String> addReminderCount(List<String> words) {
     List<String> _words = !words.isEmpty() ? ImmutableList.copyOf(words)
             : ImmutableList.of("Seems like words to remind of has been exhausted?");
-    List<String> remindedWords = executeQuery(getRemindedCountQuery(), MONGO_ACTION_AGGREGATE, "reminded");
+    Consumer<String> exceptionConsumer = message -> runOnUiThread(() -> Toast.makeText(MainActivity2.this, message, LENGTH_SHORT).show());
+    List<String> remindedWords = apiService.executeQuery(getRemindedCountQuery(), MONGO_ACTION_AGGREGATE, "reminded", exceptionConsumer);
     return ImmutableList.<String>builder().addAll(_words).add("Reminders for '" + remindedWords.stream().findFirst()
         .orElse("(Something's wrong? Check Query!)") + "' words have been sent already.").build();
   }
@@ -294,7 +301,7 @@ public class MainActivity2 extends AppCompatActivity {
     return MONGO_PARTIAL_BODY + pipeline + CLOSE_CURLY;
   }
 
-  private String getFilterInQuery(List<String> words) {
+  public static String getFilterInQuery(List<String> words) {
     String in = "";
     for (String word : words) {
       in = in + format("\"%s\",", word);
@@ -314,7 +321,8 @@ public class MainActivity2 extends AppCompatActivity {
 //      activity.displayMessage("Check email...");
 
       try {
-        List<String> words = executeQuery(createQueryToPullLast5RemindedWords(), MONGO_ACTION_FIND_ALL, "word");
+        Consumer<String> exceptionConsumer = message -> runOnUiThread(() -> Toast.makeText(MainActivity2.this, message, LENGTH_SHORT).show());
+        List<String> words = apiService.executeQuery(createQueryToPullLast5RemindedWords(), MONGO_ACTION_FIND_ALL, "word", exceptionConsumer);
         unsetLookupWords(words);
       } catch (Exception e) {
         runOnUiThread(() -> Toast.makeText(MainActivity2.this, "Not sure what went wrong.", LENGTH_LONG).show());
@@ -341,7 +349,8 @@ public class MainActivity2 extends AppCompatActivity {
       String updateSubQuery = unsetRemindedTime();
       String query = MONGO_PARTIAL_BODY + "," + unsetRemindedFilterInQuery + ", " + updateSubQuery + CLOSE_CURLY;
       Consumer<Integer> consumer = documentsModified -> runOnUiThread(() -> Toast.makeText(MainActivity2.this, format("Undid %d words as reminded.", documentsModified), LENGTH_SHORT).show());
-      updateData(query, consumer, MONGO_ACTION_UPDATE_MANY);
+      Consumer<String> exceptionConsumer = message -> runOnUiThread(() -> Toast.makeText(MainActivity2.this, message, LENGTH_SHORT).show());
+      apiService.updateData(query, consumer, MONGO_ACTION_UPDATE_MANY, exceptionConsumer);
     }
 
     @SuppressLint({"NewApi", "DefaultLocale"})
@@ -362,8 +371,8 @@ public class MainActivity2 extends AppCompatActivity {
     }
   }
 
-  @Deprecated
-  private class SendRandomWordsAsyncTaskRunner extends AsyncTask<String, String, Void> {
+
+  public class SendRandomWordsAsyncTaskRunner extends AsyncTask<String, String, Void> {
     List<ProgressDialog> progressDialogs = new ArrayList<>();
 
     @Override
@@ -374,7 +383,8 @@ public class MainActivity2 extends AppCompatActivity {
       //2 if no words found, set all words to false
       //3 if found, email them, and set reminded = true
       try {
-        List<String> words = executeQuery(createQueryForRandomWords(), MONGO_ACTION_FIND_ALL, "word");
+        Consumer<String> exceptionConsumer = message -> runOnUiThread(() -> Toast.makeText(MainActivity2.this, message, LENGTH_SHORT).show());
+        List<String> words = apiService.executeQuery(createQueryForRandomWords(), MONGO_ACTION_FIND_ALL, "word", exceptionConsumer);
         if (sendRandomWords(addReminderCount(anchor(words)))) {
           markWordsAsReminded(words);
         }
@@ -385,24 +395,20 @@ public class MainActivity2 extends AppCompatActivity {
       return null;
     }
 
-    private boolean markWordsAsReminded(List<String> words) {
+    private void markWordsAsReminded(List<String> words) {
       //must do an empty check!
       if (words.isEmpty()) {
         //If all word count and reminded = true count is same, (we will know this if words.isempty)
         //then set all reminded = false;
         runOnUiThread(() -> Toast.makeText(MainActivity2.this, "TODO: set all words to 'reminded=false'.", LENGTH_SHORT).show());
-        return false;
+        return;
       }
       String markWordsAsRemindedFilterQuery = getFilterInQuery(words);
       String updateSubQuery = getUpdateQueryToUpdateReminded();
       String query = MONGO_PARTIAL_BODY + "," + markWordsAsRemindedFilterQuery + ", " + updateSubQuery + CLOSE_CURLY;
       Consumer<Integer> consumer = documentsModified -> runOnUiThread(() -> Toast.makeText(MainActivity2.this, format("Marked %d words as reminded.", documentsModified), LENGTH_SHORT).show());
-      return updateData(query, consumer, MONGO_ACTION_UPDATE_MANY);
-    }
-
-    @SuppressLint({"NewApi", "DefaultLocale"})
-    private String getUpdateQueryToUpdateReminded() {
-      return format("\"update\": { \"$set\" : { \"reminded\" : %b, \"remindedTime\" : {  \"$date\" : {  \"$numberLong\" : \"%d\"} } } }", true, Instant.now(Clock.system(ZoneId.of(CHICAGO))).toEpochMilli());
+      Consumer<String> exceptionConsumer = message -> runOnUiThread(() -> Toast.makeText(MainActivity2.this, message, LENGTH_SHORT).show());
+      apiService.updateData(query, consumer, MONGO_ACTION_UPDATE_MANY, exceptionConsumer);
     }
 
     private boolean sendRandomWords(List<String> randomWords) {
@@ -438,6 +444,11 @@ public class MainActivity2 extends AppCompatActivity {
     protected void onProgressUpdate(String... text) {
       progressDialogs.add(show(MainActivity2.this, "ProgressDialog", text[0]));
     }
+  }
+
+  @SuppressLint({"NewApi", "DefaultLocale"})
+  public static String getUpdateQueryToUpdateReminded() {
+    return format("\"update\": { \"$set\" : { \"reminded\" : %b, \"remindedTime\" : {  \"$date\" : {  \"$numberLong\" : \"%d\"} } } }", true, Instant.now(Clock.system(ZoneId.of(CHICAGO))).toEpochMilli());
   }
 
   private class BackupDataAsyncTaskRunner extends AsyncTask<String, String, Void> {
