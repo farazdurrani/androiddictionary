@@ -146,22 +146,6 @@ public class MainActivity2 extends AppCompatActivity {
   }
 
   public void send5Activity(View view) {
-
-//    if (true) { //todo delete
-//      AsyncTask.execute(() -> {
-//        ApiService service = new ApiService(requestQueue, properties, getBaseContext());
-//        String markWordsAsRemindedFilterQuery = getFilterInQuery(asList("bifurcation", "facade"));
-//        String updateSubQuery = getUpdateQueryToUpdateReminded();
-//        String query = MONGO_PARTIAL_BODY + "," + markWordsAsRemindedFilterQuery + ", " + updateSubQuery + CLOSE_CURLY;
-//        Consumer<Integer> consumer = documentsModified -> runOnUiThread(() -> Toast.makeText(MainActivity2.this, format("Marked %d words as reminded.", documentsModified), LENGTH_SHORT).show());
-//        Consumer<String> exceptionConsumer = message -> runOnUiThread(() -> Toast.makeText(MainActivity2.this, message, LENGTH_SHORT).show());
-//        service.updateData(query, consumer, MONGO_ACTION_UPDATE_MANY, exceptionConsumer);
-//        return;
-//      });
-//    }
-//    if(true) {
-//      return;
-//    }
     Intent intent = new Intent(this, MainActivity3.class);
     AsyncTask.execute(() -> {
       Consumer<String> exceptionConsumer = message -> runOnUiThread(() -> Toast.makeText(MainActivity2.this, message, LENGTH_SHORT).show());

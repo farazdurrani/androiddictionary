@@ -7,7 +7,7 @@
     tools:context=".MainActivity3">
 
     <ListView
-        android:id="@+id/idontknowrenameit"
+        android:id="@+id/wordsList"
         android:layout_width="412dp"
         android:layout_height="576dp"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -22,7 +22,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/idontknowrenameit"
+        app:layout_constraintTop_toBottomOf="@+id/wordsList"
         app:layout_constraintVertical_bias="0.218" />
 
 
