@@ -25,5 +25,18 @@
         app:layout_constraintTop_toBottomOf="@+id/wordsList"
         app:layout_constraintVertical_bias="0.218" />
 
+    <Button
+        android:id="@+id/markAsReminded"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="done reminding"
+        android:onClick="markWordsAsReminded"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.861"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/remindedWordsCount"
+        app:layout_constraintVertical_bias="0.0" />
+
 
 </androidx.constraintlayout.widget.ConstraintLayout>

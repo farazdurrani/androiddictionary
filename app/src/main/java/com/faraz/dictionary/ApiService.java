@@ -1,6 +1,5 @@
 package com.faraz.dictionary;
 
-import static android.widget.Toast.LENGTH_LONG;
 import static com.android.volley.Request.Method.POST;
 import static com.faraz.dictionary.MainActivity.MONGODB_API_KEY;
 import static com.faraz.dictionary.MainActivity.MONGODB_URI;
@@ -10,7 +9,6 @@ import static java.lang.String.format;
 import static java.util.stream.Collectors.toList;
 
 import android.content.Context;
-import android.widget.Toast;
 
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.JsonObjectRequest;
@@ -19,6 +17,7 @@ import com.android.volley.toolbox.RequestFuture;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
 import java.util.function.Consumer;
@@ -62,12 +61,11 @@ public class ApiService {
         try {
             JSONArray ans = requestFuture.get().getJSONArray("documents");
             return IntStream.range(0, ans.length()).mapToObj(i -> getItem(i, ans, extractionTarget)).collect(toList());
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             e.printStackTrace();
             exceptionConsumer.accept("Mongo's gone belly up!");
         }
-        throw new RuntimeException();
+        return Collections.emptyList();
     }
 
     private String loadProperty(String property) {
