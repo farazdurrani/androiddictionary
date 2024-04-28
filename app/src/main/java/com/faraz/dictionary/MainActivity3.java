@@ -60,7 +60,7 @@ public class MainActivity3 extends AppCompatActivity {
             Consumer<String> exceptionConsumer = message -> runOnUiThread(() -> Toast.makeText(context, message, LENGTH_SHORT).show());
             words = apiService.executeQuery(createQueryForRandomWords(), MONGO_ACTION_FIND_ALL, "word",
                     exceptionConsumer).toArray(new String[0]);
-            ArrayAdapter<String> adapter = new ArrayAdapter<>(context, android.R.layout.simple_list_item_1, words);
+            ArrayAdapter<String> adapter = new ArrayAdapter<>(context, R.layout.custom_layout, words);
             runOnUiThread(() -> listView.setAdapter(adapter));
 
             remindedWordCount = apiService.executeQuery(getRemindedCountQuery(), MONGO_ACTION_AGGREGATE,

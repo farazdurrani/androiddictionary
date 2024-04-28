@@ -8,8 +8,8 @@
 
     <ListView
         android:id="@+id/wordsList"
-        android:layout_width="412dp"
-        android:layout_height="576dp"
+        android:layout_width="431dp"
+        android:layout_height="509dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
@@ -33,10 +33,10 @@
         android:text="Next 5"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.857"
+        app:layout_constraintHorizontal_bias="0.834"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/remindedWordsCount"
-        app:layout_constraintVertical_bias="0.03" />
+        app:layout_constraintVertical_bias="0.059" />
 
     <Button
         android:id="@+id/undoRemind"
@@ -48,10 +48,10 @@
         android:text="Undo remind"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@+id/markAsReminded"
-        app:layout_constraintHorizontal_bias="0.503"
+        app:layout_constraintHorizontal_bias="0.361"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/remindedWordsCount"
-        app:layout_constraintVertical_bias="0.0" />
+        app:layout_constraintVertical_bias="0.063" />
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>
