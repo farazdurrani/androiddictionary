@@ -230,7 +230,8 @@ public class MainActivity2 extends AppCompatActivity {
 
     @SuppressLint({"NewApi", "DefaultLocale"})
     public static String getUpdateQueryToUpdateReminded() {
-        return format("\"update\": { \"$set\" : { \"reminded\" : %b, \"remindedTime\" : {  \"$date\" : {  \"$numberLong\" : \"%d\"} } } }", true, Instant.now(Clock.system(ZoneId.of(CHICAGO))).toEpochMilli());
+        return format("\"update\": { \"$set\" : { \"reminded\" : %b, \"remindedTime\" : {  \"$date\" : {  \"$numberLong\" : \"%d\"} } } }",
+                true, Instant.now(Clock.system(ZoneId.of(CHICAGO))).toEpochMilli());
     }
 
     private class BackupDataAsyncTaskRunner extends AsyncTask<String, String, Void> {
