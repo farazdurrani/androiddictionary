@@ -17,23 +17,38 @@
 
     <TextView
         android:id="@+id/remindedWordsCount"
-        android:layout_width="323dp"
-        android:layout_height="65dp"
+        android:layout_width="319dp"
+        android:layout_height="27dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/wordsList"
-        app:layout_constraintVertical_bias="0.218" />
+        app:layout_constraintVertical_bias="0.096" />
 
     <Button
         android:id="@+id/markAsReminded"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="done reminding"
         android:onClick="markWordsAsReminded"
+        android:text="Next 5"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.861"
+        app:layout_constraintHorizontal_bias="0.857"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/remindedWordsCount"
+        app:layout_constraintVertical_bias="0.03" />
+
+    <Button
+        android:id="@+id/undoRemind"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:layout_marginBottom="48dp"
+        android:onClick="undoRemind"
+        android:text="Undo remind"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/markAsReminded"
+        app:layout_constraintHorizontal_bias="0.503"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/remindedWordsCount"
         app:layout_constraintVertical_bias="0.0" />

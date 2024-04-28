@@ -20,27 +20,16 @@
     app:layout_constraintVertical_bias="0.5" />
 
   <Button
-    android:id="@+id/send5"
+    android:id="@+id/random5"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
-    android:text="Send 5!"
-    android:onClick="send5Activity"
+    android:text="Random 5!"
+    android:onClick="random5Activity"
     app:layout_constraintBottom_toBottomOf="parent"
     app:layout_constraintEnd_toEndOf="parent"
     app:layout_constraintHorizontal_bias="0.498"
     app:layout_constraintStart_toStartOf="parent"
     app:layout_constraintTop_toBottomOf="@+id/button" />
-
-  <Button
-      android:id="@+id/undoLast5Reminded"
-      android:layout_width="wrap_content"
-      android:layout_height="wrap_content"
-      android:text="Undo Last 5 reminded"
-      android:onClick="undoLast5Reminded"
-      app:layout_constraintBottom_toTopOf="@+id/button"
-      app:layout_constraintEnd_toEndOf="parent"
-      app:layout_constraintStart_toStartOf="parent"
-      app:layout_constraintTop_toTopOf="parent" />
 
   <Button
       android:id="@+id/switchEmailProvider"

@@ -2,14 +2,12 @@ package com.faraz.dictionary;
 
 import static android.app.ProgressDialog.show;
 import static android.widget.Toast.LENGTH_LONG;
-import static android.widget.Toast.LENGTH_SHORT;
 import static com.android.volley.Request.Method.POST;
 import static com.faraz.dictionary.MainActivity.CHICAGO;
 import static com.faraz.dictionary.MainActivity.CLOSE_CURLY;
 import static com.faraz.dictionary.MainActivity.MONGODB_API_KEY;
 import static com.faraz.dictionary.MainActivity.MONGODB_URI;
 import static com.faraz.dictionary.MainActivity.MONGO_ACTION_FIND_ALL;
-import static com.faraz.dictionary.MainActivity.MONGO_ACTION_UPDATE_MANY;
 import static com.faraz.dictionary.MainActivity.MONGO_PARTIAL_BODY;
 import static com.mailjet.client.transactional.response.SentMessageStatus.SUCCESS;
 import static org.apache.commons.lang3.StringUtils.capitalize;
@@ -28,7 +26,6 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
-import android.widget.Button;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -63,7 +60,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
-import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.IntStream;
 
@@ -86,7 +82,7 @@ public class MainActivity2 extends AppCompatActivity {
     private MailjetClient mailjetClient;
     private RequestQueue requestQueue;
     private Properties properties;
-    private ApiService apiService;
+    private ApiService apiService; //todo improvement. Use this to make called. Move all the API calling to this class.
 
     public static String anchor(String word) {
         return "<a href='https://www.google.com/search?q=define: " + word + "' target='_blank'>" + capitalize(word) + "</a>";
@@ -112,9 +108,6 @@ public class MainActivity2 extends AppCompatActivity {
         mailjetClient();
         setRequestQueue();
         apiService = new ApiService(requestQueue, properties, getBaseContext());
-        Button undoLast5Reminded = findViewById(R.id.undoLast5Reminded);
-        undoLast5Reminded.setEnabled(false);
-        undoLast5Reminded.postDelayed(() -> undoLast5Reminded.setEnabled(true), 6000L);
     }
 
     private void setRequestQueue() {
@@ -142,15 +135,9 @@ public class MainActivity2 extends AppCompatActivity {
         displayMessage(format("Email Provider has been switched to %s", (defaultEmailProvider ? "MailJet" : "JavaMail")));
     }
 
-    public void send5Activity(View view) {
+    public void random5Activity(View view) {
         Intent intent = new Intent(this, MainActivity3.class);
         startActivity(intent);
-    }
-
-    public void undoLast5Reminded(View view) {
-        UndoRemindedAsyncTaskRunner runner = new UndoRemindedAsyncTaskRunner();
-        runner.activity = this;
-        runner.execute();
     }
 
     private String loadProperty(String property) {
@@ -223,7 +210,7 @@ public class MainActivity2 extends AppCompatActivity {
         return ofNullable(response).map(SendEmailsResponse::getMessages).filter(allSuccessAndNoErrors)
                 .isPresent();
     }
-
+    //TODO DON'T DELETE
     public static List<String> anchor(List<String> words) {
         return words.stream().map(MainActivity2::anchor).collect(toList());
     }
@@ -239,67 +226,6 @@ public class MainActivity2 extends AppCompatActivity {
         }
         in = in.replaceAll(",$", "");
         return format("\"filter\": { \"word\" : { \"$in\" : [%s] } }", in);
-    }
-
-    private class UndoRemindedAsyncTaskRunner extends AsyncTask<String, String, Void> {
-
-        MainActivity2 activity;
-
-        @Override
-        protected Void doInBackground(String... strings) {
-//      sendEmailUsingJavaMailAPI("Email server is up!", "Yes."); TODO
-//      sendEmailUsingMailJetClient("Email server is up!", "Yes."); TODO
-//      activity.displayMessage("Check email...");
-
-            try {
-                Consumer<String> exceptionConsumer = message -> runOnUiThread(() -> Toast.makeText(MainActivity2.this, message, LENGTH_SHORT).show());
-                List<String> words = apiService.executeQuery(createQueryToPullLast5RemindedWords(), MONGO_ACTION_FIND_ALL, "word", exceptionConsumer);
-                unsetLookupWords(words);
-            } catch (Exception e) {
-                runOnUiThread(() -> Toast.makeText(MainActivity2.this, "Not sure what went wrong.", LENGTH_LONG).show());
-            }
-            return null;
-        }
-
-        private String createQueryToPullLast5RemindedWords() {
-            String filter = ", \"filter\" : { \"remindedTime\" : { \"$ne\" : null } }";
-            String sort = ",\"sort\": { \"remindedTime\": -1 }";
-            String limit = ", \"limit\": 5";
-            return MONGO_PARTIAL_BODY + filter + sort + limit + CLOSE_CURLY;
-        }
-
-        private void unsetLookupWords(List<String> words) {
-            //must do an empty check!
-            if (words.isEmpty()) {
-                //If all word count and reminded = true count is same, (we will know this if words.isempty)
-                //then set all reminded = false;
-                runOnUiThread(() -> Toast.makeText(MainActivity2.this, "Can't find words to undo reminded!.", LENGTH_SHORT).show());
-                return;
-            }
-            String unsetRemindedFilterInQuery = getFilterInQuery(words);
-            String updateSubQuery = unsetRemindedTime();
-            String query = MONGO_PARTIAL_BODY + "," + unsetRemindedFilterInQuery + ", " + updateSubQuery + CLOSE_CURLY;
-            Consumer<Integer> consumer = documentsModified -> runOnUiThread(() -> Toast.makeText(MainActivity2.this, format("Undid '%d' words as reminded.", documentsModified), LENGTH_SHORT).show());
-            Consumer<String> exceptionConsumer = message -> runOnUiThread(() -> Toast.makeText(MainActivity2.this, message, LENGTH_SHORT).show());
-            apiService.updateData(query, consumer, MONGO_ACTION_UPDATE_MANY, exceptionConsumer);
-        }
-
-        @SuppressLint({"NewApi", "DefaultLocale"})
-        private String unsetRemindedTime() {
-            return format("\"update\": { \"$set\" : { \"reminded\" : %b },  \"$unset\" : { \"remindedTime\": \"\" } }", false);
-        }
-
-        @Override
-        protected void onPostExecute(Void v) {
-        }
-
-        @Override
-        protected void onPreExecute() {
-        }
-
-        @Override
-        protected void onProgressUpdate(String... text) {
-        }
     }
 
     @SuppressLint({"NewApi", "DefaultLocale"})
