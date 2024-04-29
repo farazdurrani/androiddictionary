@@ -52,19 +52,18 @@ public class MainActivity3 extends AppCompatActivity {
         apiService = new ApiService(requestQueue(), properties());
         listView = findViewById(R.id.wordsList);
         remindedWordCountView = findViewById(R.id.remindedWordsCount);
-        AsyncTask.execute(() -> fetch5Words(true));
+        AsyncTask.execute(() -> {
+            toggleButtons(false);
+            fetch5Words(true);
+            toggleButtons(true);
+        });
     }
 
     private void fetch5Words(boolean setItemClickListener) {
-        runOnUiThread(() -> findViewById(R.id.markAsReminded).setEnabled(false));
-        runOnUiThread(() -> findViewById(R.id.undoRemind).setEnabled(false));
         words = apiService.executeQuery(createQueryForRandomWords(), MONGO_ACTION_FIND_ALL, "word",
                 exceptionConsumer()).toArray(new String[0]);
         ArrayAdapter<String> adapter = new ArrayAdapter<>(context, R.layout.custom_layout, words);
         runOnUiThread(() -> listView.setAdapter(adapter));
-
-        runOnUiThread(() -> findViewById(R.id.markAsReminded).setEnabled(true));
-        runOnUiThread(() -> findViewById(R.id.undoRemind).setEnabled(true));
 
         String remindedWordCount = apiService.executeQuery(getRemindedCountQuery(), MONGO_ACTION_AGGREGATE,
                 "reminded", exceptionConsumer()).stream().findFirst().orElse("Can't find none.");
@@ -79,13 +78,20 @@ public class MainActivity3 extends AppCompatActivity {
         }
     }
 
+    private void toggleButtons(boolean visible) {
+        runOnUiThread(() -> findViewById(R.id.markAsReminded).setEnabled(visible));
+        runOnUiThread(() -> findViewById(R.id.undoRemind).setEnabled(visible));
+    }
+
     public void undoRemind(View view) {
         try {
             AsyncTask.execute(() -> {
+                toggleButtons(false);
                 List<String> words = apiService.executeQuery(createQueryToPullLast5RemindedWords(), MONGO_ACTION_FIND_ALL, "word", exceptionConsumer());
                 unsetLookupWords(words);
                 clearWords();
                 fetch5Words(false);
+                toggleButtons(true);
             });
         } catch (Exception e) {
             runOnUiThread(() -> Toast.makeText(context, "Not sure what went wrong.", LENGTH_LONG).show());
@@ -94,9 +100,11 @@ public class MainActivity3 extends AppCompatActivity {
 
     public void markWordsAsReminded(View view) {
         AsyncTask.execute(() -> {
+            toggleButtons(false);
             markWordsAsReminded(Arrays.asList(words));
             clearWords();
             fetch5Words(false);
+            toggleButtons(true);
         });
     }
 
