@@ -8,8 +8,6 @@ import static com.faraz.dictionary.MainActivity2.getItem;
 import static java.lang.String.format;
 import static java.util.stream.Collectors.toList;
 
-import android.content.Context;
-
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.RequestFuture;
@@ -27,12 +25,10 @@ public class ApiService {
 
     private final RequestQueue requestQueue;
     private final Properties properties;
-    private final android.content.Context context;
 
-    public ApiService(RequestQueue requestQueue, Properties properties, Context baseContext) {
+    public ApiService(RequestQueue requestQueue, Properties properties) {
         this.requestQueue = requestQueue;
         this.properties = properties;
-        this.context = baseContext;
     }
 
     public void updateData(String query, Consumer<Integer> consumer, String action, Consumer<String> exceptionConsumer) {

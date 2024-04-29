@@ -107,7 +107,7 @@ public class MainActivity2 extends AppCompatActivity {
         setContentView(R.layout.activity_main2);
         mailjetClient();
         setRequestQueue();
-        apiService = new ApiService(requestQueue, properties, getBaseContext());
+        apiService = new ApiService(requestQueue, properties);
     }
 
     private void setRequestQueue() {
