@@ -23,6 +23,7 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.android.volley.RequestQueue;
@@ -38,7 +39,6 @@ import java.util.function.Consumer;
 public class MainActivity3 extends AppCompatActivity {
 
     private String[] words;
-    private String remindedWordCount;
     private TextView remindedWordCountView;
     private ListView listView;
     private Context context;
@@ -58,17 +58,16 @@ public class MainActivity3 extends AppCompatActivity {
     private void fetch5Words(boolean setItemClickListener) {
         runOnUiThread(() -> findViewById(R.id.markAsReminded).setEnabled(false));
         runOnUiThread(() -> findViewById(R.id.undoRemind).setEnabled(false));
-        Consumer<String> exceptionConsumer = message -> runOnUiThread(() -> Toast.makeText(context, message, LENGTH_SHORT).show());
         words = apiService.executeQuery(createQueryForRandomWords(), MONGO_ACTION_FIND_ALL, "word",
-                exceptionConsumer).toArray(new String[0]);
+                exceptionConsumer()).toArray(new String[0]);
         ArrayAdapter<String> adapter = new ArrayAdapter<>(context, R.layout.custom_layout, words);
         runOnUiThread(() -> listView.setAdapter(adapter));
 
         runOnUiThread(() -> findViewById(R.id.markAsReminded).setEnabled(true));
         runOnUiThread(() -> findViewById(R.id.undoRemind).setEnabled(true));
 
-        remindedWordCount = apiService.executeQuery(getRemindedCountQuery(), MONGO_ACTION_AGGREGATE,
-                "reminded", exceptionConsumer).stream().findFirst().orElse("Can't find none.");
+        String remindedWordCount = apiService.executeQuery(getRemindedCountQuery(), MONGO_ACTION_AGGREGATE,
+                "reminded", exceptionConsumer()).stream().findFirst().orElse("Can't find none.");
         remindedWordCountView.setText(format("'%s' words have been marked as reminded.", remindedWordCount));
 
         if (setItemClickListener) {
@@ -82,9 +81,8 @@ public class MainActivity3 extends AppCompatActivity {
 
     public void undoRemind(View view) {
         try {
-            Consumer<String> exceptionConsumer = message -> runOnUiThread(() -> Toast.makeText(context, message, LENGTH_SHORT).show());
             AsyncTask.execute(() -> {
-                List<String> words = apiService.executeQuery(createQueryToPullLast5RemindedWords(), MONGO_ACTION_FIND_ALL, "word", exceptionConsumer);
+                List<String> words = apiService.executeQuery(createQueryToPullLast5RemindedWords(), MONGO_ACTION_FIND_ALL, "word", exceptionConsumer());
                 unsetLookupWords(words);
                 clearWords();
                 fetch5Words(false);
@@ -117,9 +115,7 @@ public class MainActivity3 extends AppCompatActivity {
         String markWordsAsRemindedFilterQuery = getFilterInQuery(words);
         String updateSubQuery = getUpdateQueryToUpdateReminded();
         String query = MONGO_PARTIAL_BODY + "," + markWordsAsRemindedFilterQuery + ", " + updateSubQuery + CLOSE_CURLY;
-        Consumer<Integer> successConsumer = message -> runOnUiThread(() -> Toast.makeText(context, format("Marked %d words as reminded.", message), LENGTH_SHORT).show());
-        Consumer<String> exceptionConsumer = message -> runOnUiThread(() -> Toast.makeText(context, message, LENGTH_SHORT).show());
-        apiService.updateData(query, successConsumer, MONGO_ACTION_UPDATE_MANY, exceptionConsumer);
+        apiService.updateData(query, successConsumer("Marked %d words as reminded."), MONGO_ACTION_UPDATE_MANY, exceptionConsumer());
     }
 
     private String createQueryForRandomWords() {
@@ -165,13 +161,21 @@ public class MainActivity3 extends AppCompatActivity {
         String unsetRemindedFilterInQuery = getFilterInQuery(words);
         String updateSubQuery = unsetRemindedTimeQuery();
         String query = MONGO_PARTIAL_BODY + "," + unsetRemindedFilterInQuery + ", " + updateSubQuery + CLOSE_CURLY;
-        Consumer<Integer> consumer = documentsModified -> runOnUiThread(() -> Toast.makeText(context, format("Undid '%d' words as reminded.", documentsModified), LENGTH_SHORT).show());
-        Consumer<String> exceptionConsumer = message -> runOnUiThread(() -> Toast.makeText(context, message, LENGTH_SHORT).show());
-        apiService.updateData(query, consumer, MONGO_ACTION_UPDATE_MANY, exceptionConsumer);
+        apiService.updateData(query, successConsumer("Undid '%d' words as reminded."), MONGO_ACTION_UPDATE_MANY, exceptionConsumer());
     }
 
     @SuppressLint({"NewApi", "DefaultLocale"})
     private String unsetRemindedTimeQuery() {
         return format("\"update\": { \"$set\" : { \"reminded\" : %b },  \"$unset\" : { \"remindedTime\": \"\" } }", false);
+    }
+
+    @NonNull
+    private Consumer<Integer> successConsumer(String format) {
+        return message -> runOnUiThread(() -> Toast.makeText(context, format(format, message), LENGTH_SHORT).show());
+    }
+
+    @NonNull
+    private Consumer<String> exceptionConsumer() {
+        return message -> runOnUiThread(() -> Toast.makeText(context, message, LENGTH_SHORT).show());
     }
 }

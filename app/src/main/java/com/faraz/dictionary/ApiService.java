@@ -31,7 +31,7 @@ public class ApiService {
         this.properties = properties;
     }
 
-    public void updateData(String query, Consumer<Integer> consumer, String action, Consumer<String> exceptionConsumer) {
+    public void updateData(String query, Consumer<Integer> successConsumer, String action, Consumer<String> exceptionConsumer) {
         System.out.println("Query " + query + ". Action " + MONGO_ACTION_UPDATE_MANY);
         RequestFuture<JSONObject> requestFuture = RequestFuture.newFuture();
         JsonObjectRequest request = new MongoJsonObjectRequest(POST, format(loadProperty(MONGODB_URI),
@@ -41,7 +41,7 @@ public class ApiService {
             JSONObject ans = requestFuture.get();
             int matchedCount = Integer.parseInt(ans.getString("matchedCount"));
             int modifiedCount = Integer.parseInt(ans.getString("modifiedCount"));
-            consumer.accept(modifiedCount);
+            successConsumer.accept(modifiedCount);
         } catch (Exception e) {
             e.printStackTrace();
             exceptionConsumer.accept("Mongo has gone belly up!");
