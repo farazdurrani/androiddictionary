@@ -87,7 +87,8 @@ public class MainActivity3 extends AppCompatActivity {
         try {
             AsyncTask.execute(() -> {
                 toggleButtons(false);
-                List<String> words = apiService.executeQuery(createQueryToPullLast5RemindedWords(), MONGO_ACTION_FIND_ALL, "word", exceptionConsumer());
+                List<String> words = apiService.executeQuery(createQueryToPullLast5RemindedWords(),
+                        MONGO_ACTION_FIND_ALL, "word", exceptionConsumer());
                 unsetLookupWords(words);
                 clearWords();
                 fetch5Words(false);
