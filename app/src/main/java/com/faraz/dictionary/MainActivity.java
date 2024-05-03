@@ -233,17 +233,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @SuppressLint("SetTextI18n")
-    private String[] lookupInMerriamWebsterNew() {
+    private String[] lookupInMerriamWebsterNew() throws ExecutionException, InterruptedException {
         String url = formMerriamWebsterUrl();
         RequestFuture<JSONArray> requestFuture = RequestFuture.newFuture();
         JsonArrayRequest jsonObjectRequest = new JsonArrayRequest(url, requestFuture, requestFuture);
         requestQueue.add(jsonObjectRequest);
-        try {
-            return parseMerriamWebsterResponse(requestFuture.get().toString());
-        } catch (Exception e) {
-            definitionsView.setText("Welp... merriam webster's gone belly up!");
-        }
-        throw new RuntimeException();
+        return parseMerriamWebsterResponse(requestFuture.get().toString());
     }
 
     private Properties properties() {

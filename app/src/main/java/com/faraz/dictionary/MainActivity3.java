@@ -2,13 +2,12 @@ package com.faraz.dictionary;
 
 import static android.widget.Toast.LENGTH_LONG;
 import static android.widget.Toast.LENGTH_SHORT;
+import static com.faraz.dictionary.MainActivity.CHICAGO;
 import static com.faraz.dictionary.MainActivity.CLOSE_CURLY;
 import static com.faraz.dictionary.MainActivity.MONGO_ACTION_AGGREGATE;
 import static com.faraz.dictionary.MainActivity.MONGO_ACTION_FIND_ALL;
 import static com.faraz.dictionary.MainActivity.MONGO_ACTION_UPDATE_MANY;
 import static com.faraz.dictionary.MainActivity.MONGO_PARTIAL_BODY;
-import static com.faraz.dictionary.MainActivity2.getFilterInQuery;
-import static com.faraz.dictionary.MainActivity2.getUpdateQueryToUpdateReminded;
 import static java.lang.String.format;
 
 import android.annotation.SuppressLint;
@@ -32,6 +31,9 @@ import org.json.JSONException;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
@@ -187,5 +189,20 @@ public class MainActivity3 extends AppCompatActivity {
     private List<String> getWords() throws ExecutionException, InterruptedException, JSONException {
         return apiService.executeQuery(createQueryToPullLast5RemindedWords(),
                 MONGO_ACTION_FIND_ALL, "word");
+    }
+
+    private String getFilterInQuery(List<String> words) {
+        String in = "";
+        for (String word : words) {
+            in = in + format("\"%s\",", word);
+        }
+        in = in.replaceAll(",$", "");
+        return format("\"filter\": { \"word\" : { \"$in\" : [%s] } }", in);
+    }
+
+    @SuppressLint({"NewApi", "DefaultLocale"})
+    private String getUpdateQueryToUpdateReminded() {
+        return format("\"update\": { \"$set\" : { \"reminded\" : %b, \"remindedTime\" : {  \"$date\" : {  \"$numberLong\" : \"%d\"} } } }",
+                true, Instant.now(Clock.system(ZoneId.of(CHICAGO))).toEpochMilli());
     }
 }

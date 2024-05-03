@@ -2,7 +2,6 @@ package com.faraz.dictionary;
 
 import static android.app.ProgressDialog.show;
 import static android.widget.Toast.LENGTH_LONG;
-import static com.faraz.dictionary.MainActivity.CHICAGO;
 import static com.faraz.dictionary.MainActivity.CLOSE_CURLY;
 import static com.faraz.dictionary.MainActivity.MONGO_ACTION_FIND_ALL;
 import static com.faraz.dictionary.MainActivity.MONGO_PARTIAL_BODY;
@@ -46,9 +45,6 @@ import org.apache.commons.lang3.ObjectUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.time.Clock;
-import java.time.Instant;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -193,28 +189,12 @@ public class MainActivity2 extends AppCompatActivity {
                 .isPresent();
     }
 
-    //TODO DON'T DELETE
     public static List<String> anchor(List<String> words) {
         return words.stream().map(MainActivity2::anchor).collect(toList());
     }
 
     public void displayMessage(String message) {
         runOnUiThread(() -> Toast.makeText(this, message, LENGTH_LONG).show());
-    }
-
-    public static String getFilterInQuery(List<String> words) {
-        String in = "";
-        for (String word : words) {
-            in = in + format("\"%s\",", word);
-        }
-        in = in.replaceAll(",$", "");
-        return format("\"filter\": { \"word\" : { \"$in\" : [%s] } }", in);
-    }
-
-    @SuppressLint({"NewApi", "DefaultLocale"})
-    public static String getUpdateQueryToUpdateReminded() {
-        return format("\"update\": { \"$set\" : { \"reminded\" : %b, \"remindedTime\" : {  \"$date\" : {  \"$numberLong\" : \"%d\"} } } }",
-                true, Instant.now(Clock.system(ZoneId.of(CHICAGO))).toEpochMilli());
     }
 
     private class BackupDataAsyncTaskRunner extends AsyncTask<String, String, Void> {
@@ -236,17 +216,17 @@ public class MainActivity2 extends AppCompatActivity {
                     String _skip = format(skip, previousSkip * limitNum);
                     String query = MONGO_PARTIAL_BODY + _skip + limit + CLOSE_CURLY;
                     List<String> list = apiService.executeQuery(query, MONGO_ACTION_FIND_ALL, "word");
-                    words.addAll(list);
+                    words.addAll(list.stream().map(MainActivity2::anchor).collect(toList()));
                     previousSkip = list.isEmpty() ? -1 : previousSkip + 1;
                     publishProgress(format("Loaded '%s' words...", words.size()));
                 } while (previousSkip != -1);
                 publishProgress(format("Sending '%s' words...", words.size()));
                 reverse(words);
                 List<List<String>> wordPartitions = Lists.partition(words.stream().distinct().collect(toList()), 10000);
-                IntStream.range(0, wordPartitions.size()).forEach(index ->
-                        ofNullable(wordPartitions.get(index)).filter(wordPartition -> !wordPartition.isEmpty())
-                                .map(wordPartition -> addCountToFirstLine(wordPartition, words.size()))
-                                .ifPresent(wordPartition -> sendBackupEmails(index, wordPartition)));
+                IntStream.range(0, wordPartitions.size()).forEach(index -> ofNullable(wordPartitions.get(index))
+                        .filter(wordPartition -> !wordPartition.isEmpty()).map(wordPartition ->
+                                addCountToFirstLine(wordPartition, words.size())).ifPresent(wordPartition ->
+                                sendBackupEmails(index, wordPartition)));
             } catch (Exception e) {
                 Log.e(activity.getClass().getSimpleName(), e.getLocalizedMessage(), e);
                 activity.displayMessage("Something unknown happened!");
