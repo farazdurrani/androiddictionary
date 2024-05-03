@@ -8,10 +8,10 @@
 
   <Button
       android:id="@+id/save"
-      android:layout_width="61dp"
-      android:layout_height="39dp"
+      android:layout_width="70dp"
+      android:layout_height="36dp"
       android:text="save"
-      android:textSize="8sp"
+      android:textSize="10sp"
       app:layout_constraintBottom_toBottomOf="parent"
       app:layout_constraintEnd_toEndOf="parent"
       app:layout_constraintHorizontal_bias="0.981"
@@ -20,31 +20,31 @@
       app:layout_constraintVertical_bias="0.694" />
 
   <Button
-    android:id="@+id/google"
-    android:layout_width="61dp"
-    android:layout_height="39dp"
-    android:text="google"
-    android:textSize="6sp"
-    app:layout_constraintBottom_toBottomOf="parent"
-    app:layout_constraintEnd_toEndOf="parent"
-    app:layout_constraintHorizontal_bias="0.982"
-    app:layout_constraintStart_toStartOf="parent"
-    app:layout_constraintTop_toTopOf="parent"
-    app:layout_constraintVertical_bias="0.796" />
+      android:id="@+id/google"
+      android:layout_width="82dp"
+      android:layout_height="39dp"
+      android:text="google"
+      android:textSize="10sp"
+      app:layout_constraintBottom_toBottomOf="parent"
+      app:layout_constraintEnd_toEndOf="parent"
+      app:layout_constraintHorizontal_bias="0.982"
+      app:layout_constraintStart_toStartOf="parent"
+      app:layout_constraintTop_toTopOf="parent"
+      app:layout_constraintVertical_bias="0.796" />
 
   <Button
       android:id="@+id/secondActivity"
-      android:layout_width="61dp"
-      android:layout_height="39dp"
+      android:layout_width="126dp"
+      android:layout_height="40dp"
       android:onClick="goTo2ndActivity"
       android:text="More Features"
-      android:textSize="5sp"
+      android:textSize="10sp"
       app:layout_constraintBottom_toBottomOf="parent"
       app:layout_constraintEnd_toEndOf="parent"
-      app:layout_constraintHorizontal_bias="0.981"
+      app:layout_constraintHorizontal_bias="0.98"
       app:layout_constraintStart_toStartOf="parent"
       app:layout_constraintTop_toTopOf="parent"
-      app:layout_constraintVertical_bias="0.584" />
+      app:layout_constraintVertical_bias="0.592" />
 
   <EditText
     android:id="@+id/wordBox"
@@ -64,19 +64,19 @@
     app:layout_constraintTop_toBottomOf="@+id/definitions" />
 
   <TextView
-    android:id="@+id/definitions"
-    android:layout_width="341dp"
-    android:layout_height="508dp"
-    android:layout_marginTop="30dp"
-    android:maxLines="30"
-    android:maxWidth="50dp"
-    android:minWidth="50dp"
-    android:textSize="24sp"
-    app:layout_constraintBottom_toTopOf="@+id/wordBox"
-    app:layout_constraintEnd_toEndOf="parent"
-    app:layout_constraintHorizontal_bias="0.471"
-    app:layout_constraintStart_toStartOf="parent"
-    app:layout_constraintTop_toTopOf="parent"
-    tools:ignore="MissingConstraints" />
+      android:id="@+id/definitions"
+      android:layout_width="341dp"
+      android:layout_height="508dp"
+      android:layout_marginTop="30dp"
+      android:maxWidth="50dp"
+      android:maxLines="30"
+      android:minWidth="50dp"
+      android:textSize="24sp"
+      app:layout_constraintBottom_toTopOf="@+id/wordBox"
+      app:layout_constraintEnd_toEndOf="parent"
+      app:layout_constraintHorizontal_bias="0.472"
+      app:layout_constraintStart_toStartOf="parent"
+      app:layout_constraintTop_toTopOf="parent"
+      tools:ignore="MissingConstraints" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -17,24 +17,25 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.Volley;
+
+import org.json.JSONException;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
-import java.util.function.Consumer;
+import java.util.concurrent.ExecutionException;
 
 public class MainActivity3 extends AppCompatActivity {
 
@@ -43,30 +44,35 @@ public class MainActivity3 extends AppCompatActivity {
     private ListView listView;
     private Context context;
     private ApiService apiService;
+    private static final String activity = "MainActivity3";
 
     @Override
     public void onCreate(Bundle icicle) {
         super.onCreate(icicle);
         setContentView(R.layout.activity_main3);
         context = getBaseContext();
-        apiService = new ApiService(requestQueue(), properties());
+        apiService = new ApiService(Volley.newRequestQueue(this), properties());
         listView = findViewById(R.id.wordsList);
         remindedWordCountView = findViewById(R.id.remindedWordsCount);
         AsyncTask.execute(() -> {
             toggleButtons(false);
-            fetch5Words(true);
+            try {
+                fetch5Words(true);
+            } catch (Exception e) {
+                Log.e(activity, e.getLocalizedMessage(), e);
+                runOnUiThread(() -> Toast.makeText(context, "Mongo has gone belly up!", LENGTH_SHORT).show());
+            }
             toggleButtons(true);
         });
     }
 
-    private void fetch5Words(boolean setItemClickListener) {
-        words = apiService.executeQuery(createQueryForRandomWords(), MONGO_ACTION_FIND_ALL, "word",
-                exceptionConsumer()).toArray(new String[0]);
+    private void fetch5Words(boolean setItemClickListener) throws JSONException, ExecutionException, InterruptedException {
+        words = apiService.executeQuery(createQueryForRandomWords(), MONGO_ACTION_FIND_ALL, "word").toArray(new String[0]);
         ArrayAdapter<String> adapter = new ArrayAdapter<>(context, R.layout.custom_layout, words);
         runOnUiThread(() -> listView.setAdapter(adapter));
 
-        String remindedWordCount = apiService.executeQuery(getRemindedCountQuery(), MONGO_ACTION_AGGREGATE,
-                "reminded", exceptionConsumer()).stream().findFirst().orElse("Can't find none.");
+        String remindedWordCount = apiService.executeQuery(getRemindedCountQuery(), MONGO_ACTION_AGGREGATE, "reminded")
+                .stream().findFirst().orElse("Can't find none.");
         remindedWordCountView.setText(format("'%s' words have been marked as reminded.", remindedWordCount));
 
         if (setItemClickListener) {
@@ -84,28 +90,32 @@ public class MainActivity3 extends AppCompatActivity {
     }
 
     public void undoRemind(View view) {
-        try {
-            AsyncTask.execute(() -> {
-                toggleButtons(false);
-                List<String> words = apiService.executeQuery(createQueryToPullLast5RemindedWords(),
-                        MONGO_ACTION_FIND_ALL, "word", exceptionConsumer());
+        AsyncTask.execute(() -> {
+            toggleButtons(false);
+            try {
+                List<String> words = getWords();
                 unsetLookupWords(words);
                 clearWords();
                 fetch5Words(false);
                 toggleButtons(true);
-            });
-        } catch (Exception e) {
-            runOnUiThread(() -> Toast.makeText(context, "Not sure what went wrong.", LENGTH_LONG).show());
-        }
+            } catch (Exception e) {
+                runOnUiThread(() -> Toast.makeText(context, "Not sure what went wrong.", LENGTH_LONG).show());
+            }
+        });
     }
 
     public void markWordsAsReminded(View view) {
         AsyncTask.execute(() -> {
             toggleButtons(false);
-            markWordsAsReminded(Arrays.asList(words));
-            clearWords();
-            fetch5Words(false);
-            toggleButtons(true);
+            try {
+                markWordsAsReminded(Arrays.asList(words));
+                clearWords();
+                fetch5Words(false);
+                toggleButtons(true);
+            } catch (Exception e) {
+                Log.e(activity, e.getLocalizedMessage(), e);
+                runOnUiThread(() -> Toast.makeText(context, "Not sure what went wrong.", LENGTH_LONG).show());
+            }
         });
     }
 
@@ -113,7 +123,7 @@ public class MainActivity3 extends AppCompatActivity {
         words = null;
     }
 
-    private void markWordsAsReminded(List<String> words) {
+    private void markWordsAsReminded(List<String> words) throws ExecutionException, InterruptedException {
         //must do an empty check!
         if (words.isEmpty()) {
             //If all word count and reminded = true count is same, (we will know this if words.isempty)
@@ -124,7 +134,7 @@ public class MainActivity3 extends AppCompatActivity {
         String markWordsAsRemindedFilterQuery = getFilterInQuery(words);
         String updateSubQuery = getUpdateQueryToUpdateReminded();
         String query = MONGO_PARTIAL_BODY + "," + markWordsAsRemindedFilterQuery + ", " + updateSubQuery + CLOSE_CURLY;
-        apiService.updateData(query, successConsumer("Marked %d words as reminded."), MONGO_ACTION_UPDATE_MANY, exceptionConsumer());
+        apiService.upsert(query, MONGO_ACTION_UPDATE_MANY);
     }
 
     private String createQueryForRandomWords() {
@@ -138,16 +148,12 @@ public class MainActivity3 extends AppCompatActivity {
         return MONGO_PARTIAL_BODY + pipeline + CLOSE_CURLY;
     }
 
-    private RequestQueue requestQueue() {
-        return Volley.newRequestQueue(this);
-    }
-
     private Properties properties() {
         Properties properties = new Properties();
         try (InputStream is = getBaseContext().getAssets().open("application.properties")) {
             properties.load(is);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            runOnUiThread(() -> Toast.makeText(context, "Can't load properties.", LENGTH_SHORT).show());
         }
         return properties;
     }
@@ -159,7 +165,7 @@ public class MainActivity3 extends AppCompatActivity {
         return MONGO_PARTIAL_BODY + filter + sort + limit + CLOSE_CURLY;
     }
 
-    private void unsetLookupWords(List<String> words) {
+    private void unsetLookupWords(List<String> words) throws ExecutionException, InterruptedException {
         //must do an empty check!
         if (words.isEmpty()) {
             //If all word count and reminded = true count is same, (we will know this if words.isempty)
@@ -170,7 +176,7 @@ public class MainActivity3 extends AppCompatActivity {
         String unsetRemindedFilterInQuery = getFilterInQuery(words);
         String updateSubQuery = unsetRemindedTimeQuery();
         String query = MONGO_PARTIAL_BODY + "," + unsetRemindedFilterInQuery + ", " + updateSubQuery + CLOSE_CURLY;
-        apiService.updateData(query, successConsumer("Undid '%d' words as reminded."), MONGO_ACTION_UPDATE_MANY, exceptionConsumer());
+        apiService.upsert(query, MONGO_ACTION_UPDATE_MANY);
     }
 
     @SuppressLint({"NewApi", "DefaultLocale"})
@@ -178,13 +184,8 @@ public class MainActivity3 extends AppCompatActivity {
         return format("\"update\": { \"$set\" : { \"reminded\" : %b },  \"$unset\" : { \"remindedTime\": \"\" } }", false);
     }
 
-    @NonNull
-    private Consumer<Integer> successConsumer(String format) {
-        return message -> runOnUiThread(() -> Toast.makeText(context, format(format, message), LENGTH_SHORT).show());
-    }
-
-    @NonNull
-    private Consumer<String> exceptionConsumer() {
-        return message -> runOnUiThread(() -> Toast.makeText(context, message, LENGTH_SHORT).show());
+    private List<String> getWords() throws ExecutionException, InterruptedException, JSONException {
+        return apiService.executeQuery(createQueryToPullLast5RemindedWords(),
+                MONGO_ACTION_FIND_ALL, "word");
     }
 }

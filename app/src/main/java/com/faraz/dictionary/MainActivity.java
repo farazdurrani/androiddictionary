@@ -2,17 +2,16 @@ package com.faraz.dictionary;
 
 import static android.widget.Toast.LENGTH_LONG;
 import static android.widget.Toast.LENGTH_SHORT;
-import static com.android.volley.Request.Method.POST;
-import static com.faraz.dictionary.MainActivity2.getItem;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.apache.commons.lang3.StringUtils.SPACE;
+import static org.apache.commons.lang3.StringUtils.capitalize;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static java.lang.String.format;
 import static java.lang.System.lineSeparator;
 import static java.util.stream.Collectors.joining;
-import static java.util.stream.Collectors.toList;
 
 import android.annotation.SuppressLint;
+import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.AsyncTask;
@@ -27,14 +26,13 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.JsonArrayRequest;
-import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.RequestFuture;
 import com.android.volley.toolbox.Volley;
 import com.github.wnameless.json.flattener.JsonFlattener;
 
+import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.json.JSONArray;
-import org.json.JSONObject;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -46,8 +44,10 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Properties;
-import java.util.stream.IntStream;
+import java.util.concurrent.ExecutionException;
+import java.util.function.Predicate;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -60,13 +60,13 @@ public class MainActivity extends AppCompatActivity {
     static final String MONGODB_API_KEY = "mongodb.data.api.key";
     static final String CHICAGO = "America/Chicago";
     private static final String NO_DEFINITION_FOUND = "No definitions found for '%s'. Perhaps, you meant:";
-    private static final String MONGO_ACTION_INSERT_ONE = "insertOne";
-    private static final String MONGO_DOCUMENT = "\"document\" : {  \"word\": \"%s\",\"lookupTime\": {  \"$date\" : {  \"$numberLong\" : \"%d\"} }, \"reminded\": %s }";
     private static final String REGEX_WHITE_SPACES = "\\s+";
     private static final String MERRIAM_WEBSTER_KEY = "dictionary.merriamWebster.key";
     private static final String MERRIAM_WEBSTER_URL = "dictionary.merriamWebster.url";
-    private Properties properties;
-    private RequestQueue requestQueue;
+    private Properties properties; //TODO get rid of it
+    private RequestQueue requestQueue; //TODO get rid of it
+    private ApiService apiService;
+    private Context context;
 
     private EditText lookupWord;
     private String originalLookupWord;
@@ -79,6 +79,8 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        context = getBaseContext();
+        apiService = new ApiService(Volley.newRequestQueue(this), properties());
 
         lookupWord = findViewById(R.id.wordBox);
         definitionsView = findViewById(R.id.definitions);
@@ -94,10 +96,6 @@ public class MainActivity extends AppCompatActivity {
     public void goTo2ndActivity(View view) {
         Intent intent = new Intent(this, MainActivity2.class);
         startActivity(intent);
-    }
-
-    private void setRequestQueue() {
-        this.requestQueue = Volley.newRequestQueue(this);
     }
 
     private void setStoreWordListener() {
@@ -129,26 +127,23 @@ public class MainActivity extends AppCompatActivity {
         return format(mUrl, word, mk);
     }
 
+    @SuppressLint("SetTextI18n")
     private void lookupWord() {
         try {
-            if (alreadyStored()) {
-                definitionsView.setText(format("'%s' already looked-up", originalLookupWord));
-                runOnUiThread(() -> Toast.makeText(MainActivity.this, format("Not storing '%s'", originalLookupWord), LENGTH_SHORT).show());
-            } else {
-                String[] definition = lookupInMerriamWebsterNew();
-                definitionsView.setText(definition[1]);
-                if (definition[0].equalsIgnoreCase("true")) {
-                    saveWordInMongo();
-                }
+            String[] definition = lookupInMerriamWebsterNew();
+            definitionsView.setText(definition[1]);
+            if (BooleanUtils.toBoolean(definition[0])) {
+                saveWordInMongo();
             }
         } catch (Exception e) {
-            runOnUiThread(() -> Toast.makeText(MainActivity.this, "Not sure what went wrong.", LENGTH_LONG).show());
+            definitionsView.setText("welp...");
+            runOnUiThread(() -> Toast.makeText(context, "Not sure what went wrong.", LENGTH_LONG).show());
         }
     }
 
     private void openInWebBrowser() {
         if (isBlank(originalLookupWord)) {
-            Toast.makeText(this, "Nothing to lookup", LENGTH_SHORT).show();
+            runOnUiThread(() -> Toast.makeText(context, "Nothing to lookup", LENGTH_SHORT).show());
             return;
         }
         Uri uri = Uri.parse(format("https://www.google.com/search?q=define: %s", originalLookupWord));
@@ -178,28 +173,10 @@ public class MainActivity extends AppCompatActivity {
         return this.properties.getProperty(property);
     }
 
-    @SuppressLint("SetTextI18n")
-    private List<String> getWordsFromMongo(String operation) {
-        RequestFuture<JSONObject> requestFuture = RequestFuture.newFuture();
-        JsonObjectRequest request = new MongoJsonObjectRequest(POST, format(loadProperty(MONGODB_URI),
-                MONGO_ACTION_FIND_ALL), requestFuture, requestFuture, operation, loadProperty(MONGODB_API_KEY));
-        request.setShouldCache(true);
-        requestQueue.add(request);
-        try {
-            JSONArray ans = requestFuture.get().getJSONArray("documents");
-            return IntStream.range(0, ans.length()).mapToObj(i -> getItem(i, ans, "word")).collect(toList());
-        } catch (Exception e) {
-            definitionsView.setText("Mongo's gone belly up!");
-        }
-        throw new RuntimeException();
-    }
-
     private void storeWord() {
         try {
             if (isBlank(originalLookupWord)) {
                 runOnUiThread(() -> Toast.makeText(MainActivity.this, "Nothing to save.", LENGTH_SHORT).show());
-            } else if (alreadyStored()) {
-                runOnUiThread(() -> Toast.makeText(MainActivity.this, format("'%s''s already stored", originalLookupWord), LENGTH_SHORT).show());
             } else {
                 saveWordInMongo();
             }
@@ -208,35 +185,29 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private boolean alreadyStored() {
-        String query = wordExistsQuery();
-        return !getWordsFromMongo(query).isEmpty();
-    }
-
     private String wordExistsQuery() {
-        String filter = format(",\"filter\": { \"word\": \"%s\" }", originalLookupWord);
-        return MONGO_PARTIAL_BODY + filter + CLOSE_CURLY;
+        return format("\"filter\": { \"word\": \"%s\" }", originalLookupWord);
     }
 
-    private void saveWordInMongo() {
-        String body = getSaveQuery();
-        RequestFuture<JSONObject> requestFuture = RequestFuture.newFuture();
-        JsonObjectRequest stringRequest = new MongoJsonObjectRequest(POST, format(loadProperty(MONGODB_URI), MONGO_ACTION_INSERT_ONE),
-                requestFuture, requestFuture, body, loadProperty(MONGODB_API_KEY));
-        requestQueue.add(stringRequest);
-        try {
-            JSONObject ans = requestFuture.get();
-            String ignore = ans.getString("insertedId");
-            runOnUiThread(() -> Toast.makeText(MainActivity.this, format("'%s' saved!", originalLookupWord), LENGTH_SHORT).show());
-        } catch (Exception e) {
-            runOnUiThread(() -> Toast.makeText(MainActivity.this, "Mongo's belly up!", LENGTH_LONG).show());
-        }
+    private void saveWordInMongo() throws ExecutionException, InterruptedException {
+        String filter = wordExistsQuery();
+        String update = getUpdateQueryToUpdateReminded();
+        String options = format("\"upsert\" : %b", true);
+        String query = MONGO_PARTIAL_BODY + "," + filter + ", " + update + ", " + options + CLOSE_CURLY;
+        Map<String, Object> response = apiService.upsert(query, MONGO_ACTION_UPDATE_MANY);
+        Predicate<Map<String, Object>> upsert = r -> r.containsKey("upsertedId");
+        Optional.of(response).filter(upsert).ifPresent(ignore -> runOnUiThread(() ->
+                Toast.makeText(context, format("'%s' saved!", capitalize(originalLookupWord)), LENGTH_SHORT).show()));
+        Optional.of(response).filter(upsert.negate()).ifPresent(ignore -> {
+            runOnUiThread(() -> Toast.makeText(context, format("'%s' is already saved.", capitalize(originalLookupWord)), LENGTH_SHORT).show());
+            definitionsView.setText(format("%s's already looked-up.", capitalize(originalLookupWord)));
+        });
     }
 
     @SuppressLint({"NewApi", "DefaultLocale"})
-    private String getSaveQuery() {
-        return MONGO_PARTIAL_BODY + "," + format(MONGO_DOCUMENT, originalLookupWord,
-                Instant.now(Clock.system(ZoneId.of(CHICAGO))).toEpochMilli(), false) + CLOSE_CURLY;
+    private String getUpdateQueryToUpdateReminded() {
+        return format("\"update\": { \"$set\" : { \"word\": \"%s\" }, \"$setOnInsert\" : { \"reminded\" : %b, \"remindedTime\" : {  \"$date\" : {  \"$numberLong\" : \"%d\"} } } }",
+                originalLookupWord, false, Instant.now(Clock.system(ZoneId.of(CHICAGO))).toEpochMilli());
     }
 
     private String[] parseMerriamWebsterResponse(String json) {
@@ -275,4 +246,17 @@ public class MainActivity extends AppCompatActivity {
         throw new RuntimeException();
     }
 
+    private Properties properties() {
+        Properties properties = new Properties();
+        try (InputStream is = getBaseContext().getAssets().open("application.properties")) {
+            properties.load(is);
+        } catch (IOException e) {
+            runOnUiThread(() -> Toast.makeText(context, "Can't load properties.", LENGTH_SHORT).show());
+        }
+        return properties;
+    }
+
+    private void setRequestQueue() {
+        this.requestQueue = Volley.newRequestQueue(this);
+    }
 }

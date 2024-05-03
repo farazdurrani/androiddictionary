@@ -2,11 +2,8 @@ package com.faraz.dictionary;
 
 import static android.app.ProgressDialog.show;
 import static android.widget.Toast.LENGTH_LONG;
-import static com.android.volley.Request.Method.POST;
 import static com.faraz.dictionary.MainActivity.CHICAGO;
 import static com.faraz.dictionary.MainActivity.CLOSE_CURLY;
-import static com.faraz.dictionary.MainActivity.MONGODB_API_KEY;
-import static com.faraz.dictionary.MainActivity.MONGODB_URI;
 import static com.faraz.dictionary.MainActivity.MONGO_ACTION_FIND_ALL;
 import static com.faraz.dictionary.MainActivity.MONGO_PARTIAL_BODY;
 import static com.mailjet.client.transactional.response.SentMessageStatus.SUCCESS;
@@ -32,8 +29,6 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.android.volley.RequestQueue;
-import com.android.volley.toolbox.JsonObjectRequest;
-import com.android.volley.toolbox.RequestFuture;
 import com.android.volley.toolbox.Volley;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
@@ -48,8 +43,6 @@ import com.mailjet.client.transactional.response.MessageResult;
 import com.mailjet.client.transactional.response.SendEmailsResponse;
 
 import org.apache.commons.lang3.ObjectUtils;
-import org.json.JSONArray;
-import org.json.JSONObject;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -62,9 +55,6 @@ import java.util.List;
 import java.util.Properties;
 import java.util.function.Predicate;
 import java.util.stream.IntStream;
-
-import javax.mail.AuthenticationFailedException;
-import javax.mail.MessagingException;
 
 @SuppressLint("DefaultLocale")
 public class MainActivity2 extends AppCompatActivity {
@@ -86,14 +76,6 @@ public class MainActivity2 extends AppCompatActivity {
 
     public static String anchor(String word) {
         return "<a href='https://www.google.com/search?q=define: " + word + "' target='_blank'>" + capitalize(word) + "</a>";
-    }
-
-    public static String getItem(int index, JSONArray ans, String extractionTarget) {
-        try {
-            return ans.getJSONObject(index).getString(extractionTarget);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
     }
 
     @NonNull
@@ -210,6 +192,7 @@ public class MainActivity2 extends AppCompatActivity {
         return ofNullable(response).map(SendEmailsResponse::getMessages).filter(allSuccessAndNoErrors)
                 .isPresent();
     }
+
     //TODO DON'T DELETE
     public static List<String> anchor(List<String> words) {
         return words.stream().map(MainActivity2::anchor).collect(toList());
@@ -251,14 +234,8 @@ public class MainActivity2 extends AppCompatActivity {
                 int previousSkip = 0;
                 do {
                     String _skip = format(skip, previousSkip * limitNum);
-                    String operation = MONGO_PARTIAL_BODY + _skip + limit + CLOSE_CURLY;
-                    System.out.println("query: " + operation);
-                    RequestFuture<JSONObject> requestFuture = RequestFuture.newFuture();
-                    JsonObjectRequest request = new MongoJsonObjectRequest(POST, format(loadProperty(MONGODB_URI), MONGO_ACTION_FIND_ALL),
-                            requestFuture, requestFuture, operation, loadProperty(MONGODB_API_KEY));
-                    requestQueue.add(request);
-                    JSONArray ans = requestFuture.get().getJSONArray("documents");
-                    List<String> list = IntStream.range(0, ans.length()).mapToObj(i -> getItem(i, ans, "word")).distinct().collect(toList());
+                    String query = MONGO_PARTIAL_BODY + _skip + limit + CLOSE_CURLY;
+                    List<String> list = apiService.executeQuery(query, MONGO_ACTION_FIND_ALL, "word");
                     words.addAll(list);
                     previousSkip = list.isEmpty() ? -1 : previousSkip + 1;
                     publishProgress(format("Loaded '%s' words...", words.size()));
@@ -271,7 +248,7 @@ public class MainActivity2 extends AppCompatActivity {
                                 .map(wordPartition -> addCountToFirstLine(wordPartition, words.size()))
                                 .ifPresent(wordPartition -> sendBackupEmails(index, wordPartition)));
             } catch (Exception e) {
-                e.printStackTrace();
+                Log.e(activity.getClass().getSimpleName(), e.getLocalizedMessage(), e);
                 activity.displayMessage("Something unknown happened!");
             }
             return null;
@@ -300,10 +277,6 @@ public class MainActivity2 extends AppCompatActivity {
         }
 
         @Override
-        protected void onPreExecute() {
-        }
-
-        @Override
         protected void onProgressUpdate(String... text) {
             progressDialogs.add(show(MainActivity2.this, "ProgressDialog", text[0]));
         }
@@ -325,16 +298,8 @@ public class MainActivity2 extends AppCompatActivity {
                 } else {
                     activity.displayMessage("Failed to send an email!");
                 }
-            } catch (AuthenticationFailedException e) {
-                Log.e(SendEmailAsyncTask.class.getName(), "Bad account details");
-                e.printStackTrace();
-                activity.displayMessage("Authentication failed.");
-            } catch (MessagingException e) {
-                Log.e(SendEmailAsyncTask.class.getName(), "Email failed");
-                e.printStackTrace();
-                activity.displayMessage("Failed to send an email!");
             } catch (Exception e) {
-                e.printStackTrace();
+                Log.e(SendEmailAsyncTask.class.getName(), "Email failed");
                 activity.displayMessage("Unexpected error occurred.");
             }
             return false;
