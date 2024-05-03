@@ -54,6 +54,8 @@ import java.util.stream.IntStream;
 
 @SuppressLint("DefaultLocale")
 public class MainActivity2 extends AppCompatActivity {
+
+    private static final String activity = MainActivity2.class.getSimpleName();
     private static final String MAIL_KEY = "mailjet.apiKey";
     private static final String MAIL_SECRET = "mailjet.apiSecret";
     private static final String MAIL_FROM = "mailjet.from";
@@ -160,7 +162,7 @@ public class MainActivity2 extends AppCompatActivity {
         try {
             response = request.sendWith(mailjetClient);
         } catch (MailjetException e) {
-            e.printStackTrace();
+            Log.e(activity, e.getLocalizedMessage(), e);
         }
         return noErrors(response) ? 200 : -1;
     }

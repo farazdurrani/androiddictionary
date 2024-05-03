@@ -46,7 +46,7 @@ public class MainActivity3 extends AppCompatActivity {
     private ListView listView;
     private Context context;
     private ApiService apiService;
-    private static final String activity = "MainActivity3";
+    private static final String activity = MainActivity3.class.getSimpleName();
 
     @Override
     public void onCreate(Bundle icicle) {

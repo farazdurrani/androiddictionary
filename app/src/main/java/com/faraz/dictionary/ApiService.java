@@ -25,7 +25,7 @@ import java.util.stream.IntStream;
 
 public class ApiService {
 
-    private static final String activity = "ApiService";
+    private static final String activity = ApiService.class.getSimpleName();
 
     private final RequestQueue requestQueue;
     private final Properties properties;
