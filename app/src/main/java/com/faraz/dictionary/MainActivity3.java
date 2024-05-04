@@ -36,6 +36,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 
@@ -140,13 +141,13 @@ public class MainActivity3 extends AppCompatActivity {
     }
 
     private String createQueryForRandomWords() {
-        String filter = ",\"filter\": { \"reminded\": false }";
+        String filter = format(", \"filter\" : { \"remindedTime\" : { \"$exists\" : %b } }", false);
         String limit = ", \"limit\": 5";
         return MONGO_PARTIAL_BODY + filter + limit + CLOSE_CURLY;
     }
 
     public static String getRemindedCountQuery() {
-        String pipeline = ", \"pipeline\": [ { \"$match\": { \"reminded\": true } }, { \"$count\": \"reminded\" } ]";
+        String pipeline = ", \"pipeline\": [ { \"$match\": { \"remindedTime\": { \"$exists\" : true} } }, { \"$count\": \"reminded\" } ]";
         return MONGO_PARTIAL_BODY + pipeline + CLOSE_CURLY;
     }
 
@@ -178,12 +179,12 @@ public class MainActivity3 extends AppCompatActivity {
         String unsetRemindedFilterInQuery = getFilterInQuery(words);
         String updateSubQuery = unsetRemindedTimeQuery();
         String query = MONGO_PARTIAL_BODY + "," + unsetRemindedFilterInQuery + ", " + updateSubQuery + CLOSE_CURLY;
-        apiService.upsert(query, MONGO_ACTION_UPDATE_MANY);
+        Map<String, Object> response = apiService.upsert(query, MONGO_ACTION_UPDATE_MANY);
+        Log.i(activity, response.keySet().toString());
     }
 
-    @SuppressLint({"NewApi", "DefaultLocale"})
     private String unsetRemindedTimeQuery() {
-        return format("\"update\": { \"$set\" : { \"reminded\" : %b },  \"$unset\" : { \"remindedTime\": \"\" } }", false);
+        return "\"update\": { \"$unset\" : { \"remindedTime\": \"\" } }";
     }
 
     private List<String> getWords() throws ExecutionException, InterruptedException, JSONException {
@@ -202,7 +203,7 @@ public class MainActivity3 extends AppCompatActivity {
 
     @SuppressLint({"NewApi", "DefaultLocale"})
     private String getUpdateQueryToUpdateReminded() {
-        return format("\"update\": { \"$set\" : { \"reminded\" : %b, \"remindedTime\" : {  \"$date\" : {  \"$numberLong\" : \"%d\"} } } }",
-                true, Instant.now(Clock.system(ZoneId.of(CHICAGO))).toEpochMilli());
+        return format("\"update\": { \"$set\" : { \"remindedTime\" : {  \"$date\" : {  \"$numberLong\" : \"%d\"} } } }",
+                Instant.now(Clock.system(ZoneId.of(CHICAGO))).toEpochMilli());
     }
 }

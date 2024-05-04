@@ -9,7 +9,7 @@
     <ListView
         android:id="@+id/wordsList"
         android:layout_width="335dp"
-        android:layout_height="542dp"
+        android:layout_height="520dp"
         android:layout_weight="1"
 
         app:layout_constraintBottom_toBottomOf="parent"

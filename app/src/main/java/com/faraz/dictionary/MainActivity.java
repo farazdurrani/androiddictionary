@@ -206,8 +206,8 @@ public class MainActivity extends AppCompatActivity {
 
     @SuppressLint({"NewApi", "DefaultLocale"})
     private String getUpdateQueryToUpdateReminded() {
-        return format("\"update\": { \"$set\" : { \"word\": \"%s\" }, \"$setOnInsert\" : { \"reminded\" : %b, \"remindedTime\" : {  \"$date\" : {  \"$numberLong\" : \"%d\"} } } }",
-                originalLookupWord, false, Instant.now(Clock.system(ZoneId.of(CHICAGO))).toEpochMilli());
+        return format("\"update\": { \"$set\" : { \"word\": \"%s\" }, \"$setOnInsert\" : { \"lookupTime\" : {  \"$date\" : {  \"$numberLong\" : \"%d\"} } } }",
+                originalLookupWord, Instant.now(Clock.system(ZoneId.of(CHICAGO))).toEpochMilli());
     }
 
     private String[] parseMerriamWebsterResponse(String json) {
