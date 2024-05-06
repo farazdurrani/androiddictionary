@@ -48,7 +48,7 @@ public class MongoJsonObjectRequest extends JsonObjectRequest {
 
   @Override
   public RetryPolicy getRetryPolicy(){
-    return new DefaultRetryPolicy(10000,
+    return new DefaultRetryPolicy(30000,
         DefaultRetryPolicy.DEFAULT_MAX_RETRIES,
         DefaultRetryPolicy.DEFAULT_BACKOFF_MULT);
   }

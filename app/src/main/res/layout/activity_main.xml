@@ -72,6 +72,7 @@
       android:maxLines="30"
       android:minWidth="50dp"
       android:textSize="24sp"
+      android:scrollbars = "vertical"
       app:layout_constraintBottom_toTopOf="@+id/wordBox"
       app:layout_constraintEnd_toEndOf="parent"
       app:layout_constraintHorizontal_bias="0.472"

@@ -9,12 +9,12 @@ import static com.faraz.dictionary.MainActivity.MONGO_ACTION_FIND_ALL;
 import static com.faraz.dictionary.MainActivity.MONGO_ACTION_UPDATE_MANY;
 import static com.faraz.dictionary.MainActivity.MONGO_PARTIAL_BODY;
 import static java.lang.String.format;
+import static java.util.concurrent.CompletableFuture.runAsync;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -57,15 +57,15 @@ public class MainActivity3 extends AppCompatActivity {
         apiService = new ApiService(Volley.newRequestQueue(this), properties());
         listView = findViewById(R.id.wordsList);
         remindedWordCountView = findViewById(R.id.remindedWordsCount);
-        AsyncTask.execute(() -> {
-            toggleButtons(false);
+        toggleButtons(false);
+        runAsync(() -> {
             try {
                 fetch5Words(true);
+                toggleButtons(true);
             } catch (Exception e) {
                 Log.e(activity, e.getLocalizedMessage(), e);
                 runOnUiThread(() -> Toast.makeText(context, "Mongo has gone belly up!", LENGTH_SHORT).show());
             }
-            toggleButtons(true);
         });
     }
 
@@ -93,8 +93,8 @@ public class MainActivity3 extends AppCompatActivity {
     }
 
     public void undoRemind(View view) {
-        AsyncTask.execute(() -> {
-            toggleButtons(false);
+        toggleButtons(false);
+        runAsync(() -> {
             try {
                 List<String> words = getWords();
                 unsetLookupWords(words);
@@ -108,8 +108,8 @@ public class MainActivity3 extends AppCompatActivity {
     }
 
     public void markWordsAsReminded(View view) {
-        AsyncTask.execute(() -> {
-            toggleButtons(false);
+        toggleButtons(false);
+        runAsync(() -> {
             try {
                 markWordsAsReminded(Arrays.asList(words));
                 clearWords();
@@ -142,7 +142,7 @@ public class MainActivity3 extends AppCompatActivity {
 
     private String createQueryForRandomWords() {
         String filter = format(", \"filter\" : { \"remindedTime\" : { \"$exists\" : %b } }", false);
-        String limit = ", \"limit\": 5";
+        String limit = ", \"limit\": 4";
         return MONGO_PARTIAL_BODY + filter + limit + CLOSE_CURLY;
     }
 

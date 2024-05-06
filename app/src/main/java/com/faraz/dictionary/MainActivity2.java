@@ -49,8 +49,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 import java.util.stream.IntStream;
+
+import okhttp3.OkHttpClient;
 
 @SuppressLint("DefaultLocale")
 public class MainActivity2 extends AppCompatActivity {
@@ -99,7 +103,8 @@ public class MainActivity2 extends AppCompatActivity {
     public void mailjetClient() {
         if (mailjetClient == null) {
             ClientOptions options = ClientOptions.builder().apiKey(loadProperty(MAIL_KEY))
-                    .apiSecretKey(loadProperty(MAIL_SECRET)).build();
+                    .apiSecretKey(loadProperty(MAIL_SECRET)).okHttpClient(new OkHttpClient.Builder()
+                            .callTimeout(1, TimeUnit.MINUTES).build()).build();
             mailjetClient = new MailjetClient(options);
         }
     }
@@ -132,7 +137,7 @@ public class MainActivity2 extends AppCompatActivity {
         return this.properties.getProperty(property);
     }
 
-    private int sendEmail(String subject, String body) {
+    private boolean sendEmail(String subject, String body) throws ExecutionException, InterruptedException {
         return defaultEmailProvider ? sendEmailUsingMailJetClient(subject, body) : sendEmailUsingJavaMailAPI(subject, body);
     }
 
@@ -140,7 +145,7 @@ public class MainActivity2 extends AppCompatActivity {
      * Mailjet api just goes into this bounce/restart/soft bounce thing.
      * Update: Switched back. Meh...
      */
-    private int sendEmailUsingMailJetClient(String subject, String body) {
+    private boolean sendEmailUsingMailJetClient(String subject, String body) {
         String from = loadProperty(MAIL_FROM);
         String to = loadProperty(MAIL_TO);
         body = "<div style=\"font-size:20px\">" + body + "</div>";
@@ -150,7 +155,7 @@ public class MainActivity2 extends AppCompatActivity {
                 .from(new SendContact(from, "Personal Dictionary"))
                 .htmlPart(body)
                 .subject(subject)
-                .trackOpens(TrackOpens.ENABLED)
+                .trackOpens(TrackOpens.DISABLED)
                 .build();
 
         SendEmailsRequest request = SendEmailsRequest
@@ -164,14 +169,14 @@ public class MainActivity2 extends AppCompatActivity {
         } catch (MailjetException e) {
             Log.e(activity, e.getLocalizedMessage(), e);
         }
-        return noErrors(response) ? 200 : -1;
+        return noErrors(response);
     }
 
     /**
      * It doesn't return the status.
      * And sometimes the email never gets sent.
      */
-    private int sendEmailUsingJavaMailAPI(String subject, String body) {
+    private boolean sendEmailUsingJavaMailAPI(String subject, String body) throws ExecutionException, InterruptedException {
         SendEmailAsyncTask email = new SendEmailAsyncTask();
         email.activity = this;
         email.mail = new Mail(loadProperty(JAVAMAIL_USER), loadProperty(JAVAMAIL_PASS));
@@ -179,8 +184,7 @@ public class MainActivity2 extends AppCompatActivity {
         email.mail.setBody(body);
         email.mail.set_to(new String[]{loadProperty(JAVAMAIL_TO)});
         email.mail.set_subject(subject);
-        email.execute();
-        return 200; //TODO Cleanup: trying to support legacy code. Don't really need 200 I suppose.
+        return email.execute().get(); //TODO Cleanup: trying to support legacy code. Don't really need 200 I suppose.
     }
 
     private static boolean noErrors(SendEmailsResponse response) {
@@ -189,10 +193,6 @@ public class MainActivity2 extends AppCompatActivity {
                         Arrays.stream(mr).map(MessageResult::getErrors).allMatch(ObjectUtils::isEmpty);
         return ofNullable(response).map(SendEmailsResponse::getMessages).filter(allSuccessAndNoErrors)
                 .isPresent();
-    }
-
-    public static List<String> anchor(List<String> words) {
-        return words.stream().map(MainActivity2::anchor).collect(toList());
     }
 
     public void displayMessage(String message) {
@@ -210,7 +210,7 @@ public class MainActivity2 extends AppCompatActivity {
             publishProgress("Backing up words..."); // Calls onProgressUpdate()
             List<String> words = new ArrayList<>();
             try {
-                int limitNum = 10000;
+                int limitNum = 5000;
                 String limit = format(", \"limit\": %d ", limitNum);
                 String skip = ", \"skip\": %d";
                 int previousSkip = 0;
@@ -219,7 +219,7 @@ public class MainActivity2 extends AppCompatActivity {
                     String query = MONGO_PARTIAL_BODY + _skip + limit + CLOSE_CURLY;
                     List<String> list = apiService.executeQuery(query, MONGO_ACTION_FIND_ALL, "word");
                     words.addAll(list.stream().map(MainActivity2::anchor).collect(toList()));
-                    previousSkip = list.isEmpty() ? -1 : previousSkip + 1;
+                    previousSkip = list.size() < limitNum || list.isEmpty() ? -1 : previousSkip + 1;
                     publishProgress(format("Loaded '%s' words...", words.size()));
                 } while (previousSkip != -1);
                 publishProgress(format("Sending '%s' words...", words.size()));
@@ -243,10 +243,14 @@ public class MainActivity2 extends AppCompatActivity {
 
         private void sendBackupEmails(int index, List<String> backup_words) {
             String subject = format("Words Backup Part %d:", index + 1);
-            if (sendEmail(subject, addDivStyling(backup_words)) == 200) {
-                activity.displayMessage(format("'%d' words sent for backup.", Math.max(backup_words.size() - 1, 0)));
-            } else {
-                activity.displayMessage("Error occurred while backing up words.");
+            try {
+                if (sendEmail(subject, addDivStyling(backup_words))) {
+                    activity.displayMessage(format("'%d' words sent for backup.", Math.max(backup_words.size() - 1, 0)));
+                } else {
+                    activity.displayMessage("Error occurred while backing up words.");
+                }
+            } catch (ExecutionException | InterruptedException e) {
+                throw new RuntimeException(e);
             }
         }
 
@@ -274,17 +278,10 @@ public class MainActivity2 extends AppCompatActivity {
         @Override
         protected Boolean doInBackground(Void... params) {
             try {
-                if (mail.send()) {
-                    activity.displayMessage("Email(s) sent.");
-                    return true;
-                } else {
-                    activity.displayMessage("Failed to send an email!");
-                }
+                return mail.send();
             } catch (Exception e) {
-                Log.e(SendEmailAsyncTask.class.getName(), "Email failed");
-                activity.displayMessage("Unexpected error occurred.");
+                throw new RuntimeException(e);
             }
-            return false;
         }
     }
 }

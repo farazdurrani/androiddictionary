@@ -6,16 +6,18 @@ import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.apache.commons.lang3.StringUtils.SPACE;
 import static org.apache.commons.lang3.StringUtils.capitalize;
 import static org.apache.commons.lang3.StringUtils.isBlank;
+import static org.apache.commons.lang3.exception.ExceptionUtils.getStackTrace;
 import static java.lang.String.format;
 import static java.lang.System.lineSeparator;
+import static java.util.concurrent.CompletableFuture.runAsync;
 import static java.util.stream.Collectors.joining;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
-import android.os.AsyncTask;
 import android.os.Bundle;
+import android.text.method.ScrollingMovementMethod;
 import android.view.KeyEvent;
 import android.view.View;
 import android.widget.EditText;
@@ -32,6 +34,7 @@ import com.github.wnameless.json.flattener.JsonFlattener;
 
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.json.JSONArray;
 
 import java.io.IOException;
@@ -84,6 +87,7 @@ public class MainActivity extends AppCompatActivity {
 
         lookupWord = findViewById(R.id.wordBox);
         definitionsView = findViewById(R.id.definitions);
+        definitionsView.setMovementMethod(new ScrollingMovementMethod());
         googleLink = findViewById(R.id.google);
         saveView = findViewById(R.id.save);
 
@@ -99,21 +103,19 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setStoreWordListener() {
-        saveView.setOnClickListener(view -> AsyncTask.execute(this::storeWord));
+        saveView.setOnClickListener(view -> runAsync(this::storeWord));
     }
 
     private void setOpenInBrowserListener() {
-        googleLink.setOnClickListener(ignore -> AsyncTask.execute(this::openInWebBrowser));
+        googleLink.setOnClickListener(ignore -> runAsync(this::openInWebBrowser));
     }
 
     private void setLookupWordListenerNew() {
         lookupWord.setOnKeyListener((view, code, event) -> {
             if ((event.getAction() == KeyEvent.ACTION_DOWN) && (code == KeyEvent.KEYCODE_ENTER)) {
                 doInitialWork();
-                AsyncTask.execute(() -> {
-                    openInWebBrowser();
-                    lookupWord();
-                });
+                runAsync(this::lookupWord);
+                openInWebBrowser();
                 return true;
             }
             return false;
@@ -136,7 +138,7 @@ public class MainActivity extends AppCompatActivity {
                 saveWordInMongo();
             }
         } catch (Exception e) {
-            definitionsView.setText("welp...");
+            definitionsView.setText(format("welp...%s%s", lineSeparator(), getStackTrace(e)));
             runOnUiThread(() -> Toast.makeText(context, "Not sure what went wrong.", LENGTH_LONG).show());
         }
     }
