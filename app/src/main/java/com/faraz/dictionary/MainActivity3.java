@@ -10,6 +10,7 @@ import static com.faraz.dictionary.MainActivity.MONGO_ACTION_UPDATE_MANY;
 import static com.faraz.dictionary.MainActivity.MONGO_PARTIAL_BODY;
 import static java.lang.Integer.parseInt;
 import static java.lang.String.format;
+import static java.util.concurrent.CompletableFuture.allOf;
 import static java.util.concurrent.CompletableFuture.runAsync;
 
 import android.annotation.SuppressLint;
@@ -37,6 +38,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
 public class MainActivity3 extends AppCompatActivity {
@@ -50,6 +52,7 @@ public class MainActivity3 extends AppCompatActivity {
     private static final String activity = MainActivity3.class.getSimpleName();
     private static final String NUMBER_OF_WORDS_TO_SHOW = "number.of.words.to.show";
 
+    @SuppressLint("SetTextI18n")
     @Override
     public void onCreate(Bundle icicle) {
         super.onCreate(icicle);
@@ -60,6 +63,8 @@ public class MainActivity3 extends AppCompatActivity {
         listView = findViewById(R.id.wordsList);
         remindedWordCountView = findViewById(R.id.remindedWordsCount);
         toggleButtons(false);
+        remindedWordCountView.setText("Loading...");
+        listView.setAdapter(new ArrayAdapter<>(context, R.layout.custom_layout, new String[0]));
         runAsync(() -> {
             try {
                 fetchWords(true);
@@ -71,21 +76,30 @@ public class MainActivity3 extends AppCompatActivity {
         });
     }
 
-    private void fetchWords(boolean setItemClickListener) throws ExecutionException, InterruptedException {
-        words = apiService.executeQuery(createQueryForRandomWords(), MONGO_ACTION_FIND_ALL, "word").toArray(new String[0]);
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(context, R.layout.custom_layout, words);
-        runOnUiThread(() -> listView.setAdapter(adapter));
+    @SuppressLint("SetTextI18n")
+    private void fetchWords(boolean setItemClickListener) {
 
-        String remindedWordCount = apiService.executeQuery(getRemindedCountQuery(), MONGO_ACTION_AGGREGATE, "reminded").stream().findFirst().orElse("Can't find none.");
-        remindedWordCountView.setText(format("'%s' words have been marked as reminded.", remindedWordCount));
+        CompletableFuture<Void> one = runAsync(() -> {
+            words = apiService.executeQuery(createQueryForRandomWords(), MONGO_ACTION_FIND_ALL, "word").toArray(new String[0]);
+            ArrayAdapter<String> adapter = new ArrayAdapter<>(context, R.layout.custom_layout, words);
+            runOnUiThread(() -> listView.setAdapter(adapter));
 
-        if (setItemClickListener) {
-            listView.setOnItemClickListener((parent, view, position, id) -> {
-                String word = (String) listView.getAdapter().getItem(position);
-                Uri uri = Uri.parse(format("https://www.google.com/search?q=define: %s", word));
-                startActivity(new Intent(Intent.ACTION_VIEW, uri));
-            });
-        }
+            if (setItemClickListener) {
+                listView.setOnItemClickListener((parent, view, position, id) -> {
+                    String word = (String) listView.getAdapter().getItem(position);
+                    Uri uri = Uri.parse(format("https://www.google.com/search?q=define: %s", word));
+                    startActivity(new Intent(Intent.ACTION_VIEW, uri));
+                });
+            }
+        });
+
+        CompletableFuture<Void> two = runAsync(() -> {
+            String remindedWordCount = apiService.executeQuery(getRemindedCountQuery(), MONGO_ACTION_AGGREGATE,
+                    "reminded").stream().findFirst().orElse("Can't find none.");
+            remindedWordCountView.setText(format("'%s' words have been marked as reminded.", remindedWordCount));
+        });
+
+        allOf(one, two).join();
     }
 
     private void toggleButtons(boolean visible) {
@@ -93,8 +107,11 @@ public class MainActivity3 extends AppCompatActivity {
         runOnUiThread(() -> findViewById(R.id.undoRemind).setEnabled(visible));
     }
 
+    @SuppressLint("SetTextI18n")
     public void undoRemind(View view) {
         toggleButtons(false);
+        remindedWordCountView.setText("Loading...");
+        listView.setAdapter(new ArrayAdapter<>(context, R.layout.custom_layout, new String[0]));
         runAsync(() -> {
             try {
                 List<String> words = getWords();
@@ -108,8 +125,11 @@ public class MainActivity3 extends AppCompatActivity {
         });
     }
 
+    @SuppressLint("SetTextI18n")
     public void markWordsAsReminded(View view) {
         toggleButtons(false);
+        remindedWordCountView.setText("Loading...");
+        listView.setAdapter(new ArrayAdapter<>(context, R.layout.custom_layout, new String[0]));
         runAsync(() -> {
             try {
                 markWordsAsReminded(Arrays.asList(words));

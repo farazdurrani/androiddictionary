@@ -42,9 +42,14 @@ public class ApiService {
         return JsonFlattener.flattenAsMap(jsonObject.toString());
     }
 
-    public List<String> executeQuery(String query, String action, String extractionTarget) throws ExecutionException, InterruptedException {
-        JSONArray ans = makeApiCall(query, action).optJSONArray("documents");
-        return IntStream.range(0, ofNullable(ans).map(JSONArray::length).orElse(0)).mapToObj(i -> getItem(i, ans, extractionTarget)).collect(toList());
+    public List<String> executeQuery(String query, String action, String extractionTarget) {
+        try {
+            JSONArray ans = makeApiCall(query, action).optJSONArray("documents");
+            return IntStream.range(0, ofNullable(ans).map(JSONArray::length).orElse(0)).mapToObj(i ->
+                    getItem(i, ans, extractionTarget)).collect(toList());
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @NonNull

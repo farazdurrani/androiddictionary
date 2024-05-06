@@ -137,7 +137,7 @@ public class MainActivity2 extends AppCompatActivity {
         return this.properties.getProperty(property);
     }
 
-    private boolean sendEmail(String subject, String body) throws ExecutionException, InterruptedException {
+    private boolean sendEmail(String subject, String body) throws Exception {
         return defaultEmailProvider ? sendEmailUsingMailJetClient(subject, body) : sendEmailUsingJavaMailAPI(subject, body);
     }
 
@@ -176,15 +176,13 @@ public class MainActivity2 extends AppCompatActivity {
      * It doesn't return the status.
      * And sometimes the email never gets sent.
      */
-    private boolean sendEmailUsingJavaMailAPI(String subject, String body) throws ExecutionException, InterruptedException {
-        SendEmailAsyncTask email = new SendEmailAsyncTask();
-        email.activity = this;
-        email.mail = new Mail(loadProperty(JAVAMAIL_USER), loadProperty(JAVAMAIL_PASS));
-        email.mail.set_from(format(loadProperty(JAVAMAIL_FROM), currentTimeMillis()));
-        email.mail.setBody(body);
-        email.mail.set_to(new String[]{loadProperty(JAVAMAIL_TO)});
-        email.mail.set_subject(subject);
-        return email.execute().get(); //TODO Cleanup: trying to support legacy code. Don't really need 200 I suppose.
+    private boolean sendEmailUsingJavaMailAPI(String subject, String body) throws Exception {
+        Mail mail = new Mail(loadProperty(JAVAMAIL_USER), loadProperty(JAVAMAIL_PASS));
+        mail.set_from(format(loadProperty(JAVAMAIL_FROM), currentTimeMillis()));
+        mail.setBody(body);
+        mail.set_to(new String[]{loadProperty(JAVAMAIL_TO)});
+        mail.set_subject(subject);
+        return mail.send();
     }
 
     private static boolean noErrors(SendEmailsResponse response) {
@@ -249,7 +247,7 @@ public class MainActivity2 extends AppCompatActivity {
                 } else {
                     activity.displayMessage("Error occurred while backing up words.");
                 }
-            } catch (ExecutionException | InterruptedException e) {
+            } catch (Exception e) {
                 throw new RuntimeException(e);
             }
         }
@@ -265,23 +263,6 @@ public class MainActivity2 extends AppCompatActivity {
         @Override
         protected void onProgressUpdate(String... text) {
             progressDialogs.add(show(MainActivity2.this, "ProgressDialog", text[0]));
-        }
-    }
-
-    private class SendEmailAsyncTask extends AsyncTask<Void, Void, Boolean> {
-        Mail mail;
-        MainActivity2 activity;
-
-        public SendEmailAsyncTask() {
-        }
-
-        @Override
-        protected Boolean doInBackground(Void... params) {
-            try {
-                return mail.send();
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
         }
     }
 }
