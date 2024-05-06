@@ -8,6 +8,7 @@ import static com.faraz.dictionary.MainActivity.MONGO_ACTION_AGGREGATE;
 import static com.faraz.dictionary.MainActivity.MONGO_ACTION_FIND_ALL;
 import static com.faraz.dictionary.MainActivity.MONGO_ACTION_UPDATE_MANY;
 import static com.faraz.dictionary.MainActivity.MONGO_PARTIAL_BODY;
+import static java.lang.Integer.parseInt;
 import static java.lang.String.format;
 import static java.util.concurrent.CompletableFuture.runAsync;
 
@@ -27,8 +28,6 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.android.volley.toolbox.Volley;
 
-import org.json.JSONException;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.Clock;
@@ -47,20 +46,23 @@ public class MainActivity3 extends AppCompatActivity {
     private ListView listView;
     private Context context;
     private ApiService apiService;
+    private Properties properties;
     private static final String activity = MainActivity3.class.getSimpleName();
+    private static final String NUMBER_OF_WORDS_TO_SHOW = "number.of.words.to.show";
 
     @Override
     public void onCreate(Bundle icicle) {
         super.onCreate(icicle);
         setContentView(R.layout.activity_main3);
         context = getBaseContext();
-        apiService = new ApiService(Volley.newRequestQueue(this), properties());
+        properties = properties();
+        apiService = new ApiService(Volley.newRequestQueue(this), properties);
         listView = findViewById(R.id.wordsList);
         remindedWordCountView = findViewById(R.id.remindedWordsCount);
         toggleButtons(false);
         runAsync(() -> {
             try {
-                fetch5Words(true);
+                fetchWords(true);
                 toggleButtons(true);
             } catch (Exception e) {
                 Log.e(activity, e.getLocalizedMessage(), e);
@@ -69,13 +71,12 @@ public class MainActivity3 extends AppCompatActivity {
         });
     }
 
-    private void fetch5Words(boolean setItemClickListener) throws JSONException, ExecutionException, InterruptedException {
+    private void fetchWords(boolean setItemClickListener) throws ExecutionException, InterruptedException {
         words = apiService.executeQuery(createQueryForRandomWords(), MONGO_ACTION_FIND_ALL, "word").toArray(new String[0]);
         ArrayAdapter<String> adapter = new ArrayAdapter<>(context, R.layout.custom_layout, words);
         runOnUiThread(() -> listView.setAdapter(adapter));
 
-        String remindedWordCount = apiService.executeQuery(getRemindedCountQuery(), MONGO_ACTION_AGGREGATE, "reminded")
-                .stream().findFirst().orElse("Can't find none.");
+        String remindedWordCount = apiService.executeQuery(getRemindedCountQuery(), MONGO_ACTION_AGGREGATE, "reminded").stream().findFirst().orElse("Can't find none.");
         remindedWordCountView.setText(format("'%s' words have been marked as reminded.", remindedWordCount));
 
         if (setItemClickListener) {
@@ -99,7 +100,7 @@ public class MainActivity3 extends AppCompatActivity {
                 List<String> words = getWords();
                 unsetLookupWords(words);
                 clearWords();
-                fetch5Words(false);
+                fetchWords(false);
                 toggleButtons(true);
             } catch (Exception e) {
                 runOnUiThread(() -> Toast.makeText(context, "Not sure what went wrong.", LENGTH_LONG).show());
@@ -113,7 +114,7 @@ public class MainActivity3 extends AppCompatActivity {
             try {
                 markWordsAsReminded(Arrays.asList(words));
                 clearWords();
-                fetch5Words(false);
+                fetchWords(false);
                 toggleButtons(true);
             } catch (Exception e) {
                 Log.e(activity, e.getLocalizedMessage(), e);
@@ -142,7 +143,7 @@ public class MainActivity3 extends AppCompatActivity {
 
     private String createQueryForRandomWords() {
         String filter = format(", \"filter\" : { \"remindedTime\" : { \"$exists\" : %b } }", false);
-        String limit = ", \"limit\": 4";
+        @SuppressLint("DefaultLocale") String limit = format(", \"limit\": %d", parseInt(properties.getProperty(NUMBER_OF_WORDS_TO_SHOW)));
         return MONGO_PARTIAL_BODY + filter + limit + CLOSE_CURLY;
     }
 
@@ -161,10 +162,10 @@ public class MainActivity3 extends AppCompatActivity {
         return properties;
     }
 
-    private String createQueryToPullLast5RemindedWords() {
+    private String createQueryToPullLastFewRemindedWords() {
         String filter = ", \"filter\" : { \"remindedTime\" : { \"$ne\" : null } }";
         String sort = ",\"sort\": { \"remindedTime\": -1 }";
-        String limit = ", \"limit\": 5";
+        @SuppressLint("DefaultLocale") String limit = format(", \"limit\": %d", parseInt(properties.getProperty(NUMBER_OF_WORDS_TO_SHOW)));
         return MONGO_PARTIAL_BODY + filter + sort + limit + CLOSE_CURLY;
     }
 
@@ -187,9 +188,8 @@ public class MainActivity3 extends AppCompatActivity {
         return "\"update\": { \"$unset\" : { \"remindedTime\": \"\" } }";
     }
 
-    private List<String> getWords() throws ExecutionException, InterruptedException, JSONException {
-        return apiService.executeQuery(createQueryToPullLast5RemindedWords(),
-                MONGO_ACTION_FIND_ALL, "word");
+    private List<String> getWords() throws ExecutionException, InterruptedException {
+        return apiService.executeQuery(createQueryToPullLastFewRemindedWords(), MONGO_ACTION_FIND_ALL, "word");
     }
 
     private String getFilterInQuery(List<String> words) {

@@ -23,7 +23,7 @@
       android:id="@+id/random5"
       android:layout_width="wrap_content"
       android:layout_height="wrap_content"
-      android:onClick="random5Activity"
+      android:onClick="randomWordsActivity"
       android:text="Random 5!"
       app:layout_constraintBottom_toBottomOf="parent"
       app:layout_constraintEnd_toEndOf="parent"

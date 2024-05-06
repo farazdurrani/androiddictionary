@@ -120,7 +120,7 @@ public class MainActivity2 extends AppCompatActivity {
         displayMessage(format("Email Provider has been switched to %s", (defaultEmailProvider ? "MailJet" : "JavaMail")));
     }
 
-    public void random5Activity(View view) {
+    public void randomWordsActivity(View view) {
         Intent intent = new Intent(this, MainActivity3.class);
         startActivity(intent);
     }
