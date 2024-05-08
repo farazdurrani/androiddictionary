@@ -14,32 +14,34 @@
       android:text="Backup data!"
       app:layout_constraintBottom_toBottomOf="parent"
       app:layout_constraintEnd_toEndOf="parent"
-      app:layout_constraintHorizontal_bias="0.498"
+      app:layout_constraintHorizontal_bias="0.993"
       app:layout_constraintStart_toStartOf="parent"
       app:layout_constraintTop_toTopOf="parent"
-      app:layout_constraintVertical_bias="0.576" />
+      app:layout_constraintVertical_bias="0.682" />
 
   <Button
       android:id="@+id/random5"
       android:layout_width="wrap_content"
       android:layout_height="wrap_content"
       android:onClick="randomWordsActivity"
-      android:text="Random 5!"
+      android:text="Random words!"
       app:layout_constraintBottom_toBottomOf="parent"
       app:layout_constraintEnd_toEndOf="parent"
+      app:layout_constraintHorizontal_bias="0.993"
       app:layout_constraintStart_toStartOf="parent"
       app:layout_constraintTop_toTopOf="parent"
-      app:layout_constraintVertical_bias="0.739" />
+      app:layout_constraintVertical_bias="0.581" />
 
   <Button
       android:id="@+id/switchEmailProvider"
-      android:layout_width="142dp"
-      android:layout_height="71dp"
+      android:layout_width="250dp"
+      android:layout_height="42dp"
       android:onClick="switchEmailProvider"
       android:text="Switch Email Provider"
       app:layout_constraintBottom_toBottomOf="parent"
       app:layout_constraintEnd_toEndOf="parent"
+      app:layout_constraintHorizontal_bias="0.993"
       app:layout_constraintStart_toStartOf="parent"
       app:layout_constraintTop_toTopOf="parent"
-      app:layout_constraintVertical_bias="0.409" />
+      app:layout_constraintVertical_bias="0.783" />
 </androidx.constraintlayout.widget.ConstraintLayout>

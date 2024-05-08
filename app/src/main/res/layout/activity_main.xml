@@ -8,76 +8,74 @@
 
   <Button
       android:id="@+id/save"
-      android:layout_width="70dp"
-      android:layout_height="36dp"
+      android:layout_width="159dp"
+      android:layout_height="42dp"
       android:text="save"
-      android:textSize="10sp"
+      android:textSize="14dp"
       app:layout_constraintBottom_toBottomOf="parent"
       app:layout_constraintEnd_toEndOf="parent"
-      app:layout_constraintHorizontal_bias="0.981"
+      app:layout_constraintHorizontal_bias="1.0"
       app:layout_constraintStart_toStartOf="parent"
       app:layout_constraintTop_toTopOf="parent"
-      app:layout_constraintVertical_bias="0.694" />
+      app:layout_constraintVertical_bias="0.682" />
 
   <Button
       android:id="@+id/google"
-      android:layout_width="82dp"
-      android:layout_height="39dp"
+      android:layout_width="159dp"
+      android:layout_height="42dp"
       android:text="google"
-      android:textSize="10sp"
+      android:textSize="14dp"
       app:layout_constraintBottom_toBottomOf="parent"
       app:layout_constraintEnd_toEndOf="parent"
-      app:layout_constraintHorizontal_bias="0.982"
+      app:layout_constraintHorizontal_bias="1.0"
       app:layout_constraintStart_toStartOf="parent"
       app:layout_constraintTop_toTopOf="parent"
-      app:layout_constraintVertical_bias="0.796" />
+      app:layout_constraintVertical_bias="0.783" />
 
   <Button
       android:id="@+id/secondActivity"
-      android:layout_width="126dp"
-      android:layout_height="40dp"
+      android:layout_width="159dp"
+      android:layout_height="42dp"
       android:onClick="goTo2ndActivity"
       android:text="More Features"
-      android:textSize="10sp"
+      android:textSize="11sp"
       app:layout_constraintBottom_toBottomOf="parent"
       app:layout_constraintEnd_toEndOf="parent"
-      app:layout_constraintHorizontal_bias="0.98"
+      app:layout_constraintHorizontal_bias="1.0"
       app:layout_constraintStart_toStartOf="parent"
       app:layout_constraintTop_toTopOf="parent"
-      app:layout_constraintVertical_bias="0.592" />
+      app:layout_constraintVertical_bias="0.581" />
 
   <EditText
-    android:id="@+id/wordBox"
-    android:layout_width="340dp"
-    android:layout_height="70dp"
-    android:layout_marginBottom="29dp"
-    android:layout_marginTop="16dp"
-    android:ems="10"
-    android:focusable="true"
-    android:hint="Enter a word..."
-    android:imeOptions="actionSearch"
-    android:inputType="text"
-    app:layout_constraintBottom_toBottomOf="parent"
-    app:layout_constraintEnd_toEndOf="parent"
-    app:layout_constraintHorizontal_bias="0.47"
-    app:layout_constraintStart_toStartOf="parent"
-    app:layout_constraintTop_toBottomOf="@+id/definitions" />
+      android:id="@+id/wordBox"
+      android:layout_width="339dp"
+      android:layout_height="66dp"
+      android:ems="10"
+      android:focusable="true"
+      android:hint="Enter a word..."
+      android:imeOptions="actionSearch"
+      android:inputType="text"
+      app:layout_constraintBottom_toBottomOf="parent"
+      app:layout_constraintEnd_toEndOf="parent"
+      app:layout_constraintHorizontal_bias="0.505"
+      app:layout_constraintStart_toStartOf="parent"
+      app:layout_constraintTop_toTopOf="parent"
+      app:layout_constraintVertical_bias="0.952" />
 
   <TextView
       android:id="@+id/definitions"
-      android:layout_width="341dp"
-      android:layout_height="508dp"
-      android:layout_marginTop="30dp"
+      android:layout_width="311dp"
+      android:layout_height="297dp"
       android:maxWidth="50dp"
       android:maxLines="30"
       android:minWidth="50dp"
+      android:scrollbars="vertical"
       android:textSize="24sp"
-      android:scrollbars = "vertical"
       app:layout_constraintBottom_toTopOf="@+id/wordBox"
       app:layout_constraintEnd_toEndOf="parent"
-      app:layout_constraintHorizontal_bias="0.472"
       app:layout_constraintStart_toStartOf="parent"
       app:layout_constraintTop_toTopOf="parent"
+      app:layout_constraintVertical_bias="0.081"
       tools:ignore="MissingConstraints" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
