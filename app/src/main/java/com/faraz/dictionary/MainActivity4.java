@@ -7,11 +7,17 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
+import android.widget.TextView;
 
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
+
+import java.io.File;
+import java.util.Objects;
 
 public class MainActivity4 extends AppCompatActivity {
 
@@ -24,6 +30,7 @@ public class MainActivity4 extends AppCompatActivity {
 
     @SuppressLint("SetTextI18n")
     @Override
+    @RequiresApi(api = Build.VERSION_CODES.O)
     public void onCreate(Bundle icicle) {
         super.onCreate(icicle);
         setContentView(R.layout.activity_main4);
@@ -31,9 +38,15 @@ public class MainActivity4 extends AppCompatActivity {
         listView = findViewById(R.id.wordList);
         fileService = new FileService(getExternalFilesDir(null), FILE_NAME);
         fetchWords();
+        filepath();
+    }
+
+    private void filepath() {
+        ((TextView) findViewById(R.id.filepath)).setText(Objects.requireNonNull(getExternalFilesDir(null)).getAbsolutePath());
     }
 
     @SuppressLint("SetTextI18n")
+    @RequiresApi(api = Build.VERSION_CODES.O)
     private void fetchWords() {
 
         runAsync(() -> {

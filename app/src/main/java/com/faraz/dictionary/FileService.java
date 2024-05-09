@@ -64,35 +64,4 @@ public class FileService {
             return new String[0];
         }
     }
-
-//    public String[] readFile() {
-//        String state = Environment.getExternalStorageState();
-//        if (!Environment.MEDIA_MOUNTED.equals(state)) {
-//            Log.e(this.getClass().getSimpleName(), "can't read from the file.");
-//            return new String[0];
-//        }
-//
-//        //Create a new file that points to the root directory, with the given name:
-//        File file = new File(externalFilesDir, filename);
-//
-//        //This point and below is responsible for the write operation
-//        FileInputStream input;
-//        List<String> words = new ArrayList<>();
-//        try {
-//            //second argument of FileOutputStream constructor indicates whether
-//            //to append or create new file if one exists
-//            input = new FileInputStream(file);
-//            int i = input.read();
-//            while (i != -1) {
-//                words.add(String.valueOf((char) i));
-//                i = input.read();
-//            }
-//            input.close();
-//        } catch (Exception e) {
-//            Log.e("MainActivity4", "Something went wrong", e);
-//        }
-//        return words.toArray(new String[0]);
-//    }
-
-
 }

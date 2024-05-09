@@ -10,15 +10,15 @@
       android:id="@+id/offlineMode"
       android:layout_width="159dp"
       android:layout_height="42dp"
+      android:onClick="offlineMode"
       android:text="Offline mode"
       android:textSize="14dp"
-      android:onClick="offlineMode"
       app:layout_constraintBottom_toBottomOf="parent"
       app:layout_constraintEnd_toEndOf="parent"
       app:layout_constraintHorizontal_bias="1.0"
       app:layout_constraintStart_toStartOf="parent"
       app:layout_constraintTop_toTopOf="parent"
-      app:layout_constraintVertical_bias="0.047" />
+      app:layout_constraintVertical_bias="0.511" />
 
   <Button
       android:id="@+id/offlineActivity"
@@ -32,7 +32,7 @@
       app:layout_constraintHorizontal_bias="1.0"
       app:layout_constraintStart_toStartOf="parent"
       app:layout_constraintTop_toTopOf="parent"
-      app:layout_constraintVertical_bias="0.131" />
+      app:layout_constraintVertical_bias="0.428" />
 
   <Button
       android:id="@+id/save"
@@ -72,8 +72,8 @@
       app:layout_constraintHorizontal_bias="1.0"
       app:layout_constraintStart_toStartOf="parent"
       app:layout_constraintTop_toTopOf="parent"
-      app:layout_constraintVertical_bias="0.581" />
-  <!--      android:imeOptions="actionSearch"-->
+      app:layout_constraintVertical_bias="0.597" />
+
   <EditText
       android:id="@+id/wordBox"
       android:layout_width="339dp"
@@ -81,7 +81,7 @@
       android:ems="10"
       android:focusable="true"
       android:hint="Enter a word..."
-      android:imeOptions="actionDone"
+      android:imeOptions="actionSearch"
       android:inputType="text"
       app:layout_constraintBottom_toBottomOf="parent"
       app:layout_constraintEnd_toEndOf="parent"
