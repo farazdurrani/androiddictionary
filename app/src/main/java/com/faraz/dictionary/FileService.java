@@ -1,6 +1,7 @@
 package com.faraz.dictionary;
 
 import static java.lang.System.lineSeparator;
+import static java.util.stream.Collectors.toList;
 
 import android.os.Build;
 import android.os.Environment;
@@ -14,6 +15,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -27,7 +29,7 @@ public class FileService {
         this.filename = filename;
     }
 
-    public void writeFileExternalStorage(String... words) {
+    public void writeFileExternalStorage(boolean append, String... words) {
 
         //Checking the availability state of the External Storage.
         String state = Environment.getExternalStorageState();
@@ -45,7 +47,7 @@ public class FileService {
             file.createNewFile();
             //second argument of FileOutputStream constructor indicates whether
             //to append or create new file if one exists
-            outputStream = new FileOutputStream(file, true);
+            outputStream = new FileOutputStream(file, append);
 
             for (String word : words) {
                 outputStream.write(word.getBytes());
@@ -61,12 +63,19 @@ public class FileService {
     @RequiresApi(api = Build.VERSION_CODES.O)
     public String[] readFile() {
         try {
-            List<String> words = Files.readAllLines(Paths.get(new File(externalFilesDir, filename).toURI()));
+            List<String> words = Files.readAllLines(Paths.get(new File(externalFilesDir, filename).toURI()))
+                    .stream().distinct().collect(toList());
             Collections.reverse(words);
             return words.toArray(new String[0]);
         } catch (Exception e) {
             Log.e(this.getClass().getSimpleName(), "Error", e);
             return new String[]{ExceptionUtils.getStackTrace(e)};
         }
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    public void delete(String word) {
+        String[] words = Arrays.stream(readFile()).filter(w -> !w.equals(word)).distinct().toArray(String[]::new);
+        writeFileExternalStorage(false, words);
     }
 }

@@ -21,6 +21,7 @@ import java.util.Objects;
 public class MainActivity4 extends AppCompatActivity {
 
     public static final String FILE_NAME = "offlinewords.txt";
+    public static final String LOOKUPTHISWORD = "lookupthisword";
     private String[] words;
     private ListView listView;
     private Context context;
@@ -46,12 +47,15 @@ public class MainActivity4 extends AppCompatActivity {
 //            String word = (String) listView.getAdapter().getItem(position);
 //            Uri uri = Uri.parse(format("https://www.google.com/search?q=define: %s", word));
 //            startActivity(new Intent(Intent.ACTION_VIEW, uri));
+
+//            String word = (String) listView.getAdapter().getItem(position);
+//            ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+//            ClipData clip = ClipData.newPlainText("label", word);
+//            clipboard.setPrimaryClip(clip);
+
             String word = (String) listView.getAdapter().getItem(position);
-            ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-            ClipData clip = ClipData.newPlainText("label", word);
-            clipboard.setPrimaryClip(clip);
             Intent intent = new Intent(this, MainActivity.class);
-            intent.putExtra("lookupthisword", word);
+            intent.putExtra(LOOKUPTHISWORD, word);
             startActivity(intent);
         });
     }
