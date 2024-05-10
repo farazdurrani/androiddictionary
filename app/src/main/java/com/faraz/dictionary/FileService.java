@@ -8,10 +8,14 @@ import android.util.Log;
 
 import androidx.annotation.RequiresApi;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Collections;
+import java.util.List;
 
 public class FileService {
 
@@ -56,12 +60,13 @@ public class FileService {
 
     @RequiresApi(api = Build.VERSION_CODES.O)
     public String[] readFile() {
-        File file = new File(externalFilesDir, filename);
         try {
-            return Files.readAllLines(Paths.get(file.toURI())).toArray(new String[0]);
+            List<String> words = Files.readAllLines(Paths.get(new File(externalFilesDir, filename).toURI()));
+            Collections.reverse(words);
+            return words.toArray(new String[0]);
         } catch (Exception e) {
             Log.e(this.getClass().getSimpleName(), "Error", e);
-            return new String[0];
+            return new String[]{ExceptionUtils.getStackTrace(e)};
         }
     }
 }
