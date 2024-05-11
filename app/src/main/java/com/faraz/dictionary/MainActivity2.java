@@ -49,7 +49,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 import java.util.stream.IntStream;
@@ -68,6 +67,7 @@ public class MainActivity2 extends AppCompatActivity {
     private static final String JAVAMAIL_PASS = "javamail.pass";
     private static final String JAVAMAIL_FROM = "javamail.from";
     private static final String JAVAMAIL_TO = "javamail.to";
+    public static final int WORD_LIMIT_IN_BACKUP_EMAIL = 5000;
 
     private boolean defaultEmailProvider = true; //default email provider is MailJet. Other option is JavaMail.
 
@@ -208,7 +208,7 @@ public class MainActivity2 extends AppCompatActivity {
             publishProgress("Backing up words..."); // Calls onProgressUpdate()
             List<String> words = new ArrayList<>();
             try {
-                int limitNum = 5000;
+                int limitNum = WORD_LIMIT_IN_BACKUP_EMAIL;
                 String limit = format(", \"limit\": %d ", limitNum);
                 String skip = ", \"skip\": %d";
                 int previousSkip = 0;
@@ -217,16 +217,17 @@ public class MainActivity2 extends AppCompatActivity {
                     String query = MONGO_PARTIAL_BODY + _skip + limit + CLOSE_CURLY;
                     List<String> list = apiService.executeQuery(query, MONGO_ACTION_FIND_ALL, "word");
                     words.addAll(list.stream().map(MainActivity2::anchor).collect(toList()));
-                    previousSkip = list.size() < limitNum || list.isEmpty() ? -1 : previousSkip + 1;
+                    previousSkip = list.size() < limitNum ? -1 : previousSkip + 1;
                     publishProgress(format("Loaded '%s' words...", words.size()));
                 } while (previousSkip != -1);
                 publishProgress(format("Sending '%s' words...", words.size()));
                 reverse(words);
-                List<List<String>> wordPartitions = Lists.partition(words.stream().distinct().collect(toList()), 10000);
+                List<List<String>> wordPartitions = Lists.partition(words.stream().distinct().collect(toList()),
+                        WORD_LIMIT_IN_BACKUP_EMAIL);
                 IntStream.range(0, wordPartitions.size()).forEach(index -> ofNullable(wordPartitions.get(index))
-                        .filter(wordPartition -> !wordPartition.isEmpty()).map(wordPartition ->
-                                addCountToFirstLine(wordPartition, words.size())).ifPresent(wordPartition ->
-                                sendBackupEmails(index, wordPartition)));
+                        .filter(ObjectUtils::isNotEmpty)
+                        .map(wordPartition -> addCountToFirstLine(wordPartition, words.size()))
+                        .ifPresent(wordPartition -> sendBackupEmails(index, wordPartition)));
             } catch (Exception e) {
                 Log.e(activity.getClass().getSimpleName(), e.getLocalizedMessage(), e);
                 activity.displayMessage("Something unknown happened!");
