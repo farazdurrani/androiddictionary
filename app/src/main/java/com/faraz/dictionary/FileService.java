@@ -1,7 +1,6 @@
 package com.faraz.dictionary;
 
 import static java.lang.System.lineSeparator;
-import static java.util.stream.Collectors.toList;
 
 import android.os.Build;
 import android.os.Environment;
@@ -13,10 +12,10 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 public class FileService {
@@ -24,9 +23,15 @@ public class FileService {
     private final File externalFilesDir;
     private final String filename;
 
+    @SuppressWarnings("all")
     public FileService(File externalFilesDir, String filename) {
         this.externalFilesDir = externalFilesDir;
         this.filename = filename;
+        try {
+            new File(externalFilesDir, filename).createNewFile();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public void writeFileExternalStorage(boolean append, String... words) {
@@ -39,15 +44,13 @@ public class FileService {
         }
 
         //Create a new file that points to the root directory, with the given name:
-        File file = new File(externalFilesDir, filename);
 
         //This point and below is responsible for the write operation
         FileOutputStream outputStream;
         try {
-            file.createNewFile();
             //second argument of FileOutputStream constructor indicates whether
             //to append or create new file if one exists
-            outputStream = new FileOutputStream(file, append);
+            outputStream = new FileOutputStream(new File(externalFilesDir, filename), append);
 
             for (String word : words) {
                 outputStream.write(word.getBytes());
@@ -63,10 +66,8 @@ public class FileService {
     @RequiresApi(api = Build.VERSION_CODES.O)
     public String[] readFile() {
         try {
-            List<String> words = Files.readAllLines(Paths.get(new File(externalFilesDir, filename).toURI()))
-                    .stream().distinct().collect(toList());
-            Collections.reverse(words);
-            return words.toArray(new String[0]);
+            return Files.readAllLines(Paths.get(new File(externalFilesDir, filename).toURI()))
+                    .stream().distinct().toArray(String[]::new);
         } catch (Exception e) {
             Log.e(this.getClass().getSimpleName(), "Error", e);
             return new String[]{ExceptionUtils.getStackTrace(e)};
@@ -75,7 +76,10 @@ public class FileService {
 
     @RequiresApi(api = Build.VERSION_CODES.O)
     public void delete(String word) {
-        String[] words = Arrays.stream(readFile()).filter(w -> !w.equals(word)).distinct().toArray(String[]::new);
-        writeFileExternalStorage(false, words);
+        String[] words = Arrays.stream(readFile()).sequential().filter(w -> !w.equals(word))
+                .distinct().toArray(String[]::new);
+        List<String> _words = Arrays.asList(words);
+//        Collections.reverse(_words);
+        writeFileExternalStorage(false, _words.toArray(new String[0]));
     }
 }
