@@ -1,5 +1,6 @@
 package com.faraz.dictionary;
 
+import static java.util.Optional.ofNullable;
 import static java.util.concurrent.CompletableFuture.runAsync;
 
 import android.annotation.SuppressLint;
@@ -14,6 +15,7 @@ import android.widget.TextView;
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
+import java.io.File;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -52,8 +54,10 @@ public class MainActivity4 extends AppCompatActivity {
         });
     }
 
+    @SuppressLint("SetTextI18n")
     private void filepath() {
-        ((TextView) findViewById(R.id.filepath)).setText(Objects.requireNonNull(getExternalFilesDir(null)).getAbsolutePath());
+        ((TextView) findViewById(R.id.filepath)).setText(ofNullable(getExternalFilesDir(null))
+                .map(File::getAbsolutePath).orElse("can't locate the path") + File.separator + FILE_NAME);
     }
 
     @SuppressLint("SetTextI18n")

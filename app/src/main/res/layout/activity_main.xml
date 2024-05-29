@@ -7,20 +7,6 @@
   tools:context=".MainActivity">
 
   <Button
-      android:id="@+id/offlineMode"
-      android:layout_width="159dp"
-      android:layout_height="42dp"
-      android:onClick="offlineMode"
-      android:text="Offline mode"
-      android:textSize="14dp"
-      app:layout_constraintBottom_toBottomOf="parent"
-      app:layout_constraintEnd_toEndOf="parent"
-      app:layout_constraintHorizontal_bias="1.0"
-      app:layout_constraintStart_toStartOf="parent"
-      app:layout_constraintTop_toTopOf="parent"
-      app:layout_constraintVertical_bias="0.511" />
-
-  <Button
       android:id="@+id/deleteButton"
       android:layout_width="159dp"
       android:layout_height="42dp"
@@ -49,30 +35,18 @@
       app:layout_constraintVertical_bias="0.428" />
 
   <Button
-      android:id="@+id/save"
+      android:id="@+id/offlineMode"
       android:layout_width="159dp"
       android:layout_height="42dp"
-      android:text="save"
+      android:onClick="offlineMode"
+      android:text="Offline mode"
       android:textSize="14dp"
       app:layout_constraintBottom_toBottomOf="parent"
       app:layout_constraintEnd_toEndOf="parent"
       app:layout_constraintHorizontal_bias="1.0"
       app:layout_constraintStart_toStartOf="parent"
       app:layout_constraintTop_toTopOf="parent"
-      app:layout_constraintVertical_bias="0.682" />
-
-  <Button
-      android:id="@+id/google"
-      android:layout_width="159dp"
-      android:layout_height="42dp"
-      android:text="google"
-      android:textSize="14dp"
-      app:layout_constraintBottom_toBottomOf="parent"
-      app:layout_constraintEnd_toEndOf="parent"
-      app:layout_constraintHorizontal_bias="1.0"
-      app:layout_constraintStart_toStartOf="parent"
-      app:layout_constraintTop_toTopOf="parent"
-      app:layout_constraintVertical_bias="0.783" />
+      app:layout_constraintVertical_bias="0.513" />
 
   <Button
       android:id="@+id/secondActivity"
@@ -86,7 +60,33 @@
       app:layout_constraintHorizontal_bias="1.0"
       app:layout_constraintStart_toStartOf="parent"
       app:layout_constraintTop_toTopOf="parent"
-      app:layout_constraintVertical_bias="0.597" />
+      app:layout_constraintVertical_bias="0.598" />
+
+  <Button
+      android:id="@+id/save"
+      android:layout_width="159dp"
+      android:layout_height="42dp"
+      android:text="save"
+      android:textSize="14dp"
+      app:layout_constraintBottom_toBottomOf="parent"
+      app:layout_constraintEnd_toEndOf="parent"
+      app:layout_constraintHorizontal_bias="1.0"
+      app:layout_constraintStart_toStartOf="parent"
+      app:layout_constraintTop_toTopOf="parent"
+      app:layout_constraintVertical_bias="0.683" />
+
+  <Button
+      android:id="@+id/google"
+      android:layout_width="159dp"
+      android:layout_height="42dp"
+      android:text="google"
+      android:textSize="14dp"
+      app:layout_constraintBottom_toBottomOf="parent"
+      app:layout_constraintEnd_toEndOf="parent"
+      app:layout_constraintHorizontal_bias="1.0"
+      app:layout_constraintStart_toStartOf="parent"
+      app:layout_constraintTop_toTopOf="parent"
+      app:layout_constraintVertical_bias="0.768" />
 
   <EditText
       android:id="@+id/wordBox"
