@@ -60,6 +60,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 
 public class MainActivity extends AppCompatActivity {
@@ -109,7 +110,8 @@ public class MainActivity extends AppCompatActivity {
         setOpenInBrowserListener();
         setLookupWordListenerNew();
         setStoreWordListener();
-        supplyAsync(this::isOffline).thenAccept(offline -> {
+        supplyAsync(this::isOffline).thenAccept(onlineOrOffline -> {
+            offline = onlineOrOffline;
             offlineActivityButton.setVisibility(offline ? VISIBLE : INVISIBLE);
             runOnUiThread(() -> Toast.makeText(context, offline ? "You are offline." : "You are online.", LENGTH_SHORT).show());
         });
@@ -148,6 +150,7 @@ public class MainActivity extends AppCompatActivity {
         doInitialWork();
         supplyAsync(this::isOffline).thenAccept(onlineOrOffline -> {
             offline = onlineOrOffline;
+            offlineActivityButton.setVisibility(offline ? VISIBLE : INVISIBLE);
             if (offline) {
                 runAsync(() -> fileService.writeFileExternalStorage(true, originalLookupWord));
                 definitionsView.setText(format("'%s' has been stored offline.", originalLookupWord));
@@ -155,7 +158,6 @@ public class MainActivity extends AppCompatActivity {
                 runAsync(this::lookupWord);
                 openInWebBrowser();
             }
-            offlineActivityButton.setVisibility(offline ? VISIBLE : INVISIBLE);
         });
     }
 
@@ -227,18 +229,20 @@ public class MainActivity extends AppCompatActivity {
         } else {
             supplyAsync(this::isOffline).thenAccept(onlineOrOffline -> {
                 offline = onlineOrOffline;
+                offlineActivityButton.setVisibility(offline ? VISIBLE : INVISIBLE);
                 if (offline) {
-                    runAsync(() -> fileService.writeFileExternalStorage(true, originalLookupWord));
-                    definitionsView.setText(format("'%s' has been stored offline.", originalLookupWord));
+                    runAsync(() -> fileService.writeFileExternalStorage(true, originalLookupWord))
+                            .thenAccept(ignore -> definitionsView.setText(format("'%s' has been stored offline.",
+                                    originalLookupWord)));
                 } else {
                     try {
                         saveWordInMongo();
                         deleteFromFileIfPresent();
                     } catch (Exception e) {
+                        definitionsView.setText(format("welp...%s%s", lineSeparator(), getStackTrace(e)));
                         runOnUiThread(() -> Toast.makeText(MainActivity.this, "Not sure what went wrong.", LENGTH_LONG).show());
                     }
                 }
-                offlineActivityButton.setVisibility(offline ? VISIBLE : INVISIBLE);
             });
         }
     }
@@ -342,10 +346,11 @@ public class MainActivity extends AppCompatActivity {
         doLookup();
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.O)
     public boolean isOffline() {
         try {
-            String command = "ping -c 1 google.com";
-            return (Runtime.getRuntime().exec(command).waitFor() != 0);
+            Process p = Runtime.getRuntime().exec("ping -c 1 google.com");
+            return p.waitFor(500L, TimeUnit.MILLISECONDS) && p.exitValue() != 0;
         } catch (Exception e) {
             return true;
         }
