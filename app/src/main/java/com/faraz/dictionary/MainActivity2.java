@@ -76,15 +76,6 @@ public class MainActivity2 extends AppCompatActivity {
     private Properties properties;
     private ApiService apiService; //todo improvement. Use this to make called. Move all the API calling to this class.
 
-    public static String anchor(String word) {
-        return "<a href='https://www.google.com/search?q=define: " + word + "' target='_blank'>" + capitalize(word) + "</a>";
-    }
-
-    @NonNull
-    private String addDivStyling(List<String> words) {
-        return "<div style=\"font-size:20px\">" + join("<br>", words) + "</div>";
-    }
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -92,21 +83,6 @@ public class MainActivity2 extends AppCompatActivity {
         mailjetClient();
         setRequestQueue();
         apiService = new ApiService(requestQueue, properties);
-    }
-
-    private void setRequestQueue() {
-        if (this.requestQueue == null) {
-            this.requestQueue = Volley.newRequestQueue(this);
-        }
-    }
-
-    public void mailjetClient() {
-        if (mailjetClient == null) {
-            ClientOptions options = ClientOptions.builder().apiKey(loadProperty(MAIL_KEY))
-                    .apiSecretKey(loadProperty(MAIL_SECRET)).okHttpClient(new OkHttpClient.Builder()
-                            .callTimeout(1, TimeUnit.MINUTES).build()).build();
-            mailjetClient = new MailjetClient(options);
-        }
     }
 
     public void backupData(View view) {
@@ -123,6 +99,21 @@ public class MainActivity2 extends AppCompatActivity {
     public void randomWordsActivity(View view) {
         Intent intent = new Intent(this, MainActivity3.class);
         startActivity(intent);
+    }
+
+    private void setRequestQueue() {
+        if (this.requestQueue == null) {
+            this.requestQueue = Volley.newRequestQueue(this);
+        }
+    }
+
+    public void mailjetClient() {
+        if (mailjetClient == null) {
+            ClientOptions options = ClientOptions.builder().apiKey(loadProperty(MAIL_KEY))
+                    .apiSecretKey(loadProperty(MAIL_SECRET)).okHttpClient(new OkHttpClient.Builder()
+                            .callTimeout(1, TimeUnit.MINUTES).build()).build();
+            mailjetClient = new MailjetClient(options);
+        }
     }
 
     private String loadProperty(String property) {
@@ -265,5 +256,14 @@ public class MainActivity2 extends AppCompatActivity {
         protected void onProgressUpdate(String... text) {
             progressDialogs.add(show(MainActivity2.this, "ProgressDialog", text[0]));
         }
+    }
+
+    private static String anchor(String word) {
+        return "<a href='https://www.google.com/search?q=define: " + word + "' target='_blank'>" + capitalize(word) + "</a>";
+    }
+
+    @NonNull
+    private String addDivStyling(List<String> words) {
+        return "<div style=\"font-size:20px\">" + join("<br>", words) + "</div>";
     }
 }
