@@ -85,6 +85,11 @@ public class MainActivity2 extends AppCompatActivity {
         apiService = new ApiService(requestQueue, properties);
     }
 
+    public void seeLastFew(View view) {
+        Intent intent = new Intent(this, MainActivity5.class);
+        startActivity(intent);
+    }
+
     public void backupData(View view) {
         BackupDataAsyncTaskRunner runner = new BackupDataAsyncTaskRunner();
         runner.activity = this;
