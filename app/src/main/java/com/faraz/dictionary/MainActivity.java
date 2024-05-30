@@ -20,10 +20,6 @@ import static java.util.stream.Collectors.joining;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
-import android.net.ConnectivityManager;
-import android.net.Network;
-import android.net.NetworkCapabilities;
-import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -90,7 +86,6 @@ public class MainActivity extends AppCompatActivity {
     private TextView googleLink;
     private TextView definitionsView;
     private TextView saveView;
-    private Button deleteButton;
     private Button offlineActivityButton;
     private boolean offline;
 
@@ -107,15 +102,14 @@ public class MainActivity extends AppCompatActivity {
         definitionsView.setMovementMethod(new ScrollingMovementMethod());
         googleLink = findViewById(R.id.google);
         saveView = findViewById(R.id.save);
-        deleteButton = findViewById(R.id.deleteButton);
         offlineActivityButton = findViewById(R.id.offlineActivity);
         setRequestQueue();
         setOpenInBrowserListener();
         setLookupWordListenerNew();
         setStoreWordListener();
-        offline = !isNetworkAvailable();
+        offline = isOffline();
         offlineActivityButton.setVisibility(offline ? VISIBLE : INVISIBLE);
-        deleteButton.setVisibility(INVISIBLE);
+        Toast.makeText(context, offline ? "You are offline." : "You are online.", LENGTH_SHORT).show();
         ofNullable(getIntent().getExtras()).map(e -> e.getString(LOOKUPTHISWORD)).ifPresent(this::doWork);
     }
 
@@ -142,13 +136,14 @@ public class MainActivity extends AppCompatActivity {
             }
             return false;
         });
-        lookupWord.setOnFocusChangeListener((view, b) -> deleteButton.setVisibility(INVISIBLE));
+        lookupWord.setOnFocusChangeListener((view, b) -> {
+        });
     }
 
     @RequiresApi(api = Build.VERSION_CODES.O)
     private void doLookup() {
         doInitialWork();
-        offline = !isNetworkAvailable();
+        offline = isOffline();
         if (offline) {
             runAsync(() -> fileService.writeFileExternalStorage(true, originalLookupWord));
             definitionsView.setText(format("'%s' has been stored offline.", originalLookupWord));
@@ -156,6 +151,7 @@ public class MainActivity extends AppCompatActivity {
             runAsync(this::lookupWord);
             openInWebBrowser();
         }
+        offlineActivityButton.setVisibility(offline ? VISIBLE : INVISIBLE);
     }
 
     private String formMerriamWebsterUrl() {
@@ -225,8 +221,15 @@ public class MainActivity extends AppCompatActivity {
             if (isBlank(originalLookupWord)) {
                 runOnUiThread(() -> Toast.makeText(MainActivity.this, "Nothing to save.", LENGTH_SHORT).show());
             } else {
-                saveWordInMongo();
-                deleteFromFileIfPresent();
+                offline = isOffline();
+                if (offline) {
+                    runAsync(() -> fileService.writeFileExternalStorage(true, originalLookupWord));
+                    definitionsView.setText(format("'%s' has been stored offline.", originalLookupWord));
+                } else {
+                    saveWordInMongo();
+                    deleteFromFileIfPresent();
+                }
+                offlineActivityButton.setVisibility(offline ? VISIBLE : INVISIBLE);
             }
         } catch (Exception e) {
             runOnUiThread(() -> Toast.makeText(MainActivity.this, "Not sure what went wrong.", LENGTH_LONG).show());
@@ -319,7 +322,6 @@ public class MainActivity extends AppCompatActivity {
         try {
             fileService.delete(originalLookupWord);
             definitionsView.setText(format("'%s' has been deleted from the offline files.", originalLookupWord));
-            deleteButton.setVisibility(INVISIBLE);
         } catch (Exception e) {
             Log.e(this.getClass().getSimpleName(), "error...", e);
             definitionsView.setText(format("Error deleting '%s'. %s ", originalLookupWord,
@@ -331,29 +333,14 @@ public class MainActivity extends AppCompatActivity {
     private void doWork(String word) {
         lookupWord.setText(word);
         doLookup();
-//        deleteButton.setVisibility(offline ? INVISIBLE : VISIBLE);
     }
 
-    private boolean isNetworkAvailable() {
-        ConnectivityManager cm = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
-        if (cm == null) return false;
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            NetworkCapabilities cap = cm.getNetworkCapabilities(cm.getActiveNetwork());
-            if (cap == null) return false;
-            return cap.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            Network[] networks = cm.getAllNetworks();
-            for (Network n : networks) {
-                NetworkInfo nInfo = cm.getNetworkInfo(n);
-                if (nInfo != null && nInfo.isConnected()) return true;
-            }
-        } else {
-            NetworkInfo[] networks = cm.getAllNetworkInfo();
-            for (NetworkInfo nInfo : networks) {
-                if (nInfo != null && nInfo.isConnected()) return true;
-            }
+    public boolean isOffline() {
+        try {
+            String command = "ping -c 1 google.com";
+            return (Runtime.getRuntime().exec(command).waitFor() != 0);
+        } catch (Exception e) {
+            return true;
         }
-        return false;
     }
 }
