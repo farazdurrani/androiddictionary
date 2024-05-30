@@ -124,6 +124,7 @@ public class MainActivity extends AppCompatActivity {
         startActivity(intent);
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.O)
     private void setStoreWordListener() {
         saveView.setOnClickListener(view -> runAsync(this::storeWord));
     }
@@ -132,6 +133,7 @@ public class MainActivity extends AppCompatActivity {
         googleLink.setOnClickListener(ignore -> runAsync(this::openInWebBrowser));
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.O)
     private void setLookupWordListenerNew() {
         lookupWord.setOnKeyListener((view, code, event) -> {
             if ((event.getAction() == KeyEvent.ACTION_DOWN) && (code == KeyEvent.KEYCODE_ENTER)) {
@@ -143,8 +145,10 @@ public class MainActivity extends AppCompatActivity {
         lookupWord.setOnFocusChangeListener((view, b) -> deleteButton.setVisibility(INVISIBLE));
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.O)
     private void doLookup() {
         doInitialWork();
+        offline = !isNetworkAvailable();
         if (offline) {
             runAsync(() -> fileService.writeFileExternalStorage(true, originalLookupWord));
             definitionsView.setText(format("'%s' has been stored offline.", originalLookupWord));
@@ -161,6 +165,7 @@ public class MainActivity extends AppCompatActivity {
         return format(mUrl, word, mk);
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.O)
     @SuppressLint("SetTextI18n")
     private void lookupWord() {
         try {
@@ -168,11 +173,18 @@ public class MainActivity extends AppCompatActivity {
             definitionsView.setText(definition[1]);
             if (BooleanUtils.toBoolean(definition[0])) {
                 saveWordInMongo();
+                deleteFromFileIfPresent();
             }
         } catch (Exception e) {
             definitionsView.setText(format("welp...%s%s", lineSeparator(), getStackTrace(e)));
             runOnUiThread(() -> Toast.makeText(context, "Not sure what went wrong.", LENGTH_LONG).show());
         }
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    private void deleteFromFileIfPresent() {
+        Arrays.stream(fileService.readFile()).filter(s -> s.equals(originalLookupWord)).findFirst()
+                .ifPresent(ignore -> deleteButton(null));
     }
 
     private void openInWebBrowser() {
@@ -207,12 +219,14 @@ public class MainActivity extends AppCompatActivity {
         return this.properties.getProperty(property);
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.O)
     private void storeWord() {
         try {
             if (isBlank(originalLookupWord)) {
                 runOnUiThread(() -> Toast.makeText(MainActivity.this, "Nothing to save.", LENGTH_SHORT).show());
             } else {
                 saveWordInMongo();
+                deleteFromFileIfPresent();
             }
         } catch (Exception e) {
             runOnUiThread(() -> Toast.makeText(MainActivity.this, "Not sure what went wrong.", LENGTH_LONG).show());
@@ -313,10 +327,11 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.O)
     private void doWork(String word) {
         lookupWord.setText(word);
         doLookup();
-        deleteButton.setVisibility(offline ? INVISIBLE : VISIBLE);
+//        deleteButton.setVisibility(offline ? INVISIBLE : VISIBLE);
     }
 
     private boolean isNetworkAvailable() {

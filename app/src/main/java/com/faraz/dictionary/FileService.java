@@ -16,7 +16,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
-import java.util.List;
 
 public class FileService {
 
@@ -78,8 +77,6 @@ public class FileService {
     public void delete(String word) {
         String[] words = Arrays.stream(readFile()).sequential().filter(w -> !w.equals(word))
                 .distinct().toArray(String[]::new);
-        List<String> _words = Arrays.asList(words);
-//        Collections.reverse(_words);
-        writeFileExternalStorage(false, _words.toArray(new String[0]));
+        writeFileExternalStorage(false, words);
     }
 }
