@@ -19,8 +19,9 @@ import java.io.File;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 
+@RequiresApi(api = Build.VERSION_CODES.O)
+@SuppressLint("SetTextI18n")
 public class MainActivity4 extends AppCompatActivity {
 
     public static final String FILE_NAME = "offlinewords.txt";
@@ -29,11 +30,9 @@ public class MainActivity4 extends AppCompatActivity {
     private ListView listView;
     private Context context;
     private FileService fileService;
-    private static final String activity = MainActivity4.class.getSimpleName();
 
     @SuppressLint("SetTextI18n")
     @Override
-    @RequiresApi(api = Build.VERSION_CODES.O)
     public void onCreate(Bundle icicle) {
         super.onCreate(icicle);
         setContentView(R.layout.activity_main4);
@@ -54,14 +53,10 @@ public class MainActivity4 extends AppCompatActivity {
         });
     }
 
-    @SuppressLint("SetTextI18n")
     private void filepath() {
-        ((TextView) findViewById(R.id.filepath)).setText(ofNullable(getExternalFilesDir(null))
-                .map(File::getAbsolutePath).orElse("can't locate the path") + File.separator + FILE_NAME);
+        ((TextView) findViewById(R.id.filepath)).setText(ofNullable(getExternalFilesDir(null)).map(File::getAbsolutePath).orElse("can't locate the path") + File.separator + FILE_NAME);
     }
 
-    @SuppressLint("SetTextI18n")
-    @RequiresApi(api = Build.VERSION_CODES.O)
     private void fetchWords() {
         runAsync(() -> {
             List<String> _words = Arrays.asList(fileService.readFile());

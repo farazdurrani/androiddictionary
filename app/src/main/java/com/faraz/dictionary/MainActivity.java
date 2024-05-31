@@ -33,7 +33,6 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -153,12 +152,10 @@ public class MainActivity extends AppCompatActivity {
         Optional.of(offline).filter(BooleanUtils::isFalse).ifPresent(this::doLookup);
     }
 
-    @NonNull
     private void doLookup(boolean ignore) {
         supplyAsync(this::isOffline).thenAccept(this::writeToFileOrStoreInDbAndOpenBrowser);
     }
 
-    @NonNull
     private void storeInDbAndOpenBrowser(boolean ignore) {
         runAsync(this::lookupWord);
         openInWebBrowser();
