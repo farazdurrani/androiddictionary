@@ -42,6 +42,7 @@ public class MainActivity5 extends AppCompatActivity {
     private String[] words;
 
     private static final String FILE_NAME = "FILE_NAME";
+    public static final String WIPEOUT_DATA_BUTTON = "WIPEOUT_DATA_BUTTON";
 
     @Override
     public void onCreate(Bundle icicle) {
@@ -61,6 +62,7 @@ public class MainActivity5 extends AppCompatActivity {
     public void deletedWordsActivity(View view) {
         Intent intent = new Intent(this, MainActivity4.class);
         intent.putExtra(FILE_NAME, "deletedwords.txt");
+        intent.putExtra(WIPEOUT_DATA_BUTTON, true);
         startActivity(intent);
     }
 

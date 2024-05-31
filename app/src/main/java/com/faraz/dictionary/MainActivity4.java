@@ -1,6 +1,8 @@
 package com.faraz.dictionary;
 
+import static android.view.View.INVISIBLE;
 import static com.faraz.dictionary.MainActivity.FILE_NAME;
+import static com.faraz.dictionary.MainActivity5.WIPEOUT_DATA_BUTTON;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static java.util.Optional.ofNullable;
 import static java.util.concurrent.CompletableFuture.runAsync;
@@ -10,6 +12,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
+import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
@@ -17,6 +20,7 @@ import android.widget.TextView;
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
+import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.File;
@@ -42,15 +46,19 @@ public class MainActivity4 extends AppCompatActivity {
         setContentView(R.layout.activity_main4);
         context = getBaseContext();
         listView = findViewById(R.id.wordList);
-        ofNullable(getIntent().getExtras()).map(e -> e.getString(FILE_NAME)).ifPresent(fn -> {
-            filename = fn;
-            fileService = new FileService(getExternalFilesDir(null), filename);
-            setListener();
-            fetchWords();
-            filepath();
-        });
+        ofNullable(getIntent().getExtras()).filter(e -> BooleanUtils.isFalse(e.getBoolean(WIPEOUT_DATA_BUTTON)))
+                .ifPresent(ignore -> findViewById(R.id.wipeoutDeletedWords).setVisibility(INVISIBLE));
+        ofNullable(getIntent().getExtras()).map(e -> e.getString(FILE_NAME)).ifPresent(this::doInitiation);
         ofNullable(getIntent().getExtras()).filter(e -> StringUtils.isBlank(e.getString(FILE_NAME, EMPTY)))
                 .ifPresent(ignore -> ((TextView) findViewById(R.id.filepath)).setText("can't locate the path"));
+    }
+
+    private void doInitiation(String fn) {
+        filename = fn;
+        fileService = new FileService(getExternalFilesDir(null), filename);
+        setListener();
+        fetchWords();
+        filepath();
     }
 
     private void setListener() {
@@ -73,5 +81,16 @@ public class MainActivity4 extends AppCompatActivity {
             words = _words.toArray(new String[0]);
             runOnUiThread(() -> listView.setAdapter(new ArrayAdapter<>(context, R.layout.custom_layout, words)));
         });
+    }
+
+    public void wipeoutDeletedWords(View view) {
+        ofNullable(getIntent().getExtras()).map(e -> e.getBoolean(WIPEOUT_DATA_BUTTON))
+                .filter(BooleanUtils::isTrue).ifPresent(this::deleteWordsAndShowNewDisplay);
+    }
+
+    private void deleteWordsAndShowNewDisplay(boolean... ignore) {
+        fileService.writeFileExternalStorage(false, EMPTY);
+        words = fileService.readFile();
+        runOnUiThread(() -> listView.setAdapter(new ArrayAdapter<>(context, R.layout.custom_layout, words)));
     }
 }

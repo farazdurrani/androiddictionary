@@ -273,7 +273,7 @@ public class MainActivity extends AppCompatActivity {
         String query = MONGO_PARTIAL_BODY + "," + filter + ", " + update + ", " + options + CLOSE_CURLY;
         Map<String, Object> response = apiService.upsert(query, MONGO_ACTION_UPDATE_MANY);
         Predicate<Map<String, Object>> upsert = r -> r.containsKey("upsertedId");
-        Optional.of(response).filter(upsert).ifPresent(ignore -> runOnUiThread(() -> definitionsView.setText(format("'%s' saved!", capitalize(originalLookupWord)))));
+        Optional.of(response).filter(upsert).ifPresent(ignore -> runOnUiThread(() -> definitionsView.setText(format("'%s's saved!", capitalize(originalLookupWord)))));
         Optional.of(response).filter(upsert.negate()).ifPresent(ignore -> runOnUiThread(() -> definitionsView.setText(format("%s%s's already looked-up.", lineSeparator(), capitalize(originalLookupWord)))));
     }
 
