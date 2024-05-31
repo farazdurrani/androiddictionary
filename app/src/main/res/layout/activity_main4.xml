@@ -25,10 +25,10 @@
         android:layout_height="93dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.503"
+        app:layout_constraintHorizontal_bias="0.547"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/wordList"
-        app:layout_constraintVertical_bias="0.036" />
+        app:layout_constraintVertical_bias="0.042" />
 
     <Button
         android:id="@+id/wipeoutDeletedWords"
@@ -42,5 +42,5 @@
         app:layout_constraintHorizontal_bias="0.986"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.711" />
+        app:layout_constraintVertical_bias="0.776" />
 </androidx.constraintlayout.widget.ConstraintLayout>

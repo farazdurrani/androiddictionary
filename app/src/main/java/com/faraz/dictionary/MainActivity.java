@@ -162,7 +162,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void writeToFile(boolean ignore) {
-        runAsync(() -> fileService.writeFileExternalStorage(true, originalLookupWord)).thenAccept(nothing -> definitionsView.setText(format("'%s' has been stored offline.", originalLookupWord)));
+        runAsync(() -> fileService.writeFileExternalStorage(true, originalLookupWord))
+                .thenAccept(nothing -> definitionsView.setText(format("'%s' has been stored offline.", originalLookupWord)));
     }
 
     private String formMerriamWebsterUrl() {

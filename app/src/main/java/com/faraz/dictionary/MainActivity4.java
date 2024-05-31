@@ -1,6 +1,7 @@
 package com.faraz.dictionary;
 
 import static android.view.View.INVISIBLE;
+import static android.widget.Toast.LENGTH_SHORT;
 import static com.faraz.dictionary.MainActivity.FILE_NAME;
 import static com.faraz.dictionary.MainActivity5.WIPEOUT_DATA_BUTTON;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
@@ -16,6 +17,7 @@ import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
@@ -64,10 +66,16 @@ public class MainActivity4 extends AppCompatActivity {
     private void setListener() {
         listView.setOnItemClickListener((parent, view, position, id) -> {
             String word = (String) listView.getAdapter().getItem(position);
-            Intent intent = new Intent(this, MainActivity.class);
-            intent.putExtra(LOOKUPTHISWORD, word);
-            startActivity(intent);
+            ofNullable(word).filter(StringUtils::isNotBlank).ifPresent(this::spawnActivity);
+            ofNullable(word).filter(StringUtils::isBlank).ifPresent(ignore -> runOnUiThread(() ->
+                    Toast.makeText(context, "cannot send non-existent words.", LENGTH_SHORT).show()));
         });
+    }
+
+    private void spawnActivity(String word) {
+        Intent intent = new Intent(this, MainActivity.class);
+        intent.putExtra(LOOKUPTHISWORD, word);
+        startActivity(intent);
     }
 
     private void filepath() {
