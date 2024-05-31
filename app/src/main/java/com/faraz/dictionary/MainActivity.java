@@ -90,6 +90,7 @@ public class MainActivity extends AppCompatActivity {
     private TextView googleLink;
     private TextView definitionsView;
     private TextView saveView;
+    private Button deleteButton;
     private Button offlineActivityButton;
     private boolean offline;
 
@@ -106,6 +107,8 @@ public class MainActivity extends AppCompatActivity {
         definitionsView.setMovementMethod(new ScrollingMovementMethod());
         googleLink = findViewById(R.id.google);
         saveView = findViewById(R.id.save);
+        deleteButton = findViewById(R.id.deleteButton);
+        deleteButton.setVisibility(INVISIBLE);
         offlineActivityButton = findViewById(R.id.offlineActivity);
         offlineActivityButton.setVisibility(INVISIBLE);
         setRequestQueue();
@@ -141,8 +144,7 @@ public class MainActivity extends AppCompatActivity {
             }
             return false;
         });
-        lookupWord.setOnFocusChangeListener((view, b) -> {
-        });
+        lookupWord.setOnFocusChangeListener((view, b) -> deleteButton.setVisibility(INVISIBLE));
     }
 
     private void doLookup() {
@@ -178,10 +180,8 @@ public class MainActivity extends AppCompatActivity {
         try {
             String[] definition = lookupInMerriamWebsterNew();
             definitionsView.setText(definition[1]);
-            if (BooleanUtils.toBoolean(definition[0])) {
-                saveWordInMongo();
-                deleteFromFileIfPresent();
-            }
+            Optional.of(definition[0]).map(BooleanUtils::toBoolean).filter(BooleanUtils::isTrue).ifPresent(this::saveWordInDb);
+            Optional.of(definition[0]).map(BooleanUtils::toBoolean).filter(BooleanUtils::isFalse).ifPresent(ignore -> runOnUiThread(() -> deleteButton.setVisibility(VISIBLE)));
         } catch (Exception e) {
             definitionsView.setText(format("welp...%s%s%s", originalLookupWord, lineSeparator(), getStackTrace(e)));
             runOnUiThread(() -> Toast.makeText(context, "Not sure what went wrong.", LENGTH_LONG).show());
@@ -224,7 +224,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void storeWord() {
-        ofNullable(originalLookupWord).filter(StringUtils::isBlank).ifPresent(ignore -> runOnUiThread(() -> Toast.makeText(MainActivity.this, "Nothing to save.", LENGTH_SHORT).show()));
+        Optional.of(ofNullable(originalLookupWord).orElse(EMPTY)).filter(StringUtils::isBlank).ifPresent(ignore -> runOnUiThread(() -> Toast.makeText(MainActivity.this, "Nothing to save.", LENGTH_SHORT).show()));
         ofNullable(originalLookupWord).filter(StringUtils::isNotBlank).ifPresent(this::doMoreChecks);
     }
 
@@ -250,7 +250,7 @@ public class MainActivity extends AppCompatActivity {
         Optional.of(isOffline).filter(BooleanUtils::isFalse).ifPresent(this::storeInDbAndOpenBrowser);
     }
 
-    private void saveWordInDb(Boolean ignore) {
+    private void saveWordInDb(Boolean... ignore) {
         try {
             saveWordInMongo();
             deleteFromFileIfPresent();
@@ -336,6 +336,7 @@ public class MainActivity extends AppCompatActivity {
         try {
             fileService.delete(originalLookupWord);
             definitionsView.setText(format("'%s' has been deleted from the offline files.", originalLookupWord));
+            deleteButton.setVisibility(INVISIBLE);
         } catch (Exception e) {
             Log.e(this.getClass().getSimpleName(), "error...", e);
             definitionsView.setText(format("Error deleting '%s'. %s ", originalLookupWord, ExceptionUtils.getStackTrace(e)));
