@@ -1,5 +1,7 @@
 package com.faraz.dictionary;
 
+import static com.faraz.dictionary.MainActivity.FILE_NAME;
+import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static java.util.Optional.ofNullable;
 import static java.util.concurrent.CompletableFuture.runAsync;
 
@@ -15,6 +17,8 @@ import android.widget.TextView;
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
+import org.apache.commons.lang3.StringUtils;
+
 import java.io.File;
 import java.util.Arrays;
 import java.util.Collections;
@@ -24,12 +28,12 @@ import java.util.List;
 @SuppressLint("SetTextI18n")
 public class MainActivity4 extends AppCompatActivity {
 
-    public static final String FILE_NAME = "offlinewords.txt";
     public static final String LOOKUPTHISWORD = "lookupthisword";
     private String[] words;
     private ListView listView;
     private Context context;
     private FileService fileService;
+    private String filename;
 
     @SuppressLint("SetTextI18n")
     @Override
@@ -38,10 +42,15 @@ public class MainActivity4 extends AppCompatActivity {
         setContentView(R.layout.activity_main4);
         context = getBaseContext();
         listView = findViewById(R.id.wordList);
-        setListener();
-        fileService = new FileService(getExternalFilesDir(null), FILE_NAME);
-        fetchWords();
-        filepath();
+        ofNullable(getIntent().getExtras()).map(e -> e.getString(FILE_NAME)).ifPresent(fn -> {
+            filename = fn;
+            fileService = new FileService(getExternalFilesDir(null), filename);
+            setListener();
+            fetchWords();
+            filepath();
+        });
+        ofNullable(getIntent().getExtras()).filter(e -> StringUtils.isBlank(e.getString(FILE_NAME, EMPTY)))
+                .ifPresent(ignore -> ((TextView) findViewById(R.id.filepath)).setText("can't locate the path"));
     }
 
     private void setListener() {
@@ -54,7 +63,7 @@ public class MainActivity4 extends AppCompatActivity {
     }
 
     private void filepath() {
-        ((TextView) findViewById(R.id.filepath)).setText(ofNullable(getExternalFilesDir(null)).map(File::getAbsolutePath).orElse("can't locate the path") + File.separator + FILE_NAME);
+        ((TextView) findViewById(R.id.filepath)).setText(ofNullable(getExternalFilesDir(null)).map(File::getAbsolutePath).orElse("can't locate the path") + File.separator + filename);
     }
 
     private void fetchWords() {

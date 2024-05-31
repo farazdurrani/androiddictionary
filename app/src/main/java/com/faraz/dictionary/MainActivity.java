@@ -4,7 +4,6 @@ import static android.view.View.INVISIBLE;
 import static android.view.View.VISIBLE;
 import static android.widget.Toast.LENGTH_LONG;
 import static android.widget.Toast.LENGTH_SHORT;
-import static com.faraz.dictionary.MainActivity4.FILE_NAME;
 import static com.faraz.dictionary.MainActivity4.LOOKUPTHISWORD;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.apache.commons.lang3.StringUtils.SPACE;
@@ -66,6 +65,7 @@ import java.util.function.Predicate;
 @RequiresApi(api = Build.VERSION_CODES.O)
 public class MainActivity extends AppCompatActivity {
 
+    public static final String FILE_NAME = "FILE_NAME";
     static final String MONGO_PARTIAL_BODY = "{\"collection\":\"dictionary\",\"database\":\"myFirstDatabase\",\"dataSource\":\"Cluster0\"";
     static final String MONGO_ACTION_FIND_ALL = "find";
     static final String MONGO_ACTION_AGGREGATE = "aggregate";
@@ -100,7 +100,7 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         context = getBaseContext();
         apiService = new ApiService(Volley.newRequestQueue(this), properties());
-        fileService = new FileService(getExternalFilesDir(null), FILE_NAME);
+        fileService = new FileService(getExternalFilesDir(null), "offlinewords.txt");
         lookupWord = findViewById(R.id.wordBox);
         definitionsView = findViewById(R.id.definitions);
         definitionsView.setMovementMethod(new ScrollingMovementMethod());
@@ -177,8 +177,11 @@ public class MainActivity extends AppCompatActivity {
         try {
             String[] definition = lookupInMerriamWebsterNew();
             definitionsView.setText(definition[1]);
-            Optional.of(definition[0]).map(BooleanUtils::toBoolean).filter(BooleanUtils::isTrue).ifPresent(this::saveWordInDb);
-            Optional.of(definition[0]).map(BooleanUtils::toBoolean).filter(BooleanUtils::isFalse).ifPresent(ignore -> runOnUiThread(() -> deleteButton.setVisibility(VISIBLE)));
+            Optional.of(definition[0]).map(BooleanUtils::toBoolean).filter(BooleanUtils::isTrue)
+                    .ifPresent(this::saveWordInDb);
+            Optional.of(definition[0]).map(BooleanUtils::toBoolean).filter(BooleanUtils::isFalse)
+                    .flatMap(ignore -> Arrays.stream(fileService.readFile()).filter(originalLookupWord::equals)
+                            .findFirst()).ifPresent(_ignore -> runOnUiThread(() -> deleteButton.setVisibility(VISIBLE)));
         } catch (Exception e) {
             definitionsView.setText(format("welp...%s%s%s", originalLookupWord, lineSeparator(), getStackTrace(e)));
             runOnUiThread(() -> Toast.makeText(context, "Not sure what went wrong.", LENGTH_LONG).show());
@@ -186,7 +189,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void deleteFromFileIfPresent() {
-        Arrays.stream(fileService.readFile()).filter(s -> s.equals(originalLookupWord)).findFirst().ifPresent(ignore -> deleteButton(null));
+        Arrays.stream(fileService.readFile()).filter(s -> s.equals(originalLookupWord)).findFirst()
+                .ifPresent(ignore -> deleteButton(null));
     }
 
     private void openInWebBrowser() {
@@ -221,7 +225,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void storeWord() {
-        Optional.of(ofNullable(originalLookupWord).orElse(EMPTY)).filter(StringUtils::isBlank).ifPresent(ignore -> runOnUiThread(() -> Toast.makeText(MainActivity.this, "Nothing to save.", LENGTH_SHORT).show()));
+        Optional.of(ofNullable(originalLookupWord).orElse(EMPTY)).filter(StringUtils::isBlank)
+                .ifPresent(ignore -> runOnUiThread(() -> Toast.makeText(MainActivity.this, "Nothing to save.", LENGTH_SHORT).show()));
         ofNullable(originalLookupWord).filter(StringUtils::isNotBlank).ifPresent(this::doMoreChecks);
     }
 
@@ -268,11 +273,8 @@ public class MainActivity extends AppCompatActivity {
         String query = MONGO_PARTIAL_BODY + "," + filter + ", " + update + ", " + options + CLOSE_CURLY;
         Map<String, Object> response = apiService.upsert(query, MONGO_ACTION_UPDATE_MANY);
         Predicate<Map<String, Object>> upsert = r -> r.containsKey("upsertedId");
-        Optional.of(response).filter(upsert).ifPresent(ignore -> runOnUiThread(() -> Toast.makeText(context, format("'%s' saved!", capitalize(originalLookupWord)), LENGTH_SHORT).show()));
-        Optional.of(response).filter(upsert.negate()).ifPresent(ignore -> {
-            runOnUiThread(() -> Toast.makeText(context, format("'%s' is already saved.", capitalize(originalLookupWord)), LENGTH_SHORT).show());
-            definitionsView.setText(format("%s%s's already looked-up.", lineSeparator(), capitalize(originalLookupWord)));
-        });
+        Optional.of(response).filter(upsert).ifPresent(ignore -> runOnUiThread(() -> definitionsView.setText(format("'%s' saved!", capitalize(originalLookupWord)))));
+        Optional.of(response).filter(upsert.negate()).ifPresent(ignore -> runOnUiThread(() -> definitionsView.setText(format("%s%s's already looked-up.", lineSeparator(), capitalize(originalLookupWord)))));
     }
 
     @SuppressLint({"NewApi", "DefaultLocale"})
@@ -320,6 +322,7 @@ public class MainActivity extends AppCompatActivity {
 
     public void offlineActivity(View view) {
         Intent intent = new Intent(this, MainActivity4.class);
+        intent.putExtra(FILE_NAME, "offlinewords.txt");
         startActivity(intent);
     }
 
@@ -332,7 +335,7 @@ public class MainActivity extends AppCompatActivity {
     public void deleteButton(View view) {
         try {
             fileService.delete(originalLookupWord);
-            definitionsView.setText(format("'%s' has been deleted from the offline files.", originalLookupWord));
+            runOnUiThread(() -> Toast.makeText(context, format("'%s' has been deleted from the offline files.", originalLookupWord), LENGTH_LONG).show());
             deleteButton.setVisibility(INVISIBLE);
         } catch (Exception e) {
             Log.e(this.getClass().getSimpleName(), "error...", e);

@@ -10,11 +10,15 @@ import static java.util.concurrent.CompletableFuture.supplyAsync;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.Intent;
+import android.os.Build;
 import android.os.Bundle;
+import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.Toast;
 
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.android.volley.toolbox.Volley;
@@ -27,6 +31,7 @@ import java.util.Arrays;
 import java.util.Optional;
 import java.util.Properties;
 
+@RequiresApi(api = Build.VERSION_CODES.O)
 public class MainActivity5 extends AppCompatActivity {
 
     public static final String MONGO_ACTION_DELETE_ONE = "deleteOne";
@@ -36,7 +41,7 @@ public class MainActivity5 extends AppCompatActivity {
     private ApiService apiService;
     private String[] words;
 
-    private static final String FILE_NAME = "deletedwords.txt";
+    private static final String FILE_NAME = "FILE_NAME";
 
     @Override
     public void onCreate(Bundle icicle) {
@@ -45,12 +50,18 @@ public class MainActivity5 extends AppCompatActivity {
         context = getBaseContext();
         listView = findViewById(R.id.wordsList);
         setListener();
-        fileService = new FileService(getExternalFilesDir(null), FILE_NAME);
+        fileService = new FileService(getExternalFilesDir(null), "deletedwords.txt");
         apiService = new ApiService(Volley.newRequestQueue(this), properties());
         supplyAsync(this::getLastFewWords).thenAccept(_words -> {
             words = _words;
             runOnUiThread(() -> listView.setAdapter(new ArrayAdapter<>(context, R.layout.custom_layout, words)));
         });
+    }
+
+    public void deletedWordsActivity(View view) {
+        Intent intent = new Intent(this, MainActivity4.class);
+        intent.putExtra(FILE_NAME, "deletedwords.txt");
+        startActivity(intent);
     }
 
     private void setListener() {
@@ -96,7 +107,7 @@ public class MainActivity5 extends AppCompatActivity {
     }
 
     private String[] getLastFewWords() {
-        @SuppressLint("DefaultLocale") String limit = format(", \"limit\": %d", 20);
+        @SuppressLint("DefaultLocale") String limit = format(", \"limit\": %d", 30);
         String sort = ", \"sort\": { \"lookupTime\": -1 }";
         String query = MONGO_PARTIAL_BODY + limit + sort + CLOSE_CURLY;
         return apiService.executeQuery(query, MONGO_ACTION_FIND_ALL, "word").toArray(new String[0]);
