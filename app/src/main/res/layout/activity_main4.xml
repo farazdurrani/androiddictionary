@@ -32,15 +32,15 @@
 
     <Button
         android:id="@+id/wipeoutDeletedWords"
-        android:layout_width="209dp"
-        android:layout_height="45sp"
+        android:layout_width="269dp"
+        android:layout_height="43dp"
         android:onClick="wipeoutDeletedWords"
         android:text="Wipe out deleted words"
         android:textSize="12dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.986"
+        app:layout_constraintHorizontal_bias="0.663"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.776" />
+        app:layout_constraintVertical_bias="0.785" />
 </androidx.constraintlayout.widget.ConstraintLayout>
