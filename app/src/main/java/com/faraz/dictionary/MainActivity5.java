@@ -3,7 +3,6 @@ package com.faraz.dictionary;
 import static android.widget.Toast.LENGTH_SHORT;
 import static com.faraz.dictionary.MainActivity.CLOSE_CURLY;
 import static com.faraz.dictionary.MainActivity.MONGO_ACTION_FIND_ALL;
-import static com.faraz.dictionary.MainActivity.MONGO_ACTION_UPDATE_MANY;
 import static com.faraz.dictionary.MainActivity.MONGO_PARTIAL_BODY;
 import static java.lang.String.format;
 import static java.util.Optional.ofNullable;
@@ -30,6 +29,7 @@ import java.util.Properties;
 
 public class MainActivity5 extends AppCompatActivity {
 
+    public static final String MONGO_ACTION_DELETE_ONE = "deleteOne";
     private ListView listView;
     private Context context;
     private FileService fileService;
@@ -68,11 +68,10 @@ public class MainActivity5 extends AppCompatActivity {
 
     private void deleteFromDb(String word) {
         String filter = format(", \"filter\": { \"word\": \"%s\" }", word);
-        String updateQuery = format(", \"update\": { \"$set\" : { \"deleted\" : %b } }", true);
-        String query = MONGO_PARTIAL_BODY + filter + updateQuery + CLOSE_CURLY;
+        String query = MONGO_PARTIAL_BODY + filter + CLOSE_CURLY;
         supplyAsync(() -> {
             try {
-                apiService.upsert(query, MONGO_ACTION_UPDATE_MANY);
+                apiService.upsert(query, MONGO_ACTION_DELETE_ONE);
                 return word;
             } catch (Exception e) {
                 throw new RuntimeException(e);
