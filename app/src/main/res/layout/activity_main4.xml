@@ -33,7 +33,7 @@
     <Button
         android:id="@+id/wipeoutDeletedWords"
         android:layout_width="209dp"
-        android:layout_height="88dp"
+        android:layout_height="45sp"
         android:onClick="wipeoutDeletedWords"
         android:text="Wipe out deleted words"
         android:textSize="12dp"

@@ -97,7 +97,7 @@ public class MainActivity4 extends AppCompatActivity {
     }
 
     private void deleteWordsAndShowNewDisplay(boolean... ignore) {
-        fileService.writeFileExternalStorage(false, EMPTY);
+        fileService.clearFile();
         words = fileService.readFile();
         runOnUiThread(() -> listView.setAdapter(new ArrayAdapter<>(context, R.layout.custom_layout, words)));
     }
