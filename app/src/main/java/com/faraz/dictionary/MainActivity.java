@@ -33,6 +33,7 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -63,6 +64,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 
+@RequiresApi(api = Build.VERSION_CODES.O)
 public class MainActivity extends AppCompatActivity {
 
     static final String MONGO_PARTIAL_BODY = "{\"collection\":\"dictionary\",\"database\":\"myFirstDatabase\",\"dataSource\":\"Cluster0\"";
@@ -110,12 +112,12 @@ public class MainActivity extends AppCompatActivity {
         setOpenInBrowserListener();
         setLookupWordListenerNew();
         setStoreWordListener();
-        supplyAsync(this::isOffline).thenAccept(onlineOrOffline -> {
-            offline = onlineOrOffline;
+        supplyAsync(this::isOffline).thenAccept(isOffline -> {
+            offline = isOffline;
             offlineActivityButton.setVisibility(offline ? VISIBLE : INVISIBLE);
             runOnUiThread(() -> Toast.makeText(context, offline ? "You are offline." : "You are online.", LENGTH_SHORT).show());
         });
-        ofNullable(getIntent().getExtras()).map(e -> e.getString(LOOKUPTHISWORD)).ifPresent(this::doWork);
+        ofNullable(getIntent().getExtras()).map(e -> e.getString(LOOKUPTHISWORD)).ifPresent(this::doLookup);
     }
 
     public void goTo2ndActivity(View view) {
@@ -123,7 +125,6 @@ public class MainActivity extends AppCompatActivity {
         startActivity(intent);
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.O)
     private void setStoreWordListener() {
         saveView.setOnClickListener(view -> runAsync(this::storeWord));
     }
@@ -132,7 +133,6 @@ public class MainActivity extends AppCompatActivity {
         googleLink.setOnClickListener(ignore -> runAsync(this::openInWebBrowser));
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.O)
     private void setLookupWordListenerNew() {
         lookupWord.setOnKeyListener((view, code, event) -> {
             if ((event.getAction() == KeyEvent.ACTION_DOWN) && (code == KeyEvent.KEYCODE_ENTER)) {
@@ -145,20 +145,25 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.O)
     private void doLookup() {
         doInitialWork();
-        supplyAsync(this::isOffline).thenAccept(onlineOrOffline -> {
-            offline = onlineOrOffline;
-            offlineActivityButton.setVisibility(offline ? VISIBLE : INVISIBLE);
-            if (offline) {
-                runAsync(() -> fileService.writeFileExternalStorage(true, originalLookupWord));
-                definitionsView.setText(format("'%s' has been stored offline.", originalLookupWord));
-            } else {
-                runAsync(this::lookupWord);
-                openInWebBrowser();
-            }
-        });
+        Optional.of(offline).filter(BooleanUtils::isTrue).ifPresent(this::writeToFile);
+        Optional.of(offline).filter(BooleanUtils::isFalse).ifPresent(this::doLookup);
+    }
+
+    @NonNull
+    private void doLookup(boolean ignore) {
+        supplyAsync(this::isOffline).thenAccept(this::writeToFileOrStoreInDbAndOpenBrowser);
+    }
+
+    @NonNull
+    private void storeInDbAndOpenBrowser(boolean ignore) {
+        runAsync(this::lookupWord);
+        openInWebBrowser();
+    }
+
+    private void writeToFile(boolean ignore) {
+        runAsync(() -> fileService.writeFileExternalStorage(true, originalLookupWord)).thenAccept(nothing -> definitionsView.setText(format("'%s' has been stored offline.", originalLookupWord)));
     }
 
     private String formMerriamWebsterUrl() {
@@ -168,7 +173,6 @@ public class MainActivity extends AppCompatActivity {
         return format(mUrl, word, mk);
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.O)
     @SuppressLint("SetTextI18n")
     private void lookupWord() {
         try {
@@ -179,15 +183,13 @@ public class MainActivity extends AppCompatActivity {
                 deleteFromFileIfPresent();
             }
         } catch (Exception e) {
-            definitionsView.setText(format("welp...%s%s%s", originalLookupWord,lineSeparator(), getStackTrace(e)));
+            definitionsView.setText(format("welp...%s%s%s", originalLookupWord, lineSeparator(), getStackTrace(e)));
             runOnUiThread(() -> Toast.makeText(context, "Not sure what went wrong.", LENGTH_LONG).show());
         }
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.O)
     private void deleteFromFileIfPresent() {
-        Arrays.stream(fileService.readFile()).filter(s -> s.equals(originalLookupWord)).findFirst()
-                .ifPresent(ignore -> deleteButton(null));
+        Arrays.stream(fileService.readFile()).filter(s -> s.equals(originalLookupWord)).findFirst().ifPresent(ignore -> deleteButton(null));
     }
 
     private void openInWebBrowser() {
@@ -206,8 +208,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private String cleanWord() {
-        return Arrays.stream(lookupWord.getText().toString().split(REGEX_WHITE_SPACES))
-                .map(String::trim).map(String::toLowerCase).collect(joining(SPACE)).trim();
+        return Arrays.stream(lookupWord.getText().toString().split(REGEX_WHITE_SPACES)).map(String::trim).map(String::toLowerCase).collect(joining(SPACE)).trim();
     }
 
     private String loadProperty(String property) {
@@ -222,28 +223,40 @@ public class MainActivity extends AppCompatActivity {
         return this.properties.getProperty(property);
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.O)
     private void storeWord() {
-        if (isBlank(originalLookupWord)) {
-            runOnUiThread(() -> Toast.makeText(MainActivity.this, "Nothing to save.", LENGTH_SHORT).show());
-        } else {
-            supplyAsync(this::isOffline).thenAccept(onlineOrOffline -> {
-                offline = onlineOrOffline;
-                offlineActivityButton.setVisibility(offline ? VISIBLE : INVISIBLE);
-                if (offline) {
-                    runAsync(() -> fileService.writeFileExternalStorage(true, originalLookupWord))
-                            .thenAccept(ignore -> definitionsView.setText(format("'%s' has been stored offline.",
-                                    originalLookupWord)));
-                } else {
-                    try {
-                        saveWordInMongo();
-                        deleteFromFileIfPresent();
-                    } catch (Exception e) {
-                        definitionsView.setText(format("welp...%s%s%s", originalLookupWord,lineSeparator(), getStackTrace(e)));
-                        runOnUiThread(() -> Toast.makeText(MainActivity.this, "Not sure what went wrong.", LENGTH_LONG).show());
-                    }
-                }
-            });
+        ofNullable(originalLookupWord).filter(StringUtils::isBlank).ifPresent(ignore -> runOnUiThread(() -> Toast.makeText(MainActivity.this, "Nothing to save.", LENGTH_SHORT).show()));
+        ofNullable(originalLookupWord).filter(StringUtils::isNotBlank).ifPresent(this::doMoreChecks);
+    }
+
+    private void doMoreChecks(String ignore) {
+        Optional.of(offline).filter(BooleanUtils::isTrue).ifPresent(this::writeToFile);
+        Optional.of(offline).filter(BooleanUtils::isFalse).ifPresent(this::checkIfOfflineAndDoMoreWork);
+
+    }
+
+    private void checkIfOfflineAndDoMoreWork(Boolean ignore) {
+        supplyAsync(this::isOffline).thenAccept(this::doMoreWork);
+    }
+
+    private void doMoreWork(Boolean isOffline) {
+        runOnUiThread(() -> offlineActivityButton.setVisibility(isOffline ? VISIBLE : INVISIBLE));
+        Optional.of(isOffline).filter(BooleanUtils::isTrue).ifPresent(this::writeToFile);
+        Optional.of(isOffline).filter(BooleanUtils::isFalse).ifPresent(this::saveWordInDb);
+    }
+
+    private void writeToFileOrStoreInDbAndOpenBrowser(Boolean isOffline) {
+        runOnUiThread(() -> offlineActivityButton.setVisibility(isOffline ? VISIBLE : INVISIBLE));
+        Optional.of(isOffline).filter(BooleanUtils::isTrue).ifPresent(this::writeToFile);
+        Optional.of(isOffline).filter(BooleanUtils::isFalse).ifPresent(this::storeInDbAndOpenBrowser);
+    }
+
+    private void saveWordInDb(Boolean ignore) {
+        try {
+            saveWordInMongo();
+            deleteFromFileIfPresent();
+        } catch (Exception e) {
+            definitionsView.setText(format("welp...%s%s%s", originalLookupWord, lineSeparator(), getStackTrace(e)));
+            runOnUiThread(() -> Toast.makeText(MainActivity.this, "Not sure what went wrong.", LENGTH_LONG).show());
         }
     }
 
@@ -258,8 +271,7 @@ public class MainActivity extends AppCompatActivity {
         String query = MONGO_PARTIAL_BODY + "," + filter + ", " + update + ", " + options + CLOSE_CURLY;
         Map<String, Object> response = apiService.upsert(query, MONGO_ACTION_UPDATE_MANY);
         Predicate<Map<String, Object>> upsert = r -> r.containsKey("upsertedId");
-        Optional.of(response).filter(upsert).ifPresent(ignore -> runOnUiThread(() ->
-                Toast.makeText(context, format("'%s' saved!", capitalize(originalLookupWord)), LENGTH_SHORT).show()));
+        Optional.of(response).filter(upsert).ifPresent(ignore -> runOnUiThread(() -> Toast.makeText(context, format("'%s' saved!", capitalize(originalLookupWord)), LENGTH_SHORT).show()));
         Optional.of(response).filter(upsert.negate()).ifPresent(ignore -> {
             runOnUiThread(() -> Toast.makeText(context, format("'%s' is already saved.", capitalize(originalLookupWord)), LENGTH_SHORT).show());
             definitionsView.setText(format("%s%s's already looked-up.", lineSeparator(), capitalize(originalLookupWord)));
@@ -268,8 +280,7 @@ public class MainActivity extends AppCompatActivity {
 
     @SuppressLint({"NewApi", "DefaultLocale"})
     private String getUpdateQueryToUpdateReminded() {
-        return format("\"update\": { \"$set\" : { \"word\": \"%s\" }, \"$setOnInsert\" : { \"lookupTime\" : {  \"$date\" : {  \"$numberLong\" : \"%d\"} } } }",
-                originalLookupWord, Instant.now(Clock.system(ZoneId.of(CHICAGO))).toEpochMilli());
+        return format("\"update\": { \"$set\" : { \"word\": \"%s\" }, \"$setOnInsert\" : { \"lookupTime\" : {  \"$date\" : {  \"$numberLong\" : \"%d\"} } } }", originalLookupWord, Instant.now(Clock.system(ZoneId.of(CHICAGO))).toEpochMilli());
     }
 
     private String[] parseMerriamWebsterResponse(String json) {
@@ -278,18 +289,11 @@ public class MainActivity extends AppCompatActivity {
         flattenJson.keySet().removeIf(x -> !x.contains("shortdef"));
         if (flattenJson.values().isEmpty()) {
             orig.add(0, format(NO_DEFINITION_FOUND, originalLookupWord));
-            String alternativeWords = orig.stream().filter(Objects::nonNull).filter(String.class::isInstance)
-                    .map(String.class::cast).filter(StringUtils::isNotBlank).map(lineSeparator()::concat)
-                    .map("----------"::concat).collect(joining(lineSeparator()));
+            String alternativeWords = orig.stream().filter(Objects::nonNull).filter(String.class::isInstance).map(String.class::cast).filter(StringUtils::isNotBlank).map(lineSeparator()::concat).map("----------"::concat).collect(joining(lineSeparator()));
             return new String[]{"false", alternativeWords};
         } else {
-            String result = flattenJson.values().stream().filter(Objects::nonNull).filter(String.class::isInstance)
-                    .map(String.class::cast).limit(3).filter(StringUtils::isNotBlank).map(lineSeparator()::concat)
-                    .map("----------"::concat).collect(joining(lineSeparator()));
-            String definition = result + orig.stream().filter(Objects::nonNull).filter(String.class::isInstance)
-                    .map(String.class::cast).filter(StringUtils::isNotBlank).filter(x -> x.contains("\\{wi}") &&
-                            x.contains("\\{/wi}")).map(x -> x.replaceAll("\\{wi}", EMPTY)).map(x ->
-                            x.replaceAll("\\{/wi}", EMPTY)).map("// "::concat).collect(joining(lineSeparator()));
+            String result = flattenJson.values().stream().filter(Objects::nonNull).filter(String.class::isInstance).map(String.class::cast).limit(3).filter(StringUtils::isNotBlank).map(lineSeparator()::concat).map("----------"::concat).collect(joining(lineSeparator()));
+            String definition = result + orig.stream().filter(Objects::nonNull).filter(String.class::isInstance).map(String.class::cast).filter(StringUtils::isNotBlank).filter(x -> x.contains("\\{wi}") && x.contains("\\{/wi}")).map(x -> x.replaceAll("\\{wi}", EMPTY)).map(x -> x.replaceAll("\\{/wi}", EMPTY)).map("// "::concat).collect(joining(lineSeparator()));
             return new String[]{"true", definition};
         }
     }
@@ -328,25 +332,21 @@ public class MainActivity extends AppCompatActivity {
         offlineActivityButton.setVisibility(offline ? VISIBLE : INVISIBLE);
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.O)
     public void deleteButton(View view) {
         try {
             fileService.delete(originalLookupWord);
             definitionsView.setText(format("'%s' has been deleted from the offline files.", originalLookupWord));
         } catch (Exception e) {
             Log.e(this.getClass().getSimpleName(), "error...", e);
-            definitionsView.setText(format("Error deleting '%s'. %s ", originalLookupWord,
-                    ExceptionUtils.getStackTrace(e)));
+            definitionsView.setText(format("Error deleting '%s'. %s ", originalLookupWord, ExceptionUtils.getStackTrace(e)));
         }
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.O)
-    private void doWork(String word) {
+    private void doLookup(String word) {
         lookupWord.setText(word);
         doLookup();
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.O)
     public boolean isOffline() {
         try {
             Process p = Runtime.getRuntime().exec("ping -c 1 google.com");
