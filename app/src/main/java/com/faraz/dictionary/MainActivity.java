@@ -179,7 +179,7 @@ public class MainActivity extends AppCompatActivity {
                 deleteFromFileIfPresent();
             }
         } catch (Exception e) {
-            definitionsView.setText(format("welp...%s%s", lineSeparator(), getStackTrace(e)));
+            definitionsView.setText(format("welp...%s%s%s", originalLookupWord,lineSeparator(), getStackTrace(e)));
             runOnUiThread(() -> Toast.makeText(context, "Not sure what went wrong.", LENGTH_LONG).show());
         }
     }
@@ -239,7 +239,7 @@ public class MainActivity extends AppCompatActivity {
                         saveWordInMongo();
                         deleteFromFileIfPresent();
                     } catch (Exception e) {
-                        definitionsView.setText(format("welp...%s%s", lineSeparator(), getStackTrace(e)));
+                        definitionsView.setText(format("welp...%s%s%s", originalLookupWord,lineSeparator(), getStackTrace(e)));
                         runOnUiThread(() -> Toast.makeText(MainActivity.this, "Not sure what went wrong.", LENGTH_LONG).show());
                     }
                 }
