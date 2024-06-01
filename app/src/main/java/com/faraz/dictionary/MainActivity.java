@@ -117,7 +117,8 @@ public class MainActivity extends AppCompatActivity {
         supplyAsync(this::isOffline).thenAccept(isOffline -> {
             offline = isOffline;
             offlineActivityButton.setVisibility(offline ? VISIBLE : INVISIBLE);
-            runOnUiThread(() -> Toast.makeText(context, offline ? "You are offline." : "You are online.", LENGTH_SHORT).show());
+            Optional.of(getIntent().getExtras() == null).filter(BooleanUtils::isTrue)
+                    .ifPresent(ignore -> runOnUiThread(() -> Toast.makeText(context, offline ? "You are offline." : "You are online.", LENGTH_SHORT).show()));
         });
         ofNullable(getIntent().getExtras()).map(e -> e.getString(LOOKUPTHISWORD)).ifPresent(this::doLookup);
     }
