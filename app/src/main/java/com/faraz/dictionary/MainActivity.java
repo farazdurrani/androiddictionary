@@ -156,7 +156,7 @@ public class MainActivity extends AppCompatActivity {
         supplyAsync(this::isOffline).thenAccept(this::writeToFileOrStoreInDbAndOpenBrowser);
     }
 
-    private void storeInDbAndOpenBrowser(boolean ignore) {
+    private void lookupAndstoreInDbAndOpenBrowser(boolean ignore) {
         runAsync(this::lookupWord);
         openInWebBrowser();
     }
@@ -176,6 +176,10 @@ public class MainActivity extends AppCompatActivity {
     @SuppressLint("SetTextI18n")
     private void lookupWord() {
         try {
+            if (!existingWord().isEmpty()) {
+                definitionsView.setText(format("'%s's is already looked-up.", originalLookupWord));
+                return;
+            }
             String[] definition = lookupInMerriamWebsterNew();
             definitionsView.setText(definition[1]);
             Optional.of(definition[0]).map(BooleanUtils::toBoolean).filter(BooleanUtils::isTrue)
@@ -187,6 +191,12 @@ public class MainActivity extends AppCompatActivity {
             definitionsView.setText(format("welp...%s%s%s", originalLookupWord, lineSeparator(), getStackTrace(e)));
             runOnUiThread(() -> Toast.makeText(context, "Not sure what went wrong.", LENGTH_LONG).show());
         }
+    }
+
+    private List<String> existingWord() {
+        String filter = wordExistsQuery();
+        String query = MONGO_PARTIAL_BODY + "," + filter + CLOSE_CURLY;
+        return apiService.executeQuery(query, MONGO_ACTION_FIND_ALL, "word");
     }
 
     private void deleteFromFileIfPresent() {
@@ -250,7 +260,7 @@ public class MainActivity extends AppCompatActivity {
     private void writeToFileOrStoreInDbAndOpenBrowser(Boolean isOffline) {
         runOnUiThread(() -> offlineActivityButton.setVisibility(isOffline ? VISIBLE : INVISIBLE));
         Optional.of(isOffline).filter(BooleanUtils::isTrue).ifPresent(this::writeToFile);
-        Optional.of(isOffline).filter(BooleanUtils::isFalse).ifPresent(this::storeInDbAndOpenBrowser);
+        Optional.of(isOffline).filter(BooleanUtils::isFalse).ifPresent(this::lookupAndstoreInDbAndOpenBrowser);
     }
 
     private void saveWordInDb(Boolean... ignore) {
@@ -289,22 +299,33 @@ public class MainActivity extends AppCompatActivity {
         flattenJson.keySet().removeIf(x -> !x.contains("shortdef"));
         if (flattenJson.values().isEmpty()) {
             orig.add(0, format(NO_DEFINITION_FOUND, originalLookupWord));
-            String alternativeWords = orig.stream().filter(Objects::nonNull).filter(String.class::isInstance).map(String.class::cast).filter(StringUtils::isNotBlank).map(lineSeparator()::concat).map("----------"::concat).collect(joining(lineSeparator()));
+            String alternativeWords = orig.stream().filter(Objects::nonNull).filter(String.class::isInstance)
+                    .map(String.class::cast).filter(StringUtils::isNotBlank).map(lineSeparator()::concat)
+                    .map("----------"::concat).collect(joining(lineSeparator()));
             return new String[]{"false", alternativeWords};
         } else {
-            String result = flattenJson.values().stream().filter(Objects::nonNull).filter(String.class::isInstance).map(String.class::cast).limit(3).filter(StringUtils::isNotBlank).map(lineSeparator()::concat).map("----------"::concat).collect(joining(lineSeparator()));
-            String definition = result + orig.stream().filter(Objects::nonNull).filter(String.class::isInstance).map(String.class::cast).filter(StringUtils::isNotBlank).filter(x -> x.contains("\\{wi}") && x.contains("\\{/wi}")).map(x -> x.replaceAll("\\{wi}", EMPTY)).map(x -> x.replaceAll("\\{/wi}", EMPTY)).map("// "::concat).collect(joining(lineSeparator()));
+            String result = flattenJson.values().stream().filter(Objects::nonNull).filter(String.class::isInstance)
+                    .map(String.class::cast).limit(3).filter(StringUtils::isNotBlank).map(lineSeparator()::concat)
+                    .map("----------"::concat).collect(joining(lineSeparator()));
+            String definition = result + orig.stream().filter(Objects::nonNull).filter(String.class::isInstance)
+                    .map(String.class::cast).filter(StringUtils::isNotBlank).filter(x -> x.contains("\\{wi}") && x.contains("\\{/wi}"))
+                    .map(x -> x.replaceAll("\\{wi}", EMPTY)).map(x -> x.replaceAll("\\{/wi}", EMPTY))
+                    .map("// "::concat).collect(joining(lineSeparator()));
             return new String[]{"true", definition};
         }
     }
 
     @SuppressLint("SetTextI18n")
-    private String[] lookupInMerriamWebsterNew() throws ExecutionException, InterruptedException {
+    private String[] lookupInMerriamWebsterNew() {
         String url = formMerriamWebsterUrl();
         RequestFuture<JSONArray> requestFuture = RequestFuture.newFuture();
         JsonArrayRequest jsonObjectRequest = new JsonArrayRequest(url, requestFuture, requestFuture);
         requestQueue.add(jsonObjectRequest);
-        return parseMerriamWebsterResponse(requestFuture.get().toString());
+        try {
+            return parseMerriamWebsterResponse(requestFuture.get().toString());
+        } catch (InterruptedException | ExecutionException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private Properties properties() {
