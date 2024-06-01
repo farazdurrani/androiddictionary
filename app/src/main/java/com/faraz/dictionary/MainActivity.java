@@ -179,6 +179,7 @@ public class MainActivity extends AppCompatActivity {
         try {
             if (!existingWord().isEmpty()) {
                 definitionsView.setText(format("'%s's is already looked-up.", originalLookupWord));
+                deleteFromFileIfPresent();
                 return;
             }
             String[] definition = lookupInMerriamWebsterNew();
@@ -201,7 +202,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void deleteFromFileIfPresent() {
-        Arrays.stream(fileService.readFile()).filter(s -> s.equals(originalLookupWord)).findFirst()
+        Arrays.stream(fileService.readFile()).filter(originalLookupWord::equals).findFirst()
                 .ifPresent(ignore -> deleteButton(null));
     }
 
