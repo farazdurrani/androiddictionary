@@ -19,12 +19,14 @@ import android.app.Dialog;
 import android.app.ProgressDialog;
 import android.content.Intent;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.android.volley.RequestQueue;
@@ -58,6 +60,7 @@ import okhttp3.OkHttpClient;
 @SuppressLint("DefaultLocale")
 public class MainActivity2 extends AppCompatActivity {
 
+    public static final int WORD_LIMIT_IN_BACKUP_EMAIL = 5000;
     private static final String activity = MainActivity2.class.getSimpleName();
     private static final String MAIL_KEY = "mailjet.apiKey";
     private static final String MAIL_SECRET = "mailjet.apiSecret";
@@ -67,14 +70,24 @@ public class MainActivity2 extends AppCompatActivity {
     private static final String JAVAMAIL_PASS = "javamail.pass";
     private static final String JAVAMAIL_FROM = "javamail.from";
     private static final String JAVAMAIL_TO = "javamail.to";
-    public static final int WORD_LIMIT_IN_BACKUP_EMAIL = 5000;
-
     private boolean defaultEmailProvider = true; //default email provider is MailJet. Other option is JavaMail.
 
     private MailjetClient mailjetClient;
     private RequestQueue requestQueue;
     private Properties properties;
     private ApiService apiService; //todo improvement. Use this to make called. Move all the API calling to this class.
+
+    private static boolean noErrors(SendEmailsResponse response) {
+        Predicate<MessageResult[]> allSuccessAndNoErrors =
+                mr -> Arrays.stream(mr).map(MessageResult::getStatus).allMatch(SUCCESS::equals) &&
+                        Arrays.stream(mr).map(MessageResult::getErrors).allMatch(ObjectUtils::isEmpty);
+        return ofNullable(response).map(SendEmailsResponse::getMessages).filter(allSuccessAndNoErrors)
+                .isPresent();
+    }
+
+    private static String anchor(String word) {
+        return "<a href='https://www.google.com/search?q=define: " + word + "' target='_blank'>" + capitalize(word) + "</a>";
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -85,6 +98,7 @@ public class MainActivity2 extends AppCompatActivity {
         apiService = new ApiService(requestQueue, properties);
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.O)
     public void seeLastFew(View view) {
         Intent intent = new Intent(this, MainActivity5.class);
         startActivity(intent);
@@ -181,16 +195,18 @@ public class MainActivity2 extends AppCompatActivity {
         return mail.send();
     }
 
-    private static boolean noErrors(SendEmailsResponse response) {
-        Predicate<MessageResult[]> allSuccessAndNoErrors =
-                mr -> Arrays.stream(mr).map(MessageResult::getStatus).allMatch(SUCCESS::equals) &&
-                        Arrays.stream(mr).map(MessageResult::getErrors).allMatch(ObjectUtils::isEmpty);
-        return ofNullable(response).map(SendEmailsResponse::getMessages).filter(allSuccessAndNoErrors)
-                .isPresent();
-    }
-
     public void displayMessage(String message) {
         runOnUiThread(() -> Toast.makeText(this, message, LENGTH_LONG).show());
+    }
+
+    private List<String> reverseList(List<String> list) {
+        reverse(list);
+        return list;
+    }
+
+    @NonNull
+    private String addDivStyling(List<String> words) {
+        return "<div style=\"font-size:20px\">" + join("<br>", words) + "</div>";
     }
 
     private class BackupDataAsyncTaskRunner extends AsyncTask<String, String, Void> {
@@ -217,13 +233,14 @@ public class MainActivity2 extends AppCompatActivity {
                     publishProgress(format("Loaded '%s' words...", words.size()));
                 } while (previousSkip != -1);
                 publishProgress(format("Sending '%s' words...", words.size()));
-                reverse(words);
                 List<List<String>> wordPartitions = Lists.partition(words.stream().distinct().collect(toList()),
                         WORD_LIMIT_IN_BACKUP_EMAIL);
-                IntStream.range(0, wordPartitions.size()).forEach(index -> ofNullable(wordPartitions.get(index))
-                        .filter(ObjectUtils::isNotEmpty)
-                        .map(wordPartition -> addCountToFirstLine(wordPartition, words.size()))
-                        .ifPresent(wordPartition -> sendBackupEmails(index, wordPartition)));
+                IntStream.range(0, wordPartitions.size())
+                        .forEach(index -> ofNullable(wordPartitions.get(index))
+                                .filter(ObjectUtils::isNotEmpty)
+                                .map(MainActivity2.this::reverseList)
+                                .map(wordPartition -> addCountToFirstLine(wordPartition, words.size()))
+                                .ifPresent(wordPartition -> sendBackupEmails(index, wordPartition)));
             } catch (Exception e) {
                 Log.e(activity.getClass().getSimpleName(), e.getLocalizedMessage(), e);
                 activity.displayMessage("Something unknown happened!");
@@ -261,14 +278,5 @@ public class MainActivity2 extends AppCompatActivity {
         protected void onProgressUpdate(String... text) {
             progressDialogs.add(show(MainActivity2.this, "ProgressDialog", text[0]));
         }
-    }
-
-    private static String anchor(String word) {
-        return "<a href='https://www.google.com/search?q=define: " + word + "' target='_blank'>" + capitalize(word) + "</a>";
-    }
-
-    @NonNull
-    private String addDivStyling(List<String> words) {
-        return "<div style=\"font-size:20px\">" + join("<br>", words) + "</div>";
     }
 }
