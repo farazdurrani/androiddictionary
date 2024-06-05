@@ -111,7 +111,7 @@ public class MainActivity extends AppCompatActivity {
         offlineActivityButton = findViewById(R.id.offlineActivity);
         setRequestQueue();
         setOpenInBrowserListener();
-        setLookupWordListenerNew();
+        setLookupWordListener();
         setStoreWordListener();
         supplyAsync(this::isOffline).thenAccept(isOffline -> {
             offline = isOffline || comingFromAnotherActivity();
@@ -135,7 +135,7 @@ public class MainActivity extends AppCompatActivity {
         googleLink.setOnClickListener(ignore -> runAsync(this::openInWebBrowser));
     }
 
-    private void setLookupWordListenerNew() {
+    private void setLookupWordListener() {
         lookupWord.setOnKeyListener((view, code, event) -> {
             if ((event.getAction() == KeyEvent.ACTION_DOWN) && (code == KeyEvent.KEYCODE_ENTER)) {
                 doLookup();
@@ -181,7 +181,7 @@ public class MainActivity extends AppCompatActivity {
                 deleteFromFileIfPresent();
                 return;
             }
-            String[] definition = lookupInMerriamWebsterNew();
+            String[] definition = lookupInMerriamWebster();
             definitionsView.setText(definition[1]);
             Optional.of(definition[0]).map(BooleanUtils::toBoolean).filter(BooleanUtils::isTrue)
                     .ifPresent(this::saveWordInDb);
@@ -317,7 +317,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @SuppressLint("SetTextI18n")
-    private String[] lookupInMerriamWebsterNew() {
+    private String[] lookupInMerriamWebster() {
         String url = formMerriamWebsterUrl();
         RequestFuture<JSONArray> requestFuture = RequestFuture.newFuture();
         JsonArrayRequest jsonObjectRequest = new JsonArrayRequest(url, requestFuture, requestFuture);
