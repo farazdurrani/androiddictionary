@@ -109,13 +109,12 @@ public class MainActivity extends AppCompatActivity {
         deleteButton = findViewById(R.id.deleteButton);
         deleteButton.setVisibility(INVISIBLE);
         offlineActivityButton = findViewById(R.id.offlineActivity);
-        offlineActivityButton.setVisibility(INVISIBLE);
         setRequestQueue();
         setOpenInBrowserListener();
         setLookupWordListenerNew();
         setStoreWordListener();
         supplyAsync(this::isOffline).thenAccept(isOffline -> {
-            offline = isOffline;
+            offline = isOffline || comingFromAnotherActivity();
             offlineActivityButton.setVisibility(offline ? VISIBLE : INVISIBLE);
             Optional.of(getIntent().getExtras() == null).filter(BooleanUtils::isTrue)
                     .ifPresent(ignore -> runOnUiThread(() -> Toast.makeText(context, offline ? "You are offline." : "You are online.", LENGTH_SHORT).show()));
@@ -254,13 +253,13 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void doMoreWork(Boolean isOffline) {
-        runOnUiThread(() -> offlineActivityButton.setVisibility(isOffline ? VISIBLE : INVISIBLE));
+        runOnUiThread(() -> offlineActivityButton.setVisibility(isOffline || comingFromAnotherActivity() ? VISIBLE : INVISIBLE));
         Optional.of(isOffline).filter(BooleanUtils::isTrue).ifPresent(this::writeToFile);
         Optional.of(isOffline).filter(BooleanUtils::isFalse).ifPresent(this::saveWordInDb);
     }
 
     private void writeToFileOrStoreInDbAndOpenBrowser(Boolean isOffline) {
-        runOnUiThread(() -> offlineActivityButton.setVisibility(isOffline ? VISIBLE : INVISIBLE));
+        runOnUiThread(() -> offlineActivityButton.setVisibility(isOffline || comingFromAnotherActivity() ? VISIBLE : INVISIBLE));
         Optional.of(isOffline).filter(BooleanUtils::isTrue).ifPresent(this::writeToFile);
         Optional.of(isOffline).filter(BooleanUtils::isFalse).ifPresent(this::lookupAndstoreInDbAndOpenBrowser);
     }
@@ -379,5 +378,9 @@ public class MainActivity extends AppCompatActivity {
         } catch (Exception e) {
             return true;
         }
+    }
+
+    private boolean comingFromAnotherActivity() {
+        return getIntent().getExtras() != null;
     }
 }
