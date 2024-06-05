@@ -11,6 +11,7 @@ import static java.lang.String.join;
 import static java.lang.System.currentTimeMillis;
 import static java.util.Collections.reverse;
 import static java.util.Optional.ofNullable;
+import static java.util.concurrent.CompletableFuture.runAsync;
 import static java.util.stream.Collectors.toList;
 
 import android.annotation.SuppressLint;
@@ -89,12 +90,13 @@ public class MainActivity2 extends AppCompatActivity {
     }
 
     public void backupData(View view) {
-        backupData();
+        runAsync(this::backupData);
     }
 
     public void switchEmailProvider(View view) {
         defaultEmailProvider = !defaultEmailProvider;
-        displayMessage(format("Email Provider has been switched to %s", (defaultEmailProvider ? "MailJet" : "JavaMail")));
+        runOnUiThread(() -> Toast.makeText(MainActivity2.this, format("Email Provider has been switched to %s",
+                (defaultEmailProvider ? "MailJet" : "JavaMail")), LENGTH_SHORT).show());
     }
 
     public void randomWordsActivity(View view) {
@@ -177,10 +179,6 @@ public class MainActivity2 extends AppCompatActivity {
         return mail.send();
     }
 
-    public void displayMessage(String message) {
-        runOnUiThread(() -> Toast.makeText(this, message, LENGTH_SHORT).show());
-    }
-
     private List<String> reverseList(List<String> list) {
         reverse(list);
         return list;
@@ -192,22 +190,11 @@ public class MainActivity2 extends AppCompatActivity {
     }
 
     private void backupData() {
+        runOnUiThread(() -> Toast.makeText(MainActivity2.this, "Backing up data!", LENGTH_SHORT).show());
         try {
-            List<String> words = new ArrayList<>();
-            int limitNum = WORD_LIMIT_IN_BACKUP_EMAIL;
-            String limit = format(", \"limit\": %d ", limitNum);
-            String skip = ", \"skip\": %d";
-            int previousSkip = 0;
-            do {
-                String _skip = format(skip, previousSkip * limitNum);
-                String query = MONGO_PARTIAL_BODY + _skip + limit + CLOSE_CURLY;
-                List<String> list = apiService.executeQuery(query, MONGO_ACTION_FIND_ALL, "word");
-                words.addAll(list.stream().map(MainActivity2::anchor).collect(toList()));
-                previousSkip = list.size() < limitNum ? -1 : previousSkip + 1;
-            } while (previousSkip != -1);
-            List<List<String>> wordPartitions = Lists.partition(words.stream().distinct().collect(toList()),
-                    WORD_LIMIT_IN_BACKUP_EMAIL);
-            IntStream.range(0, wordPartitions.size())
+            List<String> words = loadWords();
+            List<List<String>> wordPartitions = Lists.partition(words, WORD_LIMIT_IN_BACKUP_EMAIL);
+            IntStream.range(0, wordPartitions.size()).parallel()
                     .forEach(index -> ofNullable(wordPartitions.get(index))
                             .filter(ObjectUtils::isNotEmpty)
                             .map(MainActivity2.this::reverseList)
@@ -215,8 +202,25 @@ public class MainActivity2 extends AppCompatActivity {
                             .ifPresent(wordPartition -> sendBackupEmails(index, wordPartition)));
         } catch (Exception e) {
             Log.e(activity.getClass().getSimpleName(), e.getLocalizedMessage(), e);
-            displayMessage("Something unknown happened!");
+            runOnUiThread(() -> Toast.makeText(MainActivity2.this, "Something unknown happened!", LENGTH_SHORT).show());
         }
+    }
+
+    @NonNull
+    private List<String> loadWords() {
+        List<String> words = new ArrayList<>();
+        int limitNum = WORD_LIMIT_IN_BACKUP_EMAIL;
+        String limit = format(", \"limit\": %d ", limitNum);
+        String skip = ", \"skip\": %d";
+        int previousSkip = 0;
+        do {
+            String _skip = format(skip, previousSkip * limitNum);
+            String query = MONGO_PARTIAL_BODY + _skip + limit + CLOSE_CURLY;
+            List<String> list = apiService.executeQuery(query, MONGO_ACTION_FIND_ALL, "word");
+            words.addAll(list.stream().map(MainActivity2::anchor).collect(toList()));
+            previousSkip = list.size() < limitNum ? -1 : previousSkip + 1;
+        } while (previousSkip != -1);
+        return words;
     }
 
     private List<String> addCountToFirstLine(List<String> partWords, int totalWordCount) {
@@ -228,9 +232,11 @@ public class MainActivity2 extends AppCompatActivity {
         String subject = format("Words Backup Part %d:", index + 1);
         try {
             if (sendEmail(subject, addDivStyling(backup_words))) {
-                displayMessage(format("'%d' words sent for backup.", Math.max(backup_words.size() - 1, 0)));
+                runOnUiThread(() -> Toast.makeText(MainActivity2.this, format("'%d' words sent for backup.",
+                        Math.max(backup_words.size() - 1, 0)), LENGTH_SHORT).show());
             } else {
-                displayMessage("Error occurred while backing up words.");
+                runOnUiThread(() -> Toast.makeText(MainActivity2.this, "Error occurred while backing up words.",
+                        LENGTH_SHORT).show());
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
