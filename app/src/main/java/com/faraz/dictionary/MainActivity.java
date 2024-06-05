@@ -98,6 +98,8 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        offlineActivityButton = findViewById(R.id.offlineActivity);
+        offlineActivityButton.setVisibility(INVISIBLE);
         context = getBaseContext();
         apiService = new ApiService(Volley.newRequestQueue(this), properties());
         fileService = new FileService(getExternalFilesDir(null), "offlinewords.txt");
@@ -108,7 +110,6 @@ public class MainActivity extends AppCompatActivity {
         saveView = findViewById(R.id.save);
         deleteButton = findViewById(R.id.deleteButton);
         deleteButton.setVisibility(INVISIBLE);
-        offlineActivityButton = findViewById(R.id.offlineActivity);
         setRequestQueue();
         setOpenInBrowserListener();
         setLookupWordListener();
