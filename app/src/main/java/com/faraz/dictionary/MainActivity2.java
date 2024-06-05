@@ -1,7 +1,6 @@
 package com.faraz.dictionary;
 
-import static android.app.ProgressDialog.show;
-import static android.widget.Toast.LENGTH_LONG;
+import static android.widget.Toast.LENGTH_SHORT;
 import static com.faraz.dictionary.MainActivity.CLOSE_CURLY;
 import static com.faraz.dictionary.MainActivity.MONGO_ACTION_FIND_ALL;
 import static com.faraz.dictionary.MainActivity.MONGO_PARTIAL_BODY;
@@ -15,10 +14,7 @@ import static java.util.Optional.ofNullable;
 import static java.util.stream.Collectors.toList;
 
 import android.annotation.SuppressLint;
-import android.app.Dialog;
-import android.app.ProgressDialog;
 import android.content.Intent;
-import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
@@ -58,6 +54,7 @@ import java.util.stream.IntStream;
 import okhttp3.OkHttpClient;
 
 @SuppressLint("DefaultLocale")
+@RequiresApi(api = Build.VERSION_CODES.O)
 public class MainActivity2 extends AppCompatActivity {
 
     public static final int WORD_LIMIT_IN_BACKUP_EMAIL = 5000;
@@ -75,19 +72,7 @@ public class MainActivity2 extends AppCompatActivity {
     private MailjetClient mailjetClient;
     private RequestQueue requestQueue;
     private Properties properties;
-    private ApiService apiService; //todo improvement. Use this to make called. Move all the API calling to this class.
-
-    private static boolean noErrors(SendEmailsResponse response) {
-        Predicate<MessageResult[]> allSuccessAndNoErrors =
-                mr -> Arrays.stream(mr).map(MessageResult::getStatus).allMatch(SUCCESS::equals) &&
-                        Arrays.stream(mr).map(MessageResult::getErrors).allMatch(ObjectUtils::isEmpty);
-        return ofNullable(response).map(SendEmailsResponse::getMessages).filter(allSuccessAndNoErrors)
-                .isPresent();
-    }
-
-    private static String anchor(String word) {
-        return "<a href='https://www.google.com/search?q=define: " + word + "' target='_blank'>" + capitalize(word) + "</a>";
-    }
+    private ApiService apiService;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -98,16 +83,13 @@ public class MainActivity2 extends AppCompatActivity {
         apiService = new ApiService(requestQueue, properties);
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.O)
     public void seeLastFew(View view) {
         Intent intent = new Intent(this, MainActivity5.class);
         startActivity(intent);
     }
 
     public void backupData(View view) {
-        BackupDataAsyncTaskRunner runner = new BackupDataAsyncTaskRunner();
-        runner.activity = this;
-        runner.execute();
+        backupData();
     }
 
     public void switchEmailProvider(View view) {
@@ -196,7 +178,7 @@ public class MainActivity2 extends AppCompatActivity {
     }
 
     public void displayMessage(String message) {
-        runOnUiThread(() -> Toast.makeText(this, message, LENGTH_LONG).show());
+        runOnUiThread(() -> Toast.makeText(this, message, LENGTH_SHORT).show());
     }
 
     private List<String> reverseList(List<String> list) {
@@ -209,74 +191,61 @@ public class MainActivity2 extends AppCompatActivity {
         return "<div style=\"font-size:20px\">" + join("<br>", words) + "</div>";
     }
 
-    private class BackupDataAsyncTaskRunner extends AsyncTask<String, String, Void> {
-
-        private final List<ProgressDialog> progressDialogs = new ArrayList<>();
-
-        MainActivity2 activity;
-
-        @Override
-        protected Void doInBackground(String... params) {
-            publishProgress("Backing up words..."); // Calls onProgressUpdate()
+    private void backupData() {
+        try {
             List<String> words = new ArrayList<>();
-            try {
-                int limitNum = WORD_LIMIT_IN_BACKUP_EMAIL;
-                String limit = format(", \"limit\": %d ", limitNum);
-                String skip = ", \"skip\": %d";
-                int previousSkip = 0;
-                do {
-                    String _skip = format(skip, previousSkip * limitNum);
-                    String query = MONGO_PARTIAL_BODY + _skip + limit + CLOSE_CURLY;
-                    List<String> list = apiService.executeQuery(query, MONGO_ACTION_FIND_ALL, "word");
-                    words.addAll(list.stream().map(MainActivity2::anchor).collect(toList()));
-                    previousSkip = list.size() < limitNum ? -1 : previousSkip + 1;
-                    publishProgress(format("Loaded '%s' words...", words.size()));
-                } while (previousSkip != -1);
-                publishProgress(format("Sending '%s' words...", words.size()));
-                List<List<String>> wordPartitions = Lists.partition(words.stream().distinct().collect(toList()),
-                        WORD_LIMIT_IN_BACKUP_EMAIL);
-                IntStream.range(0, wordPartitions.size())
-                        .forEach(index -> ofNullable(wordPartitions.get(index))
-                                .filter(ObjectUtils::isNotEmpty)
-                                .map(MainActivity2.this::reverseList)
-                                .map(wordPartition -> addCountToFirstLine(wordPartition, words.size()))
-                                .ifPresent(wordPartition -> sendBackupEmails(index, wordPartition)));
-            } catch (Exception e) {
-                Log.e(activity.getClass().getSimpleName(), e.getLocalizedMessage(), e);
-                activity.displayMessage("Something unknown happened!");
+            int limitNum = WORD_LIMIT_IN_BACKUP_EMAIL;
+            String limit = format(", \"limit\": %d ", limitNum);
+            String skip = ", \"skip\": %d";
+            int previousSkip = 0;
+            do {
+                String _skip = format(skip, previousSkip * limitNum);
+                String query = MONGO_PARTIAL_BODY + _skip + limit + CLOSE_CURLY;
+                List<String> list = apiService.executeQuery(query, MONGO_ACTION_FIND_ALL, "word");
+                words.addAll(list.stream().map(MainActivity2::anchor).collect(toList()));
+                previousSkip = list.size() < limitNum ? -1 : previousSkip + 1;
+            } while (previousSkip != -1);
+            List<List<String>> wordPartitions = Lists.partition(words.stream().distinct().collect(toList()),
+                    WORD_LIMIT_IN_BACKUP_EMAIL);
+            IntStream.range(0, wordPartitions.size())
+                    .forEach(index -> ofNullable(wordPartitions.get(index))
+                            .filter(ObjectUtils::isNotEmpty)
+                            .map(MainActivity2.this::reverseList)
+                            .map(wordPartition -> addCountToFirstLine(wordPartition, words.size()))
+                            .ifPresent(wordPartition -> sendBackupEmails(index, wordPartition)));
+        } catch (Exception e) {
+            Log.e(activity.getClass().getSimpleName(), e.getLocalizedMessage(), e);
+            displayMessage("Something unknown happened!");
+        }
+    }
+
+    private List<String> addCountToFirstLine(List<String> partWords, int totalWordCount) {
+        String firstLine = format("Total Count: '%d'. (%d in this part-backup).", totalWordCount, partWords.size());
+        return ImmutableList.<String>builder().add(firstLine).addAll(partWords).build();
+    }
+
+    private void sendBackupEmails(int index, List<String> backup_words) {
+        String subject = format("Words Backup Part %d:", index + 1);
+        try {
+            if (sendEmail(subject, addDivStyling(backup_words))) {
+                displayMessage(format("'%d' words sent for backup.", Math.max(backup_words.size() - 1, 0)));
+            } else {
+                displayMessage("Error occurred while backing up words.");
             }
-            return null;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
+    }
 
-        private List<String> addCountToFirstLine(List<String> partWords, int totalWordCount) {
-            String firstLine = format("Total Count: '%d'. (%d in this part-backup).", totalWordCount, partWords.size());
-            return ImmutableList.<String>builder().add(firstLine).addAll(partWords).build();
-        }
+    private static boolean noErrors(SendEmailsResponse response) {
+        Predicate<MessageResult[]> allSuccessAndNoErrors =
+                mr -> Arrays.stream(mr).map(MessageResult::getStatus).allMatch(SUCCESS::equals) &&
+                        Arrays.stream(mr).map(MessageResult::getErrors).allMatch(ObjectUtils::isEmpty);
+        return ofNullable(response).map(SendEmailsResponse::getMessages).filter(allSuccessAndNoErrors)
+                .isPresent();
+    }
 
-        private void sendBackupEmails(int index, List<String> backup_words) {
-            String subject = format("Words Backup Part %d:", index + 1);
-            try {
-                if (sendEmail(subject, addDivStyling(backup_words))) {
-                    activity.displayMessage(format("'%d' words sent for backup.", Math.max(backup_words.size() - 1, 0)));
-                } else {
-                    activity.displayMessage("Error occurred while backing up words.");
-                }
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        }
-
-        @Override
-        protected void onPostExecute(Void v) {
-            // execution of result of Long time consuming operation
-            reverse(progressDialogs);
-            progressDialogs.forEach(Dialog::dismiss);
-            progressDialogs.clear();
-        }
-
-        @Override
-        protected void onProgressUpdate(String... text) {
-            progressDialogs.add(show(MainActivity2.this, "ProgressDialog", text[0]));
-        }
+    private static String anchor(String word) {
+        return "<a href='https://www.google.com/search?q=define: " + word + "' target='_blank'>" + capitalize(word) + "</a>";
     }
 }
