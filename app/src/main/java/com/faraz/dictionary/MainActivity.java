@@ -113,7 +113,7 @@ public class MainActivity extends AppCompatActivity {
         setOpenInBrowserListener();
         setLookupWordListener();
         setStoreWordListener();
-        Optional.of(isOffline()).ifPresent(this::initialManyThings);
+        Optional.of(isOffline()).ifPresent(this::initiateManyThings);
         ofNullable(getIntent().getExtras()).map(e -> e.getString(LOOKUPTHISWORD)).ifPresent(this::doLookup);
     }
 
@@ -129,7 +129,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void offlineMode(View view) {
-        offline = !(offlineActivityButton.getVisibility() == VISIBLE);
+        offline = !offline;
         runOnUiThread(() -> Toast.makeText(context, offline ? "You are offline." : "You are online.", LENGTH_SHORT).show());
         offlineActivityButton.setVisibility(offline ? VISIBLE : INVISIBLE);
     }
@@ -145,12 +145,12 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void initialManyThings(Boolean isOffline) {
+    private void initiateManyThings(boolean isOffline) {
         offline = isOffline;
-        offlineActivityButton.setVisibility(offline || comingFromAnotherActivity() ? VISIBLE : INVISIBLE);
-        Optional.of(!comingFromAnotherActivity()).filter(BooleanUtils::isTrue)
-                .ifPresent(ignore -> runOnUiThread(() -> Toast.makeText(context, offline ? "You are offline." :
-                        "You are online.", LENGTH_SHORT).show()));
+        offlineActivityButton.setVisibility(offline ? VISIBLE : INVISIBLE);
+        Optional.of(getIntent().getExtras() == null).filter(BooleanUtils::isTrue)
+                .ifPresent(ignore -> runOnUiThread(() -> Toast.makeText(context, offline
+                        ? "You are offline." : "You are online.", LENGTH_SHORT).show()));
     }
 
     private void setStoreWordListener() {
@@ -269,22 +269,21 @@ public class MainActivity extends AppCompatActivity {
     private void doMoreChecks(String ignore) {
         Optional.of(offline).filter(BooleanUtils::isTrue).ifPresent(_ignore -> runAsync(this::writeToFile));
         Optional.of(offline).filter(BooleanUtils::isFalse).ifPresent(_ignore -> doMoreWork(isOffline()));
-
     }
 
-    private void doMoreWork(Boolean isOffline) {
+    private void doMoreWork(boolean isOffline) {
         runOnUiThread(() -> offlineActivityButton.setVisibility(isOffline ? VISIBLE : INVISIBLE));
         Optional.of(isOffline).filter(BooleanUtils::isTrue).ifPresent(ignore -> runAsync(this::writeToFile));
         Optional.of(isOffline).filter(BooleanUtils::isFalse).ifPresent(ignore -> runAsync(this::saveWordInDb));
     }
 
-    private void writeToFileOrStoreInDbAndOpenBrowser(Boolean isOffline) {
-        runOnUiThread(() -> offlineActivityButton.setVisibility(isOffline || comingFromAnotherActivity() ? VISIBLE : INVISIBLE));
+    private void writeToFileOrStoreInDbAndOpenBrowser(boolean isOffline) {
+        runOnUiThread(() -> offlineActivityButton.setVisibility(isOffline ? VISIBLE : INVISIBLE));
         Optional.of(isOffline).filter(BooleanUtils::isTrue).ifPresent(ignore -> runAsync(this::writeToFile));
         Optional.of(isOffline).filter(BooleanUtils::isFalse).ifPresent(this::lookupAndstoreInDbAndOpenBrowser);
     }
 
-    private void saveWordInDb(Boolean... ignore) {
+    private void saveWordInDb(boolean... ignore) {
         try {
             saveWordInMongo();
             deleteFromFileIfPresent();
@@ -375,9 +374,5 @@ public class MainActivity extends AppCompatActivity {
         } catch (Exception e) {
             return true;
         }
-    }
-
-    private boolean comingFromAnotherActivity() {
-        return getIntent().getExtras() != null;
     }
 }

@@ -194,7 +194,7 @@ public class MainActivity2 extends AppCompatActivity {
         try {
             List<String> words = loadWords();
             List<List<String>> wordPartitions = Lists.partition(words, WORD_LIMIT_IN_BACKUP_EMAIL);
-            IntStream.range(0, wordPartitions.size()).parallel()
+            IntStream.range(0, wordPartitions.size())
                     .forEach(index -> ofNullable(wordPartitions.get(index))
                             .filter(ObjectUtils::isNotEmpty)
                             .map(MainActivity2.this::reverseList)
