@@ -1,6 +1,5 @@
 package com.faraz.dictionary;
 
-import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static java.lang.System.lineSeparator;
 
 import android.os.Build;
@@ -63,7 +62,7 @@ public class FileService {
         }
     }
 
-    public void clearFile(){
+    public void clearFile() {
         try {
             new FileOutputStream(new File(externalFilesDir, filename)).close();
         } catch (IOException e) {
