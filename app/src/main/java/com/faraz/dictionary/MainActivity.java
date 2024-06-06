@@ -2,7 +2,6 @@ package com.faraz.dictionary;
 
 import static android.view.View.INVISIBLE;
 import static android.view.View.VISIBLE;
-import static android.widget.Toast.LENGTH_LONG;
 import static android.widget.Toast.LENGTH_SHORT;
 import static com.faraz.dictionary.MainActivity4.LOOKUPTHISWORD;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
@@ -130,14 +129,12 @@ public class MainActivity extends AppCompatActivity {
 
     public void offlineMode(View view) {
         offline = !offline;
-        runOnUiThread(() -> Toast.makeText(context, offline ? "You are offline." : "You are online.", LENGTH_SHORT).show());
         offlineActivityButton.setVisibility(offline ? VISIBLE : INVISIBLE);
     }
 
     public void deleteButton(View view) {
         try {
             fileService.delete(originalLookupWord);
-            runOnUiThread(() -> Toast.makeText(context, format("'%s' has been deleted from the offline files.", originalLookupWord), LENGTH_LONG).show());
             deleteButton.setVisibility(INVISIBLE);
         } catch (Exception e) {
             Log.e(this.getClass().getSimpleName(), "error...", e);
@@ -148,9 +145,6 @@ public class MainActivity extends AppCompatActivity {
     private void initiateManyThings(boolean isOffline) {
         offline = isOffline;
         offlineActivityButton.setVisibility(offline ? VISIBLE : INVISIBLE);
-        Optional.of(getIntent().getExtras() == null).filter(BooleanUtils::isTrue)
-                .ifPresent(ignore -> runOnUiThread(() -> Toast.makeText(context, offline
-                        ? "You are offline." : "You are online.", LENGTH_SHORT).show()));
     }
 
     private void setStoreWordListener() {
@@ -213,7 +207,6 @@ public class MainActivity extends AppCompatActivity {
                             .findFirst()).ifPresent(_ignore -> runOnUiThread(() -> deleteButton.setVisibility(VISIBLE)));
         } catch (Exception e) {
             definitionsView.setText(format("welp...%s%s%s", originalLookupWord, lineSeparator(), getStackTrace(e)));
-            runOnUiThread(() -> Toast.makeText(context, "Not sure what went wrong.", LENGTH_LONG).show());
         }
     }
 
@@ -240,7 +233,6 @@ public class MainActivity extends AppCompatActivity {
     private void doInitialWork() {
         originalLookupWord = cleanWord();
         lookupWord.setText(null);
-        runOnUiThread(() -> Toast.makeText(MainActivity.this, format("Sending '%s'", originalLookupWord), LENGTH_SHORT).show());
     }
 
     private String cleanWord() {
@@ -289,7 +281,6 @@ public class MainActivity extends AppCompatActivity {
             deleteFromFileIfPresent();
         } catch (Exception e) {
             definitionsView.setText(format("welp...%s%s%s", originalLookupWord, lineSeparator(), getStackTrace(e)));
-            runOnUiThread(() -> Toast.makeText(MainActivity.this, "Not sure what went wrong.", LENGTH_LONG).show());
         }
     }
 

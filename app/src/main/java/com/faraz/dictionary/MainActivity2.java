@@ -1,5 +1,6 @@
 package com.faraz.dictionary;
 
+import static android.widget.Toast.LENGTH_LONG;
 import static android.widget.Toast.LENGTH_SHORT;
 import static com.faraz.dictionary.MainActivity.CLOSE_CURLY;
 import static com.faraz.dictionary.MainActivity.MONGO_ACTION_FIND_ALL;
@@ -41,6 +42,7 @@ import com.mailjet.client.transactional.response.MessageResult;
 import com.mailjet.client.transactional.response.SendEmailsResponse;
 
 import org.apache.commons.lang3.ObjectUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -90,7 +92,14 @@ public class MainActivity2 extends AppCompatActivity {
     }
 
     public void backupData(View view) {
-        runAsync(this::backupData);
+        runOnUiThread(() -> Toast.makeText(MainActivity2.this, "Backing up data!", LENGTH_LONG).show());
+        List<View> buttons = findViewById(R.id.mainactivity2).getTouchables();
+        toggleButtons(buttons, false);
+        runAsync(this::backupData).thenAccept(ignore -> toggleButtons(buttons, true));
+    }
+
+    private void toggleButtons(List<View> buttons, boolean enable) {
+        runOnUiThread(() -> buttons.forEach(v -> v.setEnabled(enable)));
     }
 
     public void switchEmailProvider(View view) {
@@ -190,7 +199,6 @@ public class MainActivity2 extends AppCompatActivity {
     }
 
     private void backupData() {
-        runOnUiThread(() -> Toast.makeText(MainActivity2.this, "Backing up data!", LENGTH_SHORT).show());
         try {
             List<String> words = loadWords();
             List<List<String>> wordPartitions = Lists.partition(words, WORD_LIMIT_IN_BACKUP_EMAIL);
@@ -202,7 +210,7 @@ public class MainActivity2 extends AppCompatActivity {
                             .ifPresent(wordPartition -> sendBackupEmails(index, wordPartition)));
         } catch (Exception e) {
             Log.e(activity.getClass().getSimpleName(), e.getLocalizedMessage(), e);
-            runOnUiThread(() -> Toast.makeText(MainActivity2.this, "Something unknown happened!", LENGTH_SHORT).show());
+            runOnUiThread(() -> Toast.makeText(MainActivity2.this, ExceptionUtils.getStackTrace(e), LENGTH_LONG).show());
         }
     }
 
@@ -217,7 +225,7 @@ public class MainActivity2 extends AppCompatActivity {
             String _skip = format(skip, previousSkip * limitNum);
             String query = MONGO_PARTIAL_BODY + _skip + limit + CLOSE_CURLY;
             List<String> list = apiService.executeQuery(query, MONGO_ACTION_FIND_ALL, "word");
-            words.addAll(list.stream().map(MainActivity2::anchor).collect(toList()));
+            words.addAll(list.stream().map(this::anchor).collect(toList()));
             previousSkip = list.size() < limitNum ? -1 : previousSkip + 1;
         } while (previousSkip != -1);
         return words;
@@ -243,7 +251,7 @@ public class MainActivity2 extends AppCompatActivity {
         }
     }
 
-    private static boolean noErrors(SendEmailsResponse response) {
+    private boolean noErrors(SendEmailsResponse response) {
         Predicate<MessageResult[]> allSuccessAndNoErrors =
                 mr -> Arrays.stream(mr).map(MessageResult::getStatus).allMatch(SUCCESS::equals) &&
                         Arrays.stream(mr).map(MessageResult::getErrors).allMatch(ObjectUtils::isEmpty);
@@ -251,7 +259,7 @@ public class MainActivity2 extends AppCompatActivity {
                 .isPresent();
     }
 
-    private static String anchor(String word) {
+    private String anchor(String word) {
         return "<a href='https://www.google.com/search?q=define: " + word + "' target='_blank'>" + capitalize(word) + "</a>";
     }
 }
