@@ -49,6 +49,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
@@ -141,6 +142,7 @@ public class MainActivity2 extends AppCompatActivity {
     }
 
     private boolean sendEmail(String subject, String body) throws Exception {
+        Thread.sleep(555L);
         return defaultEmailProvider ? sendEmailUsingMailJetClient(subject, body) : sendEmailUsingJavaMailAPI(subject, body);
     }
 
@@ -203,7 +205,7 @@ public class MainActivity2 extends AppCompatActivity {
             List<String> words = loadWords();
             List<List<String>> wordPartitions = Lists.partition(words, WORD_LIMIT_IN_BACKUP_EMAIL);
             IntStream.range(0, wordPartitions.size())
-                    .forEach(index -> ofNullable(wordPartitions.get(index))
+                    .forEach(index -> Optional.of(wordPartitions.get(index))
                             .filter(ObjectUtils::isNotEmpty)
                             .map(MainActivity2.this::reverseList)
                             .map(wordPartition -> addCountToFirstLine(wordPartition, words.size()))
