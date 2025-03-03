@@ -88,22 +88,25 @@
       app:layout_constraintTop_toTopOf="parent"
       app:layout_constraintVertical_bias="0.768" />
 
-  <EditText
+  <AutoCompleteTextView
       android:id="@+id/wordBox"
       android:layout_width="339dp"
       android:layout_height="66dp"
       android:ems="10"
       android:focusable="true"
       android:hint="Enter a word..."
+      android:clickable="true"
       android:imeOptions="actionSearch"
       android:inputType="text"
-      android:clickable="true"
       app:layout_constraintBottom_toBottomOf="parent"
       app:layout_constraintEnd_toEndOf="parent"
       app:layout_constraintHorizontal_bias="0.505"
       app:layout_constraintStart_toStartOf="parent"
       app:layout_constraintTop_toTopOf="parent"
-      app:layout_constraintVertical_bias="0.952" />
+      app:layout_constraintVertical_bias="0.952" >
+
+<!--    <requestFocus />-->
+  </AutoCompleteTextView>
 
   <TextView
       android:id="@+id/definitions"

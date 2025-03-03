@@ -61,7 +61,7 @@ import okhttp3.OkHttpClient;
 @RequiresApi(api = Build.VERSION_CODES.O)
 public class MainActivity2 extends AppCompatActivity {
 
-    public static final int WORD_LIMIT_IN_BACKUP_EMAIL = 5000;
+    public static final int WORD_LIMIT_IN_BACKUP_EMAIL = 15000;
     private static final String activity = MainActivity2.class.getSimpleName();
     private static final String MAIL_KEY = "mailjet.apiKey";
     private static final String MAIL_SECRET = "mailjet.apiSecret";

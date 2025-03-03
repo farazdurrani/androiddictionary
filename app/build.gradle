@@ -7,12 +7,12 @@ android {
     pickFirst 'META-INF/*'
   }
   namespace 'com.faraz.dictionary'
-    compileSdk 31
+    compileSdk 33
 
     defaultConfig {
         applicationId "com.faraz.dictionary"
-        minSdk 31
-        targetSdk 31
+        minSdk 24
+        targetSdk 33
         versionCode 1
         versionName "1.0"
 
