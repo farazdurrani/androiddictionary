@@ -11,6 +11,7 @@ import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.lang3.exception.ExceptionUtils.getStackTrace;
 import static java.lang.String.format;
 import static java.lang.System.lineSeparator;
+import static java.util.Optional.empty;
 import static java.util.Optional.ofNullable;
 import static java.util.concurrent.CompletableFuture.runAsync;
 import static java.util.stream.Collectors.joining;
@@ -58,12 +59,14 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 @SuppressWarnings("all")
 public class MainActivity extends AppCompatActivity {
 
   public static final String FILE_NAME = "FILE_NAME";
+  public static final List<String> AUTO_COMPLETE_WORDS_REMOVE = new ArrayList<>();
   static final String MONGO_PARTIAL_BODY =
           "{\"collection\":\"dictionary\",\"database\":\"myFirstDatabase\",\"dataSource\":\"Cluster0\"";
   static final String MONGO_ACTION_FIND_ALL = "find";
@@ -73,11 +76,13 @@ public class MainActivity extends AppCompatActivity {
   static final String MONGODB_URI = "mongodb.data.uri";
   static final String MONGODB_API_KEY = "mongodb.data.api.key";
   static final String CHICAGO = "America/Chicago";
+  private static final List<String> AUTO_COMPLETE_WORDS = new ArrayList<>();
+  private static final Consumer<Object> NOOP = ignore -> {
+  };
   private static final String NO_DEFINITION_FOUND = "No definitions found for '%s'. Perhaps, you meant:";
   private static final String REGEX_WHITE_SPACES = "\\s+";
   private static final String MERRIAM_WEBSTER_KEY = "dictionary.merriamWebster.key";
   private static final String MERRIAM_WEBSTER_URL = "dictionary.merriamWebster.url";
-  private final List<String> autoCompleteWords = new ArrayList<>();
   private Properties properties;
   private RequestQueue requestQueue;
   private ApiService apiService;
@@ -94,6 +99,19 @@ public class MainActivity extends AppCompatActivity {
   private boolean offline;
 
   @Override
+  protected void onResume() {
+    super.onResume();
+    if (!AUTO_COMPLETE_WORDS_REMOVE.isEmpty()) {
+      lookupWord.setHint(EMPTY);
+      AUTO_COMPLETE_WORDS.removeAll(AUTO_COMPLETE_WORDS_REMOVE);
+      AUTO_COMPLETE_WORDS_REMOVE.forEach(autoCompleteFileService::delete);
+      AUTO_COMPLETE_WORDS_REMOVE.clear();
+      lookupWord.setAdapter(new ArrayAdapter<>(this, android.R.layout.select_dialog_item, AUTO_COMPLETE_WORDS));
+      lookupWord.setHint("autocomplete is ready");
+    }
+  }
+
+  @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.activity_main);
@@ -105,7 +123,7 @@ public class MainActivity extends AppCompatActivity {
     autoCompleteFileService = new FileService(getExternalFilesDir(null), "autocomplete.txt");
     lookupWord = findViewById(R.id.wordBox);
     lookupWord.setThreshold(1);
-    lookupWord.setAdapter(new ArrayAdapter<>(this, android.R.layout.select_dialog_item, autoCompleteWords));
+    lookupWord.setAdapter(new ArrayAdapter<>(this, android.R.layout.select_dialog_item, AUTO_COMPLETE_WORDS));
     definitionsView = findViewById(R.id.definitions);
     definitionsView.setMovementMethod(new ScrollingMovementMethod());
     googleLink = findViewById(R.id.google);
@@ -121,10 +139,14 @@ public class MainActivity extends AppCompatActivity {
             () -> ofNullable(getIntent().getExtras()).map(e -> e.getString(LOOKUPTHISWORD)).ifPresent(this::doLookup));
   }
 
+  /**
+   * Call this method only at startup!
+   */
   private void loadWordsForAutoComplete() {
-    autoCompleteWords.addAll(Arrays.asList(autoCompleteFileService.readFile()));
-    System.out.println("loaded " + autoCompleteWords.size() + " words from disk.");
-    lookupWord.setHint("autocomplete from disk is ready");
+    AUTO_COMPLETE_WORDS.clear();
+    AUTO_COMPLETE_WORDS.addAll(Arrays.asList(autoCompleteFileService.readFile()));
+    System.out.println("loaded " + AUTO_COMPLETE_WORDS.size() + " words from disk.");
+    lookupWord.setHint("autocomplete is ready");
   }
 
   public void goTo2ndActivity(View view) {
@@ -212,8 +234,7 @@ public class MainActivity extends AppCompatActivity {
       String[] definition = lookupInMerriamWebster();
       definitionsView.setText(definition[1]);
       Optional.of(definition[0]).map(BooleanUtils::toBoolean).filter(BooleanUtils::isTrue)
-              .ifPresent(this::saveWordInDb);
-      autoCompleteWords.add(originalLookupWord);
+              .ifPresent(ignore -> runAsync(this::saveWordInDb).thenRun(this::storeWordInAutoComplete));
       Optional.of(definition[0]).map(BooleanUtils::toBoolean).filter(BooleanUtils::isFalse)
               .flatMap(ignore -> Arrays.stream(fileService.readFile()).filter(originalLookupWord::equals).findFirst())
               .ifPresent(_ignore -> runOnUiThread(() -> deleteButton.setVisibility(VISIBLE)));
@@ -224,17 +245,13 @@ public class MainActivity extends AppCompatActivity {
 
   private List<String> existingWord() {
     //do we have it in memory?
-    if (autoCompleteWords.contains(originalLookupWord)) {
+    if (AUTO_COMPLETE_WORDS.contains(originalLookupWord)) {
       return Collections.singletonList(originalLookupWord);
     }
     //now make the internet call
     String filter = wordExistsQuery();
     String query = MONGO_PARTIAL_BODY + "," + filter + CLOSE_CURLY;
-    List<String> wordsFromMongo = apiService.executeQuery(query, MONGO_ACTION_FIND_ALL, "word");
-    if (!wordsFromMongo.isEmpty()) {
-      autoCompleteWords.add(originalLookupWord);
-    }
-    return wordsFromMongo;
+    return apiService.executeQuery(query, MONGO_ACTION_FIND_ALL, "word");
   }
 
   private void deleteFromFileIfPresent() {
@@ -288,6 +305,23 @@ public class MainActivity extends AppCompatActivity {
     runOnUiThread(() -> offlineActivityButton.setVisibility(isOffline ? VISIBLE : INVISIBLE));
     Optional.of(isOffline).filter(BooleanUtils::isTrue).ifPresent(ignore -> runAsync(this::writeToFile));
     Optional.of(isOffline).filter(BooleanUtils::isFalse).ifPresent(ignore -> runAsync(this::saveWordInDb));
+    Optional.of(isOffline).filter(BooleanUtils::isFalse).ifPresent(ignore -> {
+      runAsync(this::saveWordInDb).thenRun(this::storeWordInAutoComplete);
+    });
+  }
+
+  private void storeWordInAutoComplete() {
+    lookupWord.setHint(EMPTY);
+    Optional.of(AUTO_COMPLETE_WORDS).stream().flatMap(List::stream).filter(originalLookupWord::equalsIgnoreCase)
+            .findAny().ifPresentOrElse(NOOP, () -> AUTO_COMPLETE_WORDS.add(originalLookupWord));
+    Optional.of(Arrays.asList(fileService.readFile())).stream().flatMap(List::stream)
+            .filter(originalLookupWord::equalsIgnoreCase).findAny().ifPresentOrElse(NOOP,
+                    () -> autoCompleteFileService.writeFileExternalStorage(true, originalLookupWord));
+    runOnUiThread(() -> {
+      lookupWord.setAdapter(new ArrayAdapter<>(this, android.R.layout.select_dialog_item,
+              AUTO_COMPLETE_WORDS));
+      lookupWord.setHint("autocomplete is ready");
+    });
   }
 
   private void writeToFileOrStoreInDbAndOpenBrowser(boolean isOffline) {
@@ -299,7 +333,6 @@ public class MainActivity extends AppCompatActivity {
   private void saveWordInDb(boolean... ignore) {
     try {
       saveWordInMongo();
-      autoCompleteWords.add(originalLookupWord);
       deleteFromFileIfPresent();
     } catch (Exception e) {
       definitionsView.setText(format("welp...%s%s%s", originalLookupWord, lineSeparator(), getStackTrace(e)));

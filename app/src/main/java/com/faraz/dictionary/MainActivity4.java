@@ -31,7 +31,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-@SuppressLint("SetTextI18n")
+@SuppressLint({"SetTextI18n", "NewApi"})
 public class MainActivity4 extends AppCompatActivity {
 
   public static final String LOOKUPTHISWORD = "lookupthisword";
