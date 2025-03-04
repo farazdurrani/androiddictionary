@@ -16,10 +16,10 @@
       android:text="See last few entries!"
       app:layout_constraintBottom_toBottomOf="parent"
       app:layout_constraintEnd_toEndOf="parent"
-      app:layout_constraintHorizontal_bias="0.99"
+      app:layout_constraintHorizontal_bias="1.0"
       app:layout_constraintStart_toStartOf="parent"
       app:layout_constraintTop_toTopOf="parent"
-      app:layout_constraintVertical_bias="0.172" />
+      app:layout_constraintVertical_bias="0.459" />
 
   <Button
       android:id="@+id/button"
@@ -29,10 +29,10 @@
       android:text="Backup data!"
       app:layout_constraintBottom_toBottomOf="parent"
       app:layout_constraintEnd_toEndOf="parent"
-      app:layout_constraintHorizontal_bias="0.993"
+      app:layout_constraintHorizontal_bias="0.067"
       app:layout_constraintStart_toStartOf="parent"
       app:layout_constraintTop_toTopOf="parent"
-      app:layout_constraintVertical_bias="0.682" />
+      app:layout_constraintVertical_bias="0.601" />
 
   <Button
       android:id="@+id/random5"
@@ -42,10 +42,23 @@
       android:text="Random words!"
       app:layout_constraintBottom_toBottomOf="parent"
       app:layout_constraintEnd_toEndOf="parent"
-      app:layout_constraintHorizontal_bias="0.993"
+      app:layout_constraintHorizontal_bias="1.0"
       app:layout_constraintStart_toStartOf="parent"
       app:layout_constraintTop_toTopOf="parent"
-      app:layout_constraintVertical_bias="0.581" />
+      app:layout_constraintVertical_bias="0.601" />
+
+  <Button
+      android:id="@+id/syncAutocomplete"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:onClick="syncAutocompleteActivity"
+      android:text="Sync Autocomplete"
+      app:layout_constraintBottom_toBottomOf="parent"
+      app:layout_constraintEnd_toEndOf="parent"
+      app:layout_constraintHorizontal_bias="1.0"
+      app:layout_constraintStart_toStartOf="parent"
+      app:layout_constraintTop_toTopOf="parent"
+      app:layout_constraintVertical_bias="0.774" />
 
   <Button
       android:id="@+id/switchEmailProvider"
@@ -55,8 +68,8 @@
       android:text="Switch Email Provider"
       app:layout_constraintBottom_toBottomOf="parent"
       app:layout_constraintEnd_toEndOf="parent"
-      app:layout_constraintHorizontal_bias="0.993"
+      app:layout_constraintHorizontal_bias="1.0"
       app:layout_constraintStart_toStartOf="parent"
       app:layout_constraintTop_toTopOf="parent"
-      app:layout_constraintVertical_bias="0.783" />
+      app:layout_constraintVertical_bias="0.14" />
 </androidx.constraintlayout.widget.ConstraintLayout>

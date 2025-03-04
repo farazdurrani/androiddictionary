@@ -208,7 +208,7 @@ public class MainActivity3 extends AppCompatActivity {
         return "\"update\": { \"$unset\" : { \"remindedTime\": \"\" } }";
     }
 
-    private List<String> getWords() throws ExecutionException, InterruptedException {
+    private List<String> getWords() {
         return apiService.executeQuery(createQueryToPullLastFewRemindedWords(), MONGO_ACTION_FIND_ALL, "word");
     }
 
