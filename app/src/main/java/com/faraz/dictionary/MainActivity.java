@@ -11,7 +11,6 @@ import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.lang3.exception.ExceptionUtils.getStackTrace;
 import static java.lang.String.format;
 import static java.lang.System.lineSeparator;
-import static java.util.Optional.empty;
 import static java.util.Optional.ofNullable;
 import static java.util.concurrent.CompletableFuture.runAsync;
 import static java.util.stream.Collectors.joining;
@@ -76,13 +75,13 @@ public class MainActivity extends AppCompatActivity {
   static final String MONGODB_URI = "mongodb.data.uri";
   static final String MONGODB_API_KEY = "mongodb.data.api.key";
   static final String CHICAGO = "America/Chicago";
-  private static final List<String> AUTO_COMPLETE_WORDS = new ArrayList<>();
   private static final Consumer<Object> NOOP = ignore -> {
   };
   private static final String NO_DEFINITION_FOUND = "No definitions found for '%s'. Perhaps, you meant:";
   private static final String REGEX_WHITE_SPACES = "\\s+";
   private static final String MERRIAM_WEBSTER_KEY = "dictionary.merriamWebster.key";
   private static final String MERRIAM_WEBSTER_URL = "dictionary.merriamWebster.url";
+  private List<String> AUTO_COMPLETE_WORDS = new ArrayList<>();
   private Properties properties;
   private RequestQueue requestQueue;
   private ApiService apiService;
@@ -106,7 +105,8 @@ public class MainActivity extends AppCompatActivity {
       AUTO_COMPLETE_WORDS.removeAll(AUTO_COMPLETE_WORDS_REMOVE);
       AUTO_COMPLETE_WORDS_REMOVE.forEach(autoCompleteFileService::delete);
       AUTO_COMPLETE_WORDS_REMOVE.clear();
-      lookupWord.setAdapter(new ArrayAdapter<>(this, android.R.layout.select_dialog_item, AUTO_COMPLETE_WORDS));
+      runOnUiThread(() -> lookupWord.setAdapter(new ArrayAdapter<>(this, android.R.layout.select_dialog_item,
+              AUTO_COMPLETE_WORDS)));
       lookupWord.setHint("autocomplete is ready");
     }
   }
@@ -145,7 +145,8 @@ public class MainActivity extends AppCompatActivity {
   private void loadWordsForAutoComplete() {
     AUTO_COMPLETE_WORDS.clear();
     AUTO_COMPLETE_WORDS.addAll(Arrays.asList(autoCompleteFileService.readFile()));
-    System.out.println("loaded " + AUTO_COMPLETE_WORDS.size() + " words from disk.");
+    runOnUiThread(() -> Toast.makeText(MainActivity.this, "Loaded " + AUTO_COMPLETE_WORDS.size() + " words for " +
+            "autocomplete.", LENGTH_SHORT).show());
     lookupWord.setHint("autocomplete is ready");
   }
 
@@ -234,7 +235,7 @@ public class MainActivity extends AppCompatActivity {
       String[] definition = lookupInMerriamWebster();
       definitionsView.setText(definition[1]);
       Optional.of(definition[0]).map(BooleanUtils::toBoolean).filter(BooleanUtils::isTrue)
-              .ifPresent(ignore -> runAsync(this::saveWordInDb).thenRun(this::storeWordInAutoComplete));
+              .ifPresent(ignore -> runAsync(this::saveWordInDb).thenRunAsync(this::storeWordInAutoComplete));
       Optional.of(definition[0]).map(BooleanUtils::toBoolean).filter(BooleanUtils::isFalse)
               .flatMap(ignore -> Arrays.stream(fileService.readFile()).filter(originalLookupWord::equals).findFirst())
               .ifPresent(_ignore -> runOnUiThread(() -> deleteButton.setVisibility(VISIBLE)));
@@ -306,7 +307,7 @@ public class MainActivity extends AppCompatActivity {
     Optional.of(isOffline).filter(BooleanUtils::isTrue).ifPresent(ignore -> runAsync(this::writeToFile));
     Optional.of(isOffline).filter(BooleanUtils::isFalse).ifPresent(ignore -> runAsync(this::saveWordInDb));
     Optional.of(isOffline).filter(BooleanUtils::isFalse).ifPresent(ignore -> {
-      runAsync(this::saveWordInDb).thenRun(this::storeWordInAutoComplete);
+      runAsync(this::saveWordInDb).thenRunAsync(this::storeWordInAutoComplete);
     });
   }
 

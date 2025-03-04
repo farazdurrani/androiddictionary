@@ -126,7 +126,10 @@ public class MainActivity2 extends AppCompatActivity {
         autoCompleteFileService.writeFileExternalStorage(false, dbWords.toArray(new String[0]));
       runOnUiThread(() -> Toast.makeText(MainActivity2.this, "Autocomplete and Database are in sync now.",
                       LENGTH_SHORT).show());
-      }).thenRun(() -> toggleButtons(buttons, true));
+      }).thenRun(() -> toggleButtons(buttons, true)).thenRun(() -> {
+        Intent intent = new Intent(this, MainActivity.class);
+        startActivity(intent);
+    });
   }
 
   private void setRequestQueue() {
