@@ -10,3 +10,9 @@ Aggregation Query to get reminded count:
 
 To find docs that have 'quotes' (in this case at least).
 { word: { $regex: "\"" } }
+
+To look for words that has length between 0 and 2 like below:
+{word : /^.{0,2}$/}
+
+Looks for words with this specific length like 3.
+{word : /^.{3}$/}
