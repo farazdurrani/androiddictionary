@@ -135,8 +135,8 @@ public class MainActivity extends AppCompatActivity {
     setLookupWordListener();
     setStoreWordListener();
     Optional.of(isOffline()).ifPresent(this::initiateManyThings);
-    runAsync(this::loadWordsForAutoComplete).thenRun(
-            () -> ofNullable(getIntent().getExtras()).map(e -> e.getString(LOOKUPTHISWORD)).ifPresent(this::doLookup));
+    runAsync(this::loadWordsForAutoComplete).thenRun(() -> ofNullable(getIntent().getExtras())
+            .map(e -> e.getString(LOOKUPTHISWORD)).ifPresent(this::doLookup));
   }
 
   /**
@@ -213,8 +213,12 @@ public class MainActivity extends AppCompatActivity {
   }
 
   private void writeToFile() {
-    fileService.writeFileExternalStorage(true, originalLookupWord);
-    definitionsView.setText(format("'%s' has been stored offline.", originalLookupWord));
+    if (StringUtils.isNotBlank(originalLookupWord)) {
+      fileService.writeFileExternalStorage(true, originalLookupWord);
+      definitionsView.setText(format("'%s' has been stored offline.", originalLookupWord));
+    } else {
+      definitionsView.setText(format("...yeah we don't store empty words buddy!"));
+    }
   }
 
   private String formMerriamWebsterUrl() {
@@ -230,6 +234,8 @@ public class MainActivity extends AppCompatActivity {
       if (!existingWord().isEmpty()) {
         definitionsView.setText(format("'%s's already looked-up.", originalLookupWord));
         deleteFromFileIfPresent();
+        //no need to check for offline connectivity as this method will only be executed when online.
+        markWordsAsReminded(Arrays.asList(originalLookupWord));
         return;
       }
       String[] definition = lookupInMerriamWebster();
@@ -346,7 +352,7 @@ public class MainActivity extends AppCompatActivity {
 
   private void saveWordInMongo() throws Exception {
     String filter = wordExistsQuery();
-    String update = getUpdateQueryToUpdateReminded();
+    String update = getUpdateQueryToUpsertWord();
     String options = format("\"upsert\" : %b", true);
     String query = MONGO_PARTIAL_BODY + "," + filter + ", " + update + ", " + options + CLOSE_CURLY;
     Map<String, Object> response = apiService.upsert(query, MONGO_ACTION_UPDATE_MANY);
@@ -358,7 +364,7 @@ public class MainActivity extends AppCompatActivity {
   }
 
   @SuppressLint({"NewApi", "DefaultLocale"})
-  private String getUpdateQueryToUpdateReminded() {
+  private String getUpdateQueryToUpsertWord() {
     return format(
             "\"update\": { \"$set\" : { \"word\": \"%s\" }, \"$setOnInsert\" : { \"lookupTime\" : {  \"$date\" : {  \"$numberLong\" : \"%d\"} } } }",
             originalLookupWord, Instant.now(Clock.system(ZoneId.of(CHICAGO))).toEpochMilli());
@@ -418,6 +424,35 @@ public class MainActivity extends AppCompatActivity {
   private void doLookup(String word) {
     lookupWord.setText(word);
     doLookup();
+  }
+
+  private void markWordsAsReminded(List<String> words) throws ExecutionException, InterruptedException {
+    //must do an empty check!
+    if (words.isEmpty()) {
+      //If all word count and reminded = true count is same, (we will know this if words.isempty)
+      //then set all reminded = false;
+      runOnUiThread(() -> Toast.makeText(context, "TODO: set all words to 'reminded=false'.", LENGTH_SHORT).show());
+      return;
+    }
+    String markWordsAsRemindedFilterQuery = getFilterInQuery(words);
+    String updateSubQuery = getUpdateQueryToUpdateReminded();
+    String query = MONGO_PARTIAL_BODY + "," + markWordsAsRemindedFilterQuery + ", " + updateSubQuery + CLOSE_CURLY;
+    apiService.upsert(query, MONGO_ACTION_UPDATE_MANY);
+  }
+
+  @SuppressLint({"NewApi", "DefaultLocale"})
+  private String getUpdateQueryToUpdateReminded() {
+    return format("\"update\": { \"$set\" : { \"remindedTime\" : {  \"$date\" : {  \"$numberLong\" : \"%d\"} } } }",
+            Instant.now(Clock.system(ZoneId.of(CHICAGO))).toEpochMilli());
+  }
+
+  private String getFilterInQuery(List<String> words) {
+    String in = "";
+    for (String word : words) {
+      in = in + format("\"%s\",", word);
+    }
+    in = in.replaceAll(",$", "");
+    return format("\"filter\": { \"word\" : { \"$in\" : [%s] } }", in);
   }
 
   public boolean isOffline() {
