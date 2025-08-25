@@ -203,8 +203,8 @@ public class MainActivity extends AppCompatActivity {
   private void doLookup() {
     doInitialWork();
     Optional.of(offline).filter(BooleanUtils::isTrue).ifPresent(ignore -> runAsync(this::writeToFile));
-    Optional.of(offline).filter(BooleanUtils::isFalse)
-            .ifPresent(ignore -> writeToFileOrStoreInDbAndOpenBrowser(isOffline()));
+    Optional.of(offline).filter(BooleanUtils::isFalse).ifPresent(isOffline ->
+            writeToFileOrStoreInDbAndOpenBrowser(isOffline));
   }
 
   private void lookupAndstoreInDbAndOpenBrowser(boolean ignore) {
@@ -247,6 +247,7 @@ public class MainActivity extends AppCompatActivity {
               .ifPresent(_ignore -> runOnUiThread(() -> deleteButton.setVisibility(VISIBLE)));
     } catch (Exception e) {
       definitionsView.setText(format("welp...%s%s%s", originalLookupWord, lineSeparator(), getStackTrace(e)));
+      writeToFile();
     }
   }
 
@@ -305,16 +306,19 @@ public class MainActivity extends AppCompatActivity {
 
   private void doMoreChecks(String ignore) {
     Optional.of(offline).filter(BooleanUtils::isTrue).ifPresent(_ignore -> runAsync(this::writeToFile));
-    Optional.of(offline).filter(BooleanUtils::isFalse).ifPresent(_ignore -> doMoreWork(isOffline()));
+    Optional.of(offline).filter(BooleanUtils::isFalse).ifPresent(isOffline -> doMoreWork(isOffline));
   }
 
   private void doMoreWork(boolean isOffline) {
     runOnUiThread(() -> offlineActivityButton.setVisibility(isOffline ? VISIBLE : INVISIBLE));
     Optional.of(isOffline).filter(BooleanUtils::isTrue).ifPresent(ignore -> runAsync(this::writeToFile));
-    Optional.of(isOffline).filter(BooleanUtils::isFalse).ifPresent(ignore -> runAsync(this::saveWordInDb));
-    Optional.of(isOffline).filter(BooleanUtils::isFalse).ifPresent(ignore -> {
-      runAsync(this::saveWordInDb).thenRunAsync(this::storeWordInAutoComplete);
-    });
+    try {
+      Optional.of(isOffline).filter(BooleanUtils::isFalse).ifPresent(ignore ->
+              runAsync(this::saveWordInDb).thenRunAsync(this::storeWordInAutoComplete));
+    } catch (Exception e) {
+      definitionsView.setText(format("welp...%s%s%s", originalLookupWord, lineSeparator(), getStackTrace(e)));
+      writeToFile();
+    }
   }
 
   private void storeWordInAutoComplete() {
@@ -343,6 +347,7 @@ public class MainActivity extends AppCompatActivity {
       deleteFromFileIfPresent();
     } catch (Exception e) {
       definitionsView.setText(format("welp...%s%s%s", originalLookupWord, lineSeparator(), getStackTrace(e)));
+      throw new RuntimeException();
     }
   }
 
