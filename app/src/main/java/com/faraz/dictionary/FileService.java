@@ -78,7 +78,7 @@ public class FileService {
                     .stream().distinct().toArray(String[]::new);
         } catch (Exception e) {
             Log.e(this.getClass().getSimpleName(), "Error", e);
-            return new String[]{ExceptionUtils.getStackTrace(e)};
+            return new String[]{};
         }
     }
 

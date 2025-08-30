@@ -3,6 +3,7 @@ package com.faraz.dictionary;
 import static android.view.View.INVISIBLE;
 import static android.view.View.VISIBLE;
 import static android.widget.Toast.LENGTH_SHORT;
+import static com.faraz.dictionary.MainActivity2.WORD_LIMIT_IN_BACKUP_EMAIL;
 import static com.faraz.dictionary.MainActivity4.LOOKUPTHISWORD;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.apache.commons.lang3.StringUtils.SPACE;
@@ -30,6 +31,7 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.android.volley.RequestQueue;
@@ -134,7 +136,7 @@ public class MainActivity extends AppCompatActivity {
     setOpenInBrowserListener();
     setLookupWordListener();
     setStoreWordListener();
-    Optional.of(isOffline()).ifPresent(this::initiateManyThings);
+    Optional.of(isOffline()).ifPresent(this::setOfflineFlagAndButton);
     runAsync(this::loadWordsForAutoComplete).thenRun(() -> ofNullable(getIntent().getExtras())
             .map(e -> e.getString(LOOKUPTHISWORD)).ifPresent(this::doLookup));
   }
@@ -145,9 +147,27 @@ public class MainActivity extends AppCompatActivity {
   private void loadWordsForAutoComplete() {
     AUTO_COMPLETE_WORDS.clear();
     AUTO_COMPLETE_WORDS.addAll(Arrays.asList(autoCompleteFileService.readFile()));
+    Optional.of(AUTO_COMPLETE_WORDS).filter(w -> w.size() > 0).ifPresentOrElse(NOOP,
+            () -> AUTO_COMPLETE_WORDS.addAll(loadWords()));
     runOnUiThread(() -> Toast.makeText(MainActivity.this, "Loaded " + AUTO_COMPLETE_WORDS.size() + " words for " +
             "autocomplete.", LENGTH_SHORT).show());
     lookupWord.setHint("autocomplete is ready");
+  }
+
+  @NonNull
+  private List<String> loadWords() {
+    List<String> words = new ArrayList<>();
+    String limit = format(", \"limit\": %d ", WORD_LIMIT_IN_BACKUP_EMAIL);
+    String skip = ", \"skip\": %d";
+    int previousSkip = 0;
+    do {
+      String _skip = format(skip, previousSkip * WORD_LIMIT_IN_BACKUP_EMAIL);
+      String query = MONGO_PARTIAL_BODY + _skip + limit + CLOSE_CURLY;
+      List<String> list = apiService.executeQuery(query, MONGO_ACTION_FIND_ALL, "word");
+      words.addAll(list);
+      previousSkip = list.size() < WORD_LIMIT_IN_BACKUP_EMAIL ? -1 : previousSkip + 1;
+    } while (previousSkip != -1);
+    return words;
   }
 
   public void goTo2ndActivity(View view) {
@@ -176,7 +196,7 @@ public class MainActivity extends AppCompatActivity {
     }
   }
 
-  private void initiateManyThings(boolean isOffline) {
+  private void setOfflineFlagAndButton(boolean isOffline) {
     offline = isOffline;
     offlineActivityButton.setVisibility(offline ? VISIBLE : INVISIBLE);
   }
@@ -201,10 +221,10 @@ public class MainActivity extends AppCompatActivity {
   }
 
   private void doLookup() {
+    runOnUiThread(() -> offlineActivityButton.setVisibility(offline ? VISIBLE : INVISIBLE));
     doInitialWork();
-    Optional.of(offline).filter(BooleanUtils::isTrue).ifPresent(ignore -> runAsync(this::writeToFile));
-    Optional.of(offline).filter(BooleanUtils::isFalse).ifPresent(isOffline ->
-            writeToFileOrStoreInDbAndOpenBrowser(isOffline));
+    Optional.of(offline).filter(BooleanUtils::isTrue).ifPresent(ignore -> runAsync(this::writeToOfflineFile));
+    Optional.of(offline).filter(BooleanUtils::isFalse).ifPresent(this::lookupAndstoreInDbAndOpenBrowser);
   }
 
   private void lookupAndstoreInDbAndOpenBrowser(boolean ignore) {
@@ -212,7 +232,7 @@ public class MainActivity extends AppCompatActivity {
     openInWebBrowser();
   }
 
-  private void writeToFile() {
+  private void writeToOfflineFile() {
     if (StringUtils.isNotBlank(originalLookupWord)) {
       fileService.writeFileExternalStorage(true, originalLookupWord);
       definitionsView.setText(format("'%s' has been stored offline.", originalLookupWord));
@@ -234,7 +254,6 @@ public class MainActivity extends AppCompatActivity {
       if (!existingWord().isEmpty()) {
         definitionsView.setText(format("'%s's already looked-up.", originalLookupWord));
         deleteFromFileIfPresent();
-        //no need to check for offline connectivity as this method will only be executed when online.
         markWordsAsReminded(Arrays.asList(originalLookupWord));
         return;
       }
@@ -247,7 +266,7 @@ public class MainActivity extends AppCompatActivity {
               .ifPresent(_ignore -> runOnUiThread(() -> deleteButton.setVisibility(VISIBLE)));
     } catch (Exception e) {
       definitionsView.setText(format("welp...%s%s%s", originalLookupWord, lineSeparator(), getStackTrace(e)));
-      writeToFile();
+      writeToOfflineFile();
     }
   }
 
@@ -301,23 +320,18 @@ public class MainActivity extends AppCompatActivity {
   private void storeWord() {
     Optional.of(ofNullable(originalLookupWord).orElse(EMPTY)).filter(StringUtils::isBlank).ifPresent(
             ignore -> runOnUiThread(() -> Toast.makeText(MainActivity.this, "Nothing to save.", LENGTH_SHORT).show()));
-    ofNullable(originalLookupWord).filter(StringUtils::isNotBlank).ifPresent(this::doMoreChecks);
+    ofNullable(originalLookupWord).filter(StringUtils::isNotBlank).ifPresent(this::storeWord);
   }
 
-  private void doMoreChecks(String ignore) {
-    Optional.of(offline).filter(BooleanUtils::isTrue).ifPresent(_ignore -> runAsync(this::writeToFile));
-    Optional.of(offline).filter(BooleanUtils::isFalse).ifPresent(isOffline -> doMoreWork(isOffline));
-  }
-
-  private void doMoreWork(boolean isOffline) {
-    runOnUiThread(() -> offlineActivityButton.setVisibility(isOffline ? VISIBLE : INVISIBLE));
-    Optional.of(isOffline).filter(BooleanUtils::isTrue).ifPresent(ignore -> runAsync(this::writeToFile));
+  private void storeWord(String ignore) {
+    runOnUiThread(() -> offlineActivityButton.setVisibility(offline ? VISIBLE : INVISIBLE));
+    Optional.of(offline).filter(BooleanUtils::isTrue).ifPresent(_ignore -> runAsync(this::writeToOfflineFile));
     try {
-      Optional.of(isOffline).filter(BooleanUtils::isFalse).ifPresent(ignore ->
-              runAsync(this::saveWordInDb).thenRunAsync(this::storeWordInAutoComplete));
+      Optional.of(offline).filter(BooleanUtils::isFalse).ifPresent(_ignore ->
+              runAsync(this::firstCheckIfExistsAndIfNotThenSaveWordInDb).thenRunAsync(this::storeWordInAutoComplete));
     } catch (Exception e) {
       definitionsView.setText(format("welp...%s%s%s", originalLookupWord, lineSeparator(), getStackTrace(e)));
-      writeToFile();
+      writeToOfflineFile();
     }
   }
 
@@ -335,10 +349,18 @@ public class MainActivity extends AppCompatActivity {
     });
   }
 
-  private void writeToFileOrStoreInDbAndOpenBrowser(boolean isOffline) {
-    runOnUiThread(() -> offlineActivityButton.setVisibility(isOffline ? VISIBLE : INVISIBLE));
-    Optional.of(isOffline).filter(BooleanUtils::isTrue).ifPresent(ignore -> runAsync(this::writeToFile));
-    Optional.of(isOffline).filter(BooleanUtils::isFalse).ifPresent(this::lookupAndstoreInDbAndOpenBrowser);
+  private void firstCheckIfExistsAndIfNotThenSaveWordInDb() {
+    try {
+      if (!existingWord().isEmpty()) {
+        definitionsView.setText(format("'%s's already stored.", originalLookupWord));
+        deleteFromFileIfPresent();
+        markWordsAsReminded(Arrays.asList(originalLookupWord));
+        return;
+      }
+      saveWordInDb();
+    } catch (Exception e) {
+      writeToOfflineFile();
+    }
   }
 
   private void saveWordInDb(boolean... ignore) {

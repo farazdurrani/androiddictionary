@@ -64,7 +64,7 @@ import okhttp3.OkHttpClient;
 @RequiresApi(api = Build.VERSION_CODES.O)
 public class MainActivity2 extends AppCompatActivity {
 
-  private static final int WORD_LIMIT_IN_BACKUP_EMAIL = 12000;
+  public static final int WORD_LIMIT_IN_BACKUP_EMAIL = 3000;
   private static final String activity = MainActivity2.class.getSimpleName();
   private static final String MAIL_KEY = "mailjet.apiKey";
   private static final String MAIL_SECRET = "mailjet.apiSecret";
@@ -237,16 +237,15 @@ public class MainActivity2 extends AppCompatActivity {
   @NonNull
   private List<String> loadWords() {
     List<String> words = new ArrayList<>();
-    int limitNum = WORD_LIMIT_IN_BACKUP_EMAIL;
-    String limit = format(", \"limit\": %d ", limitNum);
+    String limit = format(", \"limit\": %d ", WORD_LIMIT_IN_BACKUP_EMAIL);
     String skip = ", \"skip\": %d";
     int previousSkip = 0;
     do {
-      String _skip = format(skip, previousSkip * limitNum);
+      String _skip = format(skip, previousSkip * WORD_LIMIT_IN_BACKUP_EMAIL);
       String query = MONGO_PARTIAL_BODY + _skip + limit + CLOSE_CURLY;
       List<String> list = apiService.executeQuery(query, MONGO_ACTION_FIND_ALL, "word");
       words.addAll(list);
-      previousSkip = list.size() < limitNum ? -1 : previousSkip + 1;
+      previousSkip = list.size() < WORD_LIMIT_IN_BACKUP_EMAIL ? -1 : previousSkip + 1;
     } while (previousSkip != -1);
     return words;
   }
