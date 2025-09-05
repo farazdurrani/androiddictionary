@@ -123,7 +123,7 @@ public class MainActivity2 extends AppCompatActivity {
     List<View> buttons = findViewById(R.id.mainactivity2).getTouchables();
     toggleButtons(buttons, false);
     supplyAsync(this::loadWords).thenAccept(dbWords -> {
-        autoCompleteFileService.writeFileExternalStorage(false, dbWords.toArray(new String[0]));
+        autoCompleteFileService.writeFileExternalStorage(false, dbWords.toArray(String[]::new));
       runOnUiThread(() -> Toast.makeText(MainActivity2.this, "Autocomplete and Database are in sync now.",
                       LENGTH_SHORT).show());
       }).thenRun(() -> toggleButtons(buttons, true)).thenRun(() -> {

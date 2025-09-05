@@ -1,7 +1,6 @@
 package com.faraz.dictionary;
 
 import static android.view.View.INVISIBLE;
-import static android.view.View.VISIBLE;
 import static android.widget.Toast.LENGTH_SHORT;
 import static com.faraz.dictionary.MainActivity.FILE_NAME;
 import static com.faraz.dictionary.MainActivity5.WIPEOUT_DATA_BUTTON;
@@ -27,7 +26,6 @@ import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.File;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -53,7 +51,7 @@ public class MainActivity4 extends AppCompatActivity {
     ofNullable(getIntent().getExtras()).map(e -> e.getString(FILE_NAME)).ifPresent(this::doInitiation);
     ofNullable(getIntent().getExtras()).filter(e -> StringUtils.isBlank(e.getString(FILE_NAME, EMPTY)))
             .ifPresent(ignore -> ((TextView) findViewById(R.id.filepath)).setText("can't locate the path"));
-    ((TextView) findViewById(R.id.offlineWordsCount)).setText(fileService.readFile().length + " total words in file.");
+    ((TextView) findViewById(R.id.offlineWordsCount)).setText(fileService.readFile().size() + " total words in file.");
   }
 
   private void doInitiation(String fn) {
@@ -87,11 +85,22 @@ public class MainActivity4 extends AppCompatActivity {
 
   private void fetchWords() {
     runAsync(() -> {
-      List<String> _words = Arrays.asList(fileService.readFile());
+      List<String> _words = fileService.readFile();
       Collections.reverse(_words);
       words = _words.toArray(new String[0]);
       runOnUiThread(() -> listView.setAdapter(new ShowNumbersArrayAdapter(context, R.layout.custom_layout, words)));
     });
+  }
+
+  public void wipeoutDeletedWords(View view) {
+    ofNullable(getIntent().getExtras()).map(e -> e.getBoolean(WIPEOUT_DATA_BUTTON)).filter(BooleanUtils::isTrue)
+            .ifPresent(this::deleteWordsAndShowNewDisplay);
+  }
+
+  private void deleteWordsAndShowNewDisplay(boolean... ignore) {
+    fileService.clearFile();
+    words = fileService.readFile().toArray(String[]::new);
+    runOnUiThread(() -> listView.setAdapter(new ArrayAdapter<>(context, R.layout.custom_layout, words)));
   }
 
   private static class ShowNumbersArrayAdapter extends ArrayAdapter<String> {
@@ -107,16 +116,5 @@ public class MainActivity4 extends AppCompatActivity {
       view.setText(++position + " " + view.getText());
       return view;
     }
-  }
-
-  public void wipeoutDeletedWords(View view) {
-    ofNullable(getIntent().getExtras()).map(e -> e.getBoolean(WIPEOUT_DATA_BUTTON)).filter(BooleanUtils::isTrue)
-            .ifPresent(this::deleteWordsAndShowNewDisplay);
-  }
-
-  private void deleteWordsAndShowNewDisplay(boolean... ignore) {
-    fileService.clearFile();
-    words = fileService.readFile();
-    runOnUiThread(() -> listView.setAdapter(new ArrayAdapter<>(context, R.layout.custom_layout, words)));
   }
 }

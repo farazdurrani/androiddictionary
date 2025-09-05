@@ -2,4 +2,9 @@ mongo api https://www.mongodb.com/developer/products/atlas/atlas-data-api-introd
 termux https://termux.dev/docs
 linker https://play.google.com/store/apps/details?id=com.jcoder.linker
 
-add reminded time when storing word (if it already exists). After clearing cache, autocomplete would have no words. Loading from the db now. There was a dangerous yet to be reified bug where the whole exception stacktrace was to be stucked in the autocomplete words. And worse and possibly, other places as well. fixed it. Removed some unnessary methods.
+Now, Finding all the mongo queries in MainActivity (the main page).
+
+1) autocomplete load all
+2) save
+3) lookup
+4) add reminded time

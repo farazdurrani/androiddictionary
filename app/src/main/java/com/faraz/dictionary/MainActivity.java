@@ -3,6 +3,7 @@ package com.faraz.dictionary;
 import static android.view.View.INVISIBLE;
 import static android.view.View.VISIBLE;
 import static android.widget.Toast.LENGTH_SHORT;
+import static com.faraz.dictionary.CollectionOptional.ofEmptyable;
 import static com.faraz.dictionary.MainActivity2.WORD_LIMIT_IN_BACKUP_EMAIL;
 import static com.faraz.dictionary.MainActivity4.LOOKUPTHISWORD;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
@@ -99,6 +100,10 @@ public class MainActivity extends AppCompatActivity {
   private Button offlineActivityButton;
   private boolean offline;
 
+//  public static Optional<Object> ofEmptyable(Object object) {
+//    return ObjectUtils.isEmpty(object) ? Optional.empty() : Optional.of(object);
+//  }
+
   @Override
   protected void onResume() {
     super.onResume();
@@ -145,15 +150,26 @@ public class MainActivity extends AppCompatActivity {
    * Call this method only at startup!
    */
   private void loadWordsForAutoComplete() {
-    AUTO_COMPLETE_WORDS.clear();
-    AUTO_COMPLETE_WORDS.addAll(Arrays.asList(autoCompleteFileService.readFile()));
-    Optional.of(AUTO_COMPLETE_WORDS).filter(w -> w.size() > 0).ifPresentOrElse(NOOP,
-            () -> AUTO_COMPLETE_WORDS.addAll(loadWords()));
+    ofEmptyable(autoCompleteFileService.readFile()).or(() -> Optional.of(loadWords()))
+            .ifPresent(this::autocompleteChores);
     runOnUiThread(() -> Toast.makeText(MainActivity.this, "Loaded " + AUTO_COMPLETE_WORDS.size() + " words for " +
             "autocomplete.", LENGTH_SHORT).show());
     lookupWord.setHint("autocomplete is ready");
   }
 
+  private void autocompleteChores(List<String> strings) {
+    AUTO_COMPLETE_WORDS.clear();
+    AUTO_COMPLETE_WORDS.addAll(strings);
+    // this could be an expensive operation since you are rewritting the whole file needlessly specially if the file
+    // already exists.
+    autoCompleteFileService.writeFileExternalStorage(false, strings.toArray(String[]::new));
+  }
+
+  /**
+   * This can potentially load a lot of data into the memory.
+   *
+   * @return
+   */
   @NonNull
   private List<String> loadWords() {
     List<String> words = new ArrayList<>();
@@ -262,7 +278,7 @@ public class MainActivity extends AppCompatActivity {
       Optional.of(definition[0]).map(BooleanUtils::toBoolean).filter(BooleanUtils::isTrue)
               .ifPresent(ignore -> runAsync(this::saveWordInDb).thenRunAsync(this::storeWordInAutoComplete));
       Optional.of(definition[0]).map(BooleanUtils::toBoolean).filter(BooleanUtils::isFalse)
-              .flatMap(ignore -> Arrays.stream(fileService.readFile()).filter(originalLookupWord::equals).findFirst())
+              .flatMap(ignore -> fileService.readFile().stream().filter(originalLookupWord::equals).findFirst())
               .ifPresent(_ignore -> runOnUiThread(() -> deleteButton.setVisibility(VISIBLE)));
     } catch (Exception e) {
       definitionsView.setText(format("welp...%s%s%s", originalLookupWord, lineSeparator(), getStackTrace(e)));
@@ -282,7 +298,7 @@ public class MainActivity extends AppCompatActivity {
   }
 
   private void deleteFromFileIfPresent() {
-    Arrays.stream(fileService.readFile()).filter(originalLookupWord::equals).findFirst()
+    fileService.readFile().stream().filter(originalLookupWord::equals).findFirst()
             .ifPresent(ignore -> deleteButton(null));
   }
 
@@ -337,11 +353,12 @@ public class MainActivity extends AppCompatActivity {
 
   private void storeWordInAutoComplete() {
     lookupWord.setHint(EMPTY);
-    Optional.of(AUTO_COMPLETE_WORDS).stream().flatMap(List::stream).filter(originalLookupWord::equalsIgnoreCase)
-            .findAny().ifPresentOrElse(NOOP, () -> AUTO_COMPLETE_WORDS.add(originalLookupWord));
-    Optional.of(Arrays.asList(fileService.readFile())).stream().flatMap(List::stream)
-            .filter(originalLookupWord::equalsIgnoreCase).findAny().ifPresentOrElse(NOOP,
-                    () -> autoCompleteFileService.writeFileExternalStorage(true, originalLookupWord));
+    if (!AUTO_COMPLETE_WORDS.contains(originalLookupWord)) {
+      AUTO_COMPLETE_WORDS.add(originalLookupWord);
+    }
+    if (!fileService.readFile().contains(originalLookupWord)) {
+      autoCompleteFileService.writeFileExternalStorage(true, originalLookupWord);
+    }
     runOnUiThread(() -> {
       lookupWord.setAdapter(new ArrayAdapter<>(this, android.R.layout.select_dialog_item,
               AUTO_COMPLETE_WORDS));
