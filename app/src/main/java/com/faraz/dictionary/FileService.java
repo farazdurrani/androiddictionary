@@ -51,6 +51,8 @@ public class FileService {
       //to append or create new file if one exists
       outputStream = new FileOutputStream(new File(externalFilesDir, filename), append);
 
+      //todo extremely slow if too many words. Just use String.join(lineSeparator(), words). You do this at one place
+      // before calling this method.
       for (String word : words) {
         outputStream.write(word.getBytes());
         outputStream.write(lineSeparator().getBytes());
@@ -84,6 +86,6 @@ public class FileService {
   @RequiresApi(api = Build.VERSION_CODES.O)
   public void delete(String word) {
     String[] words = readFile().stream().filter(w -> !w.equals(word)).distinct().toArray(String[]::new);
-    writeFileExternalStorage(false, words);
+    writeFileExternalStorage(false, String.join(lineSeparator(), words));
   }
 }

@@ -62,7 +62,7 @@ public class MainActivity5 extends AppCompatActivity {
   }
 
   public void deletedWordsActivity(View view) {
-    Intent intent = new Intent(this, MainActivity4.class);
+    Intent intent = new Intent(this, OfflineAndDeletedWordsActivity.class);
     intent.putExtra(FILE_NAME, "deletedwords.txt");
     intent.putExtra(WIPEOUT_DATA_BUTTON, true);
     startActivity(intent);

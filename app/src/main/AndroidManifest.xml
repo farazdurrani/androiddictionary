@@ -15,7 +15,7 @@
         android:name=".MainActivity3"
         android:exported="false" />
     <activity
-        android:name=".MainActivity4"
+        android:name=".OfflineAndDeletedWordsActivity"
         android:exported="false" />
     <activity
         android:name=".MainActivity5"

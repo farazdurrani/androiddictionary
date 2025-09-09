@@ -1,8 +1,13 @@
 package com.faraz.dictionary;
 
-import java.util.function.Supplier;
+import java.util.concurrent.CompletableFuture;
 
 public class Completable<T> {
+
+  @FunctionalInterface
+  public interface Operation {
+    void run();
+  }
 
   private final Object result;
 
@@ -14,13 +19,30 @@ public class Completable<T> {
     this.result = result;
   }
 
-  public static Completable<Void> runSync(Supplier s) {
-    s.get();
+  public static Completable<Void> runSync(Operation s) {
+    s.run();
     return new Completable<>();
   }
 
-  public static Completable<Void> thenRunSync(Supplier s) {
+  public Completable<Void> thenRunSync(Operation s) {
     return runSync(s);
+  }
+
+  public static Completable<Void> runAsync(Runnable r) {
+    CompletableFuture<Void> cf = CompletableFuture.runAsync(r);
+
+    while(!cf.isDone()) {
+      // till I die
+    }
+    return new Completable<>();
+  }
+
+  public Completable<Void> thenRunAsync(Runnable r) {
+    CompletableFuture<Void> cf = CompletableFuture.runAsync(r);
+    while(!cf.isDone()) {
+      // till I am done with life
+    }
+    return new Completable<>();
   }
 
   private Object getResult() {

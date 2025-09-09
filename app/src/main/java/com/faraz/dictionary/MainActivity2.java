@@ -10,6 +10,7 @@ import static org.apache.commons.lang3.StringUtils.capitalize;
 import static java.lang.String.format;
 import static java.lang.String.join;
 import static java.lang.System.currentTimeMillis;
+import static java.lang.System.lineSeparator;
 import static java.util.Collections.reverse;
 import static java.util.Optional.ofNullable;
 import static java.util.concurrent.CompletableFuture.runAsync;
@@ -66,14 +67,14 @@ public class MainActivity2 extends AppCompatActivity {
 
   public static final int WORD_LIMIT_IN_BACKUP_EMAIL = 3000;
   private static final String activity = MainActivity2.class.getSimpleName();
-  private static final String MAIL_KEY = "mailjet.apiKey";
-  private static final String MAIL_SECRET = "mailjet.apiSecret";
-  private static final String MAIL_FROM = "mailjet.from";
-  private static final String MAIL_TO = "mailjet.to";
-  private static final String JAVAMAIL_USER = "javamail.user";
-  private static final String JAVAMAIL_PASS = "javamail.pass";
-  private static final String JAVAMAIL_FROM = "javamail.from";
-  private static final String JAVAMAIL_TO = "javamail.to";
+  public static final String MAIL_KEY = "mailjet.apiKey";
+  public static final String MAIL_SECRET = "mailjet.apiSecret";
+  public static final String MAIL_FROM = "mailjet.from";
+  public static final String MAIL_TO = "mailjet.to";
+  public static final String JAVAMAIL_USER = "javamail.user";
+  public static final String JAVAMAIL_PASS = "javamail.pass";
+  public static final String JAVAMAIL_FROM = "javamail.from";
+  public static final String JAVAMAIL_TO = "javamail.to";
   private boolean defaultEmailProvider = true; //default email provider is MailJet. Other option is JavaMail.
 
   private MailjetClient mailjetClient;
@@ -123,7 +124,7 @@ public class MainActivity2 extends AppCompatActivity {
     List<View> buttons = findViewById(R.id.mainactivity2).getTouchables();
     toggleButtons(buttons, false);
     supplyAsync(this::loadWords).thenAccept(dbWords -> {
-        autoCompleteFileService.writeFileExternalStorage(false, dbWords.toArray(String[]::new));
+        autoCompleteFileService.writeFileExternalStorage(false, String.join(lineSeparator(), dbWords));
       runOnUiThread(() -> Toast.makeText(MainActivity2.this, "Autocomplete and Database are in sync now.",
                       LENGTH_SHORT).show());
       }).thenRun(() -> toggleButtons(buttons, true)).thenRun(() -> {

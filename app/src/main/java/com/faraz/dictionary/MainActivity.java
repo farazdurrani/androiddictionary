@@ -3,9 +3,8 @@ package com.faraz.dictionary;
 import static android.view.View.INVISIBLE;
 import static android.view.View.VISIBLE;
 import static android.widget.Toast.LENGTH_SHORT;
-import static com.faraz.dictionary.CollectionOptional.ofEmptyable;
 import static com.faraz.dictionary.MainActivity2.WORD_LIMIT_IN_BACKUP_EMAIL;
-import static com.faraz.dictionary.MainActivity4.LOOKUPTHISWORD;
+import static com.faraz.dictionary.OfflineAndDeletedWordsActivity.LOOKUPTHISWORD;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.apache.commons.lang3.StringUtils.SPACE;
 import static org.apache.commons.lang3.StringUtils.capitalize;
@@ -88,7 +87,7 @@ public class MainActivity extends AppCompatActivity {
   private Properties properties;
   private RequestQueue requestQueue;
   private ApiService apiService;
-  private FileService fileService;
+  private FileService offlineWordsFileService;
   private FileService autoCompleteFileService;
   private Context context;
   private AutoCompleteTextView lookupWord;
@@ -100,21 +99,17 @@ public class MainActivity extends AppCompatActivity {
   private Button offlineActivityButton;
   private boolean offline;
 
-//  public static Optional<Object> ofEmptyable(Object object) {
-//    return ObjectUtils.isEmpty(object) ? Optional.empty() : Optional.of(object);
-//  }
-
   @Override
   protected void onResume() {
     super.onResume();
     if (!AUTO_COMPLETE_WORDS_REMOVE.isEmpty()) {
-      lookupWord.setHint(EMPTY);
+      runOnUiThread(() -> lookupWord.setHint(EMPTY));
       AUTO_COMPLETE_WORDS.removeAll(AUTO_COMPLETE_WORDS_REMOVE);
       AUTO_COMPLETE_WORDS_REMOVE.forEach(autoCompleteFileService::delete);
       AUTO_COMPLETE_WORDS_REMOVE.clear();
       runOnUiThread(() -> lookupWord.setAdapter(new ArrayAdapter<>(this, android.R.layout.select_dialog_item,
               AUTO_COMPLETE_WORDS)));
-      lookupWord.setHint("autocomplete is ready");
+      runOnUiThread(() -> lookupWord.setHint("autocomplete is ready"));
     }
   }
 
@@ -126,7 +121,7 @@ public class MainActivity extends AppCompatActivity {
     offlineActivityButton.setVisibility(INVISIBLE);
     context = getBaseContext();
     apiService = new ApiService(Volley.newRequestQueue(this), properties());
-    fileService = new FileService(getExternalFilesDir(null), "offlinewords.txt");
+    offlineWordsFileService = new FileService(getExternalFilesDir(null), "offlinewords.txt");
     autoCompleteFileService = new FileService(getExternalFilesDir(null), "autocomplete.txt");
     lookupWord = findViewById(R.id.wordBox);
     lookupWord.setThreshold(1);
@@ -150,19 +145,17 @@ public class MainActivity extends AppCompatActivity {
    * Call this method only at startup!
    */
   private void loadWordsForAutoComplete() {
-    ofEmptyable(autoCompleteFileService.readFile()).or(() -> Optional.of(loadWords()))
-            .ifPresent(this::autocompleteChores);
-    runOnUiThread(() -> Toast.makeText(MainActivity.this, "Loaded " + AUTO_COMPLETE_WORDS.size() + " words for " +
-            "autocomplete.", LENGTH_SHORT).show());
-    lookupWord.setHint("autocomplete is ready");
-  }
-
-  private void autocompleteChores(List<String> strings) {
+    List<String> words = autoCompleteFileService.readFile();
+    if (words.isEmpty()) {
+      words = loadWords();
+      autoCompleteFileService.writeFileExternalStorage(false, String.join(lineSeparator(), words));
+    }
     AUTO_COMPLETE_WORDS.clear();
-    AUTO_COMPLETE_WORDS.addAll(strings);
-    // this could be an expensive operation since you are rewritting the whole file needlessly specially if the file
-    // already exists.
-    autoCompleteFileService.writeFileExternalStorage(false, strings.toArray(String[]::new));
+    AUTO_COMPLETE_WORDS.addAll(words);
+    runOnUiThread(() -> lookupWord.setHint("autocomplete is ready"));
+    runOnUiThread(() -> Toast.makeText(MainActivity.this,
+            format("Loaded %s words for autocomplete.", AUTO_COMPLETE_WORDS.size()),
+            LENGTH_SHORT).show());
   }
 
   /**
@@ -192,29 +185,30 @@ public class MainActivity extends AppCompatActivity {
   }
 
   public void offlineActivity(View view) {
-    Intent intent = new Intent(this, MainActivity4.class);
+    Intent intent = new Intent(this, OfflineAndDeletedWordsActivity.class);
     intent.putExtra(FILE_NAME, "offlinewords.txt");
     startActivity(intent);
   }
 
   public void offlineMode(View view) {
     offline = !offline;
-    offlineActivityButton.setVisibility(offline ? VISIBLE : INVISIBLE);
+    runOnUiThread(() -> offlineActivityButton.setVisibility(offline ? VISIBLE : INVISIBLE));
   }
 
   public void deleteButton(View view) {
     try {
-      fileService.delete(originalLookupWord);
-      deleteButton.setVisibility(INVISIBLE);
+      offlineWordsFileService.delete(originalLookupWord);
+      runOnUiThread(() -> deleteButton.setVisibility(INVISIBLE));
     } catch (Exception e) {
       Log.e(this.getClass().getSimpleName(), "error...", e);
-      definitionsView.setText(format("Error deleting '%s'. %s ", originalLookupWord, ExceptionUtils.getStackTrace(e)));
+      runOnUiThread(() -> definitionsView.setText(format("Error deleting '%s'. %s ", originalLookupWord,
+              ExceptionUtils.getStackTrace(e))));
     }
   }
 
   private void setOfflineFlagAndButton(boolean isOffline) {
     offline = isOffline;
-    offlineActivityButton.setVisibility(offline ? VISIBLE : INVISIBLE);
+    runOnUiThread(() -> offlineActivityButton.setVisibility(offline ? VISIBLE : INVISIBLE));
   }
 
   private void setStoreWordListener() {
@@ -250,10 +244,10 @@ public class MainActivity extends AppCompatActivity {
 
   private void writeToOfflineFile() {
     if (StringUtils.isNotBlank(originalLookupWord)) {
-      fileService.writeFileExternalStorage(true, originalLookupWord);
-      definitionsView.setText(format("'%s' has been stored offline.", originalLookupWord));
+      offlineWordsFileService.writeFileExternalStorage(true, originalLookupWord);
+      runOnUiThread(() -> definitionsView.setText(format("'%s' has been stored offline.", originalLookupWord)));
     } else {
-      definitionsView.setText(format("...yeah we don't store empty words buddy!"));
+      runOnUiThread(() -> definitionsView.setText(format("...yeah we don't store empty words buddy!")));
     }
   }
 
@@ -268,20 +262,21 @@ public class MainActivity extends AppCompatActivity {
   private void lookupWord() {
     try {
       if (!existingWord().isEmpty()) {
-        definitionsView.setText(format("'%s's already looked-up.", originalLookupWord));
+        runOnUiThread(() -> definitionsView.setText(format("'%s's already looked-up.", originalLookupWord)));
         deleteFromFileIfPresent();
         markWordsAsReminded(Arrays.asList(originalLookupWord));
         return;
       }
       String[] definition = lookupInMerriamWebster();
-      definitionsView.setText(definition[1]);
+      runOnUiThread(() -> definitionsView.setText(definition[1]));
       Optional.of(definition[0]).map(BooleanUtils::toBoolean).filter(BooleanUtils::isTrue)
               .ifPresent(ignore -> runAsync(this::saveWordInDb).thenRunAsync(this::storeWordInAutoComplete));
       Optional.of(definition[0]).map(BooleanUtils::toBoolean).filter(BooleanUtils::isFalse)
-              .flatMap(ignore -> fileService.readFile().stream().filter(originalLookupWord::equals).findFirst())
+              .flatMap(ignore -> offlineWordsFileService.readFile().stream().filter(originalLookupWord::equals).findFirst())
               .ifPresent(_ignore -> runOnUiThread(() -> deleteButton.setVisibility(VISIBLE)));
     } catch (Exception e) {
-      definitionsView.setText(format("welp...%s%s%s", originalLookupWord, lineSeparator(), getStackTrace(e)));
+      runOnUiThread(() -> definitionsView.setText(format("welp...%s%s%s", originalLookupWord, lineSeparator(),
+              getStackTrace(e))));
       writeToOfflineFile();
     }
   }
@@ -298,7 +293,7 @@ public class MainActivity extends AppCompatActivity {
   }
 
   private void deleteFromFileIfPresent() {
-    fileService.readFile().stream().filter(originalLookupWord::equals).findFirst()
+    offlineWordsFileService.readFile().stream().filter(originalLookupWord::equals).findFirst()
             .ifPresent(ignore -> deleteButton(null));
   }
 
@@ -313,7 +308,7 @@ public class MainActivity extends AppCompatActivity {
 
   private void doInitialWork() {
     originalLookupWord = cleanWord();
-    lookupWord.setText(null);
+    runOnUiThread(() -> lookupWord.setText(null));
   }
 
   private String cleanWord() {
@@ -346,17 +341,18 @@ public class MainActivity extends AppCompatActivity {
       Optional.of(offline).filter(BooleanUtils::isFalse).ifPresent(_ignore ->
               runAsync(this::firstCheckIfExistsAndIfNotThenSaveWordInDb).thenRunAsync(this::storeWordInAutoComplete));
     } catch (Exception e) {
-      definitionsView.setText(format("welp...%s%s%s", originalLookupWord, lineSeparator(), getStackTrace(e)));
+      runOnUiThread(() -> definitionsView.setText(format("welp...%s%s%s", originalLookupWord, lineSeparator(),
+              getStackTrace(e))));
       writeToOfflineFile();
     }
   }
 
   private void storeWordInAutoComplete() {
-    lookupWord.setHint(EMPTY);
+    runOnUiThread(() -> lookupWord.setHint(EMPTY));
     if (!AUTO_COMPLETE_WORDS.contains(originalLookupWord)) {
       AUTO_COMPLETE_WORDS.add(originalLookupWord);
     }
-    if (!fileService.readFile().contains(originalLookupWord)) {
+    if (!offlineWordsFileService.readFile().contains(originalLookupWord)) {
       autoCompleteFileService.writeFileExternalStorage(true, originalLookupWord);
     }
     runOnUiThread(() -> {
@@ -369,7 +365,7 @@ public class MainActivity extends AppCompatActivity {
   private void firstCheckIfExistsAndIfNotThenSaveWordInDb() {
     try {
       if (!existingWord().isEmpty()) {
-        definitionsView.setText(format("'%s's already stored.", originalLookupWord));
+        runOnUiThread(() -> definitionsView.setText(format("'%s's already stored.", originalLookupWord)));
         deleteFromFileIfPresent();
         markWordsAsReminded(Arrays.asList(originalLookupWord));
         return;
@@ -385,7 +381,8 @@ public class MainActivity extends AppCompatActivity {
       saveWordInMongo();
       deleteFromFileIfPresent();
     } catch (Exception e) {
-      definitionsView.setText(format("welp...%s%s%s", originalLookupWord, lineSeparator(), getStackTrace(e)));
+      runOnUiThread(() -> definitionsView.setText(format("welp...%s%s%s", originalLookupWord, lineSeparator(),
+              getStackTrace(e))));
       throw new RuntimeException();
     }
   }
@@ -466,7 +463,7 @@ public class MainActivity extends AppCompatActivity {
   }
 
   private void doLookup(String word) {
-    lookupWord.setText(word);
+    lookupWord.setText(word); //TODO perhaps you never want to execute 'setText' on a ui thread this one time.
     doLookup();
   }
 
