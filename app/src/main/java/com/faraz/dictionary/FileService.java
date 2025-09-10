@@ -9,6 +9,8 @@ import android.util.Log;
 
 import androidx.annotation.RequiresApi;
 
+import org.apache.commons.lang3.ObjectUtils;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -16,6 +18,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 public class FileService {
 
@@ -83,9 +86,11 @@ public class FileService {
     }
   }
 
-  @RequiresApi(api = Build.VERSION_CODES.O)
+  @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
   public void delete(String word) {
     String[] words = readFile().stream().filter(w -> !w.equals(word)).distinct().toArray(String[]::new);
-    writeFileExternalStorage(false, String.join(lineSeparator(), words));
+    Optional.of(words).filter(ObjectUtils::isEmpty)
+            .ifPresentOrElse(ignore -> writeFileExternalStorage(false), () -> writeFileExternalStorage(false,
+                    String.join(lineSeparator(), words)));
   }
 }

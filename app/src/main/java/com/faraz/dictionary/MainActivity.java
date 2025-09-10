@@ -77,7 +77,7 @@ public class MainActivity extends AppCompatActivity {
   static final String MONGODB_URI = "mongodb.data.uri";
   static final String MONGODB_API_KEY = "mongodb.data.api.key";
   static final String CHICAGO = "America/Chicago";
-  private static final Consumer<Object> NOOP = ignore -> {
+  public static final Consumer<Object> NOOP = ignore -> {
   };
   private static final String NO_DEFINITION_FOUND = "No definitions found for '%s'. Perhaps, you meant:";
   private static final String REGEX_WHITE_SPACES = "\\s+";
@@ -145,6 +145,9 @@ public class MainActivity extends AppCompatActivity {
    * Call this method only at startup!
    */
   private void loadWordsForAutoComplete() {
+    List<View> views = findViewById(R.id.mainactivity).getTouchables();
+    runOnUiThread(() -> views.forEach(v -> v.setEnabled(false)));
+    runOnUiThread(() -> lookupWord.setHint("autocomplete is loading. please wait..."));
     List<String> words = autoCompleteFileService.readFile();
     if (words.isEmpty()) {
       words = loadWords();
@@ -156,6 +159,7 @@ public class MainActivity extends AppCompatActivity {
     runOnUiThread(() -> Toast.makeText(MainActivity.this,
             format("Loaded %s words for autocomplete.", AUTO_COMPLETE_WORDS.size()),
             LENGTH_SHORT).show());
+    runOnUiThread(() -> views.forEach(v -> v.setEnabled(true)));
   }
 
   /**
