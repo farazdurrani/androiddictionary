@@ -156,9 +156,10 @@ public class MainActivity extends AppCompatActivity {
     AUTO_COMPLETE_WORDS.clear();
     AUTO_COMPLETE_WORDS.addAll(words);
     runOnUiThread(() -> lookupWord.setHint("autocomplete is ready"));
-    runOnUiThread(() -> Toast.makeText(MainActivity.this,
+    ofNullable(getIntent().getExtras()).map(e -> e.getString(LOOKUPTHISWORD)).ifPresentOrElse(NOOP,
+            () -> runOnUiThread(() -> Toast.makeText(MainActivity.this,
             format("Loaded %s words for autocomplete.", AUTO_COMPLETE_WORDS.size()),
-            LENGTH_SHORT).show());
+            LENGTH_SHORT).show()));
     runOnUiThread(() -> views.forEach(v -> v.setEnabled(true)));
   }
 
