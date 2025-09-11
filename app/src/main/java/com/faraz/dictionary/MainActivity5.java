@@ -82,6 +82,7 @@ public class MainActivity5 extends AppCompatActivity {
     });
   }
 
+  @SuppressLint("NewApi")
   private void deleteWordFromAutoComplete(String word) {
     autoCompleteFileService.delete(word);
     AUTO_COMPLETE_WORDS_REMOVE.add(word);

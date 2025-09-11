@@ -14,7 +14,6 @@ import java.util.Map;
  * <p>
  *
  * @author faraz.durrani
- * @author Copyright (c) 2023 MountainView Software, Corp.
  */
 public class MongoJsonObjectRequest extends JsonObjectRequest {
   private final String body;
