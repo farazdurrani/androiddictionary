@@ -97,7 +97,7 @@ public class OfflineAndDeletedWordsActivity extends AppCompatActivity {
 
   private void doInitiation(String fn) {
     filename = fn;
-    fileService = new FileService(getExternalFilesDir(null), filename);
+    fileService = new FileService(filename);
     setListener();
     fetchWords();
     filepath();

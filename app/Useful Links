@@ -8,3 +8,5 @@ Now, Finding all the mongo queries in MainActivity (the main page).
 2) save
 3) lookup
 4) add reminded time
+
+bugs: pressing email on offline words sends emails twice.

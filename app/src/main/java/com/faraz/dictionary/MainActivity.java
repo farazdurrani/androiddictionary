@@ -87,6 +87,7 @@ public class MainActivity extends AppCompatActivity {
   private Properties properties;
   private RequestQueue requestQueue;
   private ApiService apiService;
+  private Repository repository;
   private FileService offlineWordsFileService;
   private FileService autoCompleteFileService;
   private Context context;
@@ -121,8 +122,8 @@ public class MainActivity extends AppCompatActivity {
     offlineActivityButton.setVisibility(INVISIBLE);
     context = getBaseContext();
     apiService = new ApiService(Volley.newRequestQueue(this), properties());
-    offlineWordsFileService = new FileService(getExternalFilesDir(null), "offlinewords.txt");
-    autoCompleteFileService = new FileService(getExternalFilesDir(null), "autocomplete.txt");
+    offlineWordsFileService = new FileService("offlinewords.txt");
+    autoCompleteFileService = new FileService("autocomplete.txt");
     lookupWord = findViewById(R.id.wordBox);
     lookupWord.setThreshold(1);
     lookupWord.setAdapter(new ArrayAdapter<>(this, android.R.layout.select_dialog_item, AUTO_COMPLETE_WORDS));
@@ -137,6 +138,7 @@ public class MainActivity extends AppCompatActivity {
     setLookupWordListener();
     setStoreWordListener();
     Optional.of(isOffline()).ifPresent(this::setOfflineFlagAndButton);
+    Repository repo = new Repository();
     runAsync(this::loadWordsForAutoComplete).thenRun(() -> ofNullable(getIntent().getExtras())
             .map(e -> e.getString(LOOKUPTHISWORD)).ifPresent(this::doLookup));
   }

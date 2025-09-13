@@ -90,7 +90,7 @@ public class MainActivity2 extends AppCompatActivity {
     mailjetClient();
     setRequestQueue();
     apiService = new ApiService(requestQueue, properties);
-    autoCompleteFileService = new FileService(getExternalFilesDir(null), "autocomplete.txt");
+    autoCompleteFileService = new FileService("autocomplete.txt");
   }
 
   public void seeLastFew(View view) {

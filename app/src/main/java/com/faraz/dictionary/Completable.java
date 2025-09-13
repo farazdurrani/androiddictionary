@@ -28,6 +28,7 @@ public class Completable<T> {
     return runSync(s);
   }
 
+  //still synchronous
   public static Completable<Void> runAsync(Runnable r) {
     CompletableFuture<Void> cf = CompletableFuture.runAsync(r);
 

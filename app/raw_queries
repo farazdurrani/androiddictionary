@@ -16,3 +16,57 @@ To look for words that has length between 0 and 2 like below:
 
 Looks for words with this specific length like 3.
 {word : /^.{3}$/}
+
+Query to find a document with most number of fields:
+[{
+    $project: {
+      // Convert the document (including _id) into an array of key-value pairs
+      arrayofkeyvalue: { $objectToArray: "$$ROOT" }
+    }
+  },
+  {
+    $addFields: {
+      // Add a new field 'numFields' to store the count of fields
+      numFields: { $size: "$arrayofkeyvalue" }
+    }
+  },
+  {
+    $sort: {
+      // Sort the documents in descending order of 'numFields'
+      numFields: -1
+    }
+  },
+  {
+    $limit: 1 // Limit the result to the top document (the one with the most fields)
+  },
+  {
+    $replaceWith: {
+      // Replace the current document with the original document, removing the intermediate fields
+      $arrayToObject: "$arrayofkeyvalue"
+    }
+  }
+]
+
+To inject the string into the code to pickup everything:
+"{
+  \"collection\" : \"dictionary\",
+  \"database\" : \"myFirstDatabase\",
+  \"dataSource\" : \"Cluster0\",
+  \"skip\" : 0,
+  \"limit\" : 13000,
+  \"projection\": {
+    \"word\": 1,
+    \"reminded\": 1,
+    \"remindedTime\" : 1,
+    \"lookupTime\": 1
+  }
+}"
+
+use mydb
+let myArray = [];
+db.dictionary.find({}).forEach(function(doc){
+if (doc.hasOwnProperty(fieldName) && !myArr.includes(fieldName)) {
+    	myArr.push(fieldName);
+}
+})
+print(myArr);

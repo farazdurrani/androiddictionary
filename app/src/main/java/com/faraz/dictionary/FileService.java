@@ -15,6 +15,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
@@ -22,14 +23,16 @@ import java.util.Optional;
 
 public class FileService {
 
-  private final File externalFilesDir;
+  private final String externalFilesDir = "/storage/emulated/0/Documents/Dictionary/data";
   private final String filename;
 
   @SuppressWarnings("all")
-  public FileService(File externalFilesDir, String filename) {
-    this.externalFilesDir = externalFilesDir;
+  public FileService(String filename) {
     this.filename = filename;
     try {
+      if (!Files.exists(Paths.get(externalFilesDir))) {
+        Path path = Files.createDirectories(Paths.get(externalFilesDir));
+      }
       new File(externalFilesDir, filename).createNewFile();
     } catch (IOException e) {
       throw new RuntimeException(e);

@@ -52,8 +52,8 @@ public class MainActivity5 extends AppCompatActivity {
     context = getBaseContext();
     listView = findViewById(R.id.wordsList);
     setListener();
-    fileService = new FileService(getExternalFilesDir(null), "deletedwords.txt");
-    autoCompleteFileService = new FileService(getExternalFilesDir(null), "autocomplete.txt");
+    fileService = new FileService("deletedwords.txt");
+    autoCompleteFileService = new FileService( "autocomplete.txt");
     apiService = new ApiService(Volley.newRequestQueue(this), properties());
     supplyAsync(this::getLastFewWords).thenAccept(_words -> {
       words = _words;
