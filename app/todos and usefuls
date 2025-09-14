@@ -1,0 +1,50 @@
+mongo api https://www.mongodb.com/developer/products/atlas/atlas-data-api-introduction/
+termux https://termux.dev/docs
+linker https://play.google.com/store/apps/details?id=com.jcoder.linker
+
+Now, Finding all the mongo queries in MainActivity (the main page).
+
+- autocomplete load all (done)
+- existing word (done)
+- save (1st flow)
+- save (2nd flow)
+- lookup
+- add reminded time
+
+bugs: pressing email on offline words sends emails twice.
+
+//    String json = loadJSONFromAsset();
+//
+//    try {
+//      JSONArray jsonObject = new JSONArray(json);
+//      new FileService("inmemorydb.json").writeString(json);
+//      System.out.println();
+//    } catch (JSONException e) {
+//      throw new RuntimeException(e);
+//    }
+
+//  public String loadJSONFromAsset() {
+//    String json = null;
+//    try {
+//      InputStream is = context.getAssets().open("inmemorydb.json");
+//      int size = is.available();
+//      byte[] buffer = new byte[size];
+//      is.read(buffer);
+//      is.close();
+//      json = new String(buffer, "UTF-8");
+//    } catch (IOException ex) {
+//      ex.printStackTrace();
+//      return null;
+//    }
+//    return json;
+//  }
+
+    public void writeString(String json) {
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        try {
+          Files.write(new File(externalFilesDir, filename).toPath(), ImmutableList.of(json));
+        } catch (IOException e) {
+          throw new RuntimeException(e);
+        }
+      }
+    }

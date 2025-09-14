@@ -62,7 +62,6 @@ To inject the string into the code to pickup everything:
   }
 }"
 
-use mydb
 let myArray = [];
 db.dictionary.find({}).forEach(function(doc){
 if (doc.hasOwnProperty(fieldName) && !myArr.includes(fieldName)) {
@@ -70,3 +69,20 @@ if (doc.hasOwnProperty(fieldName) && !myArr.includes(fieldName)) {
 }
 })
 print(myArr);
+
+//copy data from one collection to another
+var newArray = [];
+db.dictionary.find({}).forEach(function(doc) {
+  var newOb = {};
+  newOb.word = doc.word;
+  if (doc.lookupTime) {
+    newOb.lookupTime = doc.lookupTime.toJSON();
+  }
+  if (doc.remindedTime) {
+    newOb.remindedTime = doc.remindedTime.toJSON()
+  }
+  newArray.push(newOb);
+});
+db.dictionary_without_dates.insertMany(newArray);
+
+

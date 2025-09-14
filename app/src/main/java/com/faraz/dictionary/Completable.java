@@ -31,7 +31,6 @@ public class Completable<T> {
   //still synchronous
   public static Completable<Void> runAsync(Runnable r) {
     CompletableFuture<Void> cf = CompletableFuture.runAsync(r);
-
     while(!cf.isDone()) {
       // till I die
     }

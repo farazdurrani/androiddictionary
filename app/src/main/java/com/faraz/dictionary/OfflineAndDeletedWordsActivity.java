@@ -180,7 +180,7 @@ public class OfflineAndDeletedWordsActivity extends AppCompatActivity {
    * And sometimes the email never gets sent.
    */
   private boolean sendEmailUsingJavaMailAPI(String subject, String body) throws Exception {
-    Mail mail = new Mail(loadProperty(JAVAMAIL_USER), loadProperty(JAVAMAIL_PASS));
+    JavaMail mail = new JavaMail(loadProperty(JAVAMAIL_USER), loadProperty(JAVAMAIL_PASS));
     mail.set_from(format(loadProperty(JAVAMAIL_FROM), currentTimeMillis()));
     mail.setBody(body);
     mail.set_to(new String[]{loadProperty(JAVAMAIL_TO)});

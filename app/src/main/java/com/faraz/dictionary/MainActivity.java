@@ -2,8 +2,11 @@ package com.faraz.dictionary;
 
 import static android.view.View.INVISIBLE;
 import static android.view.View.VISIBLE;
+import static android.widget.Toast.LENGTH_LONG;
 import static android.widget.Toast.LENGTH_SHORT;
-import static com.faraz.dictionary.MainActivity2.WORD_LIMIT_IN_BACKUP_EMAIL;
+import static com.faraz.dictionary.Completable.runSync;
+import static com.faraz.dictionary.MainActivity2.JAVAMAIL_PASS;
+import static com.faraz.dictionary.MainActivity2.JAVAMAIL_USER;
 import static com.faraz.dictionary.OfflineAndDeletedWordsActivity.LOOKUPTHISWORD;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.apache.commons.lang3.StringUtils.SPACE;
@@ -12,6 +15,7 @@ import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.lang3.exception.ExceptionUtils.getStackTrace;
 import static java.lang.String.format;
 import static java.lang.System.lineSeparator;
+import static java.util.Collections.emptyList;
 import static java.util.Optional.ofNullable;
 import static java.util.concurrent.CompletableFuture.runAsync;
 import static java.util.stream.Collectors.joining;
@@ -31,7 +35,6 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.android.volley.RequestQueue;
@@ -44,6 +47,8 @@ import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -89,7 +94,6 @@ public class MainActivity extends AppCompatActivity {
   private ApiService apiService;
   private Repository repository;
   private FileService offlineWordsFileService;
-  private FileService autoCompleteFileService;
   private Context context;
   private AutoCompleteTextView lookupWord;
   private String originalLookupWord;
@@ -106,11 +110,10 @@ public class MainActivity extends AppCompatActivity {
     if (!AUTO_COMPLETE_WORDS_REMOVE.isEmpty()) {
       runOnUiThread(() -> lookupWord.setHint(EMPTY));
       AUTO_COMPLETE_WORDS.removeAll(AUTO_COMPLETE_WORDS_REMOVE);
-      AUTO_COMPLETE_WORDS_REMOVE.forEach(autoCompleteFileService::delete);
       AUTO_COMPLETE_WORDS_REMOVE.clear();
       runOnUiThread(() -> lookupWord.setAdapter(new ArrayAdapter<>(this, android.R.layout.select_dialog_item,
               AUTO_COMPLETE_WORDS)));
-      runOnUiThread(() -> lookupWord.setHint("autocomplete is ready"));
+      runOnUiThread(() -> lookupWord.setHint(AUTO_COMPLETE_WORDS.size() + " autocomplete words."));
     }
   }
 
@@ -123,7 +126,6 @@ public class MainActivity extends AppCompatActivity {
     context = getBaseContext();
     apiService = new ApiService(Volley.newRequestQueue(this), properties());
     offlineWordsFileService = new FileService("offlinewords.txt");
-    autoCompleteFileService = new FileService("autocomplete.txt");
     lookupWord = findViewById(R.id.wordBox);
     lookupWord.setThreshold(1);
     lookupWord.setAdapter(new ArrayAdapter<>(this, android.R.layout.select_dialog_item, AUTO_COMPLETE_WORDS));
@@ -138,8 +140,8 @@ public class MainActivity extends AppCompatActivity {
     setLookupWordListener();
     setStoreWordListener();
     Optional.of(isOffline()).ifPresent(this::setOfflineFlagAndButton);
-    Repository repo = new Repository();
-    runAsync(this::loadWordsForAutoComplete).thenRun(() -> ofNullable(getIntent().getExtras())
+    repository = new Repository(loadProperty(JAVAMAIL_USER), loadProperty(JAVAMAIL_PASS));
+    runSync(this::loadWordsForAutoComplete).thenRunSync(() -> ofNullable(getIntent().getExtras())
             .map(e -> e.getString(LOOKUPTHISWORD)).ifPresent(this::doLookup));
   }
 
@@ -150,40 +152,13 @@ public class MainActivity extends AppCompatActivity {
     List<View> views = findViewById(R.id.mainactivity).getTouchables();
     runOnUiThread(() -> views.forEach(v -> v.setEnabled(false)));
     runOnUiThread(() -> lookupWord.setHint("autocomplete is loading. please wait..."));
-    List<String> words = autoCompleteFileService.readFile();
-    if (words.isEmpty()) {
-      words = loadWords();
-      autoCompleteFileService.writeFileExternalStorage(false, String.join(lineSeparator(), words));
-    }
     AUTO_COMPLETE_WORDS.clear();
-    AUTO_COMPLETE_WORDS.addAll(words);
-    runOnUiThread(() -> lookupWord.setHint("autocomplete is ready"));
+    AUTO_COMPLETE_WORDS.addAll(repository.getWords());
+    runOnUiThread(() -> lookupWord.setHint(AUTO_COMPLETE_WORDS.size() + " autocomplete words."));
     ofNullable(getIntent().getExtras()).map(e -> e.getString(LOOKUPTHISWORD)).ifPresentOrElse(NOOP,
             () -> runOnUiThread(() -> Toast.makeText(MainActivity.this,
-            format("Loaded %s words for autocomplete.", AUTO_COMPLETE_WORDS.size()),
-            LENGTH_SHORT).show()));
+            format("Loaded %s words for autocomplete.", AUTO_COMPLETE_WORDS.size()), LENGTH_SHORT).show()));
     runOnUiThread(() -> views.forEach(v -> v.setEnabled(true)));
-  }
-
-  /**
-   * This can potentially load a lot of data into the memory.
-   *
-   * @return
-   */
-  @NonNull
-  private List<String> loadWords() {
-    List<String> words = new ArrayList<>();
-    String limit = format(", \"limit\": %d ", WORD_LIMIT_IN_BACKUP_EMAIL);
-    String skip = ", \"skip\": %d";
-    int previousSkip = 0;
-    do {
-      String _skip = format(skip, previousSkip * WORD_LIMIT_IN_BACKUP_EMAIL);
-      String query = MONGO_PARTIAL_BODY + _skip + limit + CLOSE_CURLY;
-      List<String> list = apiService.executeQuery(query, MONGO_ACTION_FIND_ALL, "word");
-      words.addAll(list);
-      previousSkip = list.size() < WORD_LIMIT_IN_BACKUP_EMAIL ? -1 : previousSkip + 1;
-    } while (previousSkip != -1);
-    return words;
   }
 
   public void goTo2ndActivity(View view) {
@@ -289,14 +264,10 @@ public class MainActivity extends AppCompatActivity {
   }
 
   private List<String> existingWord() {
-    //do we have it in memory?
     if (AUTO_COMPLETE_WORDS.contains(originalLookupWord)) {
       return Collections.singletonList(originalLookupWord);
     }
-    //now make the internet call
-    String filter = wordExistsQuery();
-    String query = MONGO_PARTIAL_BODY + "," + filter + CLOSE_CURLY;
-    return apiService.executeQuery(query, MONGO_ACTION_FIND_ALL, "word");
+    return emptyList();
   }
 
   private void deleteFromFileIfPresent() {
@@ -360,12 +331,12 @@ public class MainActivity extends AppCompatActivity {
       AUTO_COMPLETE_WORDS.add(originalLookupWord);
     }
     if (!offlineWordsFileService.readFile().contains(originalLookupWord)) {
-      autoCompleteFileService.writeFileExternalStorage(true, originalLookupWord);
+      runOnUiThread(() -> Toast.makeText(context, "WHEN IS THIS FLOW INVOKED", LENGTH_LONG).show());
     }
     runOnUiThread(() -> {
       lookupWord.setAdapter(new ArrayAdapter<>(this, android.R.layout.select_dialog_item,
               AUTO_COMPLETE_WORDS));
-      lookupWord.setHint("autocomplete is ready");
+      lookupWord.setHint(AUTO_COMPLETE_WORDS.size() + " autocomplete words.");
     });
   }
 

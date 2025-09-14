@@ -9,6 +9,8 @@ import android.util.Log;
 
 import androidx.annotation.RequiresApi;
 
+import com.google.common.collect.ImmutableList;
+
 import org.apache.commons.lang3.ObjectUtils;
 
 import java.io.File;
@@ -23,7 +25,7 @@ import java.util.Optional;
 
 public class FileService {
 
-  private final String externalFilesDir = "/storage/emulated/0/Documents/Dictionary/data";
+  public static final String externalFilesDir = "/storage/emulated/0/Documents/Dictionary/data";
   private final String filename;
 
   @SuppressWarnings("all")
@@ -89,11 +91,30 @@ public class FileService {
     }
   }
 
+  @RequiresApi(api = Build.VERSION_CODES.O)
+  public byte[] readFileAsByte() {
+    try {
+      return Files.readAllBytes(Paths.get(new File(externalFilesDir, filename).toURI()));
+    } catch (Exception e) {
+      Log.e(this.getClass().getSimpleName(), "Error", e);
+      return new byte[0];
+    }
+  }
+
   @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
   public void delete(String word) {
     String[] words = readFile().stream().filter(w -> !w.equals(word)).distinct().toArray(String[]::new);
     Optional.of(words).filter(ObjectUtils::isEmpty)
             .ifPresentOrElse(ignore -> writeFileExternalStorage(false), () -> writeFileExternalStorage(false,
                     String.join(lineSeparator(), words)));
+  }
+
+  @RequiresApi(api = Build.VERSION_CODES.O)
+  public void writeString(String json) {
+    try {
+      Files.write(new File(externalFilesDir, filename).toPath(), ImmutableList.of(json));
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 }
