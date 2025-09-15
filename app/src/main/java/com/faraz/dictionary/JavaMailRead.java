@@ -19,6 +19,7 @@ import javax.mail.search.SubjectTerm;
 
 public class JavaMailRead {
   public static String readMail(String email, String password) {
+    System.out.println("Trying to read an email to load the database...");
     Properties props = new Properties();
     props.put("mail.smtp.host", "smtp.gmail.com");
     props.put("mail.smtp.port", "587");

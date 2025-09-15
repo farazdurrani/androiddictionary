@@ -4,12 +4,16 @@ linker https://play.google.com/store/apps/details?id=com.jcoder.linker
 
 Now, Finding all the mongo queries in MainActivity (the main page).
 
+MainActivity (Done)
 - autocomplete load all (done)
 - existing word (done)
 - save (1st flow) (done)
 - save (2nd flow) (done)
-- lookup
 - mark as reminded (done)
+
+MainActivity2
+- backeup (done)
+- sync up autocomplete (done)
 
 bugs: pressing email on offline words sends emails twice.
 

@@ -14,6 +14,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -80,6 +81,10 @@ public class Repository {
     return new ArrayList<>(inMemoryDb.keySet());
   }
 
+  public int getLength() {
+    return inMemoryDb.size();
+  }
+
   @SuppressLint("NewApi")
   public DBResult upsert(String word) {
     DBResult dbResult;
@@ -103,5 +108,22 @@ public class Repository {
       }
     });
     return dbResult;
+  }
+
+  public String getValuesAsAString() {
+    try {
+      return objectMapper.writeValueAsString(inMemoryDb.values());
+    } catch (JsonProcessingException e) {
+      return ExceptionUtils.getStackTrace(e);
+    }
+  }
+
+  /**
+   * Dangerous method!
+   */
+  public void reset() {
+    inMemoryDb.clear();
+    fileService.writeFileExternalStorage(false);
+    init();
   }
 }

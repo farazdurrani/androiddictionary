@@ -2,20 +2,12 @@ package com.faraz.dictionary;
 
 import static android.widget.Toast.LENGTH_LONG;
 import static android.widget.Toast.LENGTH_SHORT;
-import static com.faraz.dictionary.MainActivity.CLOSE_CURLY;
-import static com.faraz.dictionary.MainActivity.MONGO_ACTION_FIND_ALL;
-import static com.faraz.dictionary.MainActivity.MONGO_PARTIAL_BODY;
 import static com.mailjet.client.transactional.response.SentMessageStatus.SUCCESS;
-import static org.apache.commons.lang3.StringUtils.capitalize;
 import static java.lang.String.format;
-import static java.lang.String.join;
 import static java.lang.System.currentTimeMillis;
 import static java.lang.System.lineSeparator;
-import static java.util.Collections.reverse;
 import static java.util.Optional.ofNullable;
 import static java.util.concurrent.CompletableFuture.runAsync;
-import static java.util.concurrent.CompletableFuture.supplyAsync;
-import static java.util.stream.Collectors.toList;
 
 import android.annotation.SuppressLint;
 import android.content.Intent;
@@ -25,14 +17,11 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
 
-import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.Volley;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Lists;
 import com.mailjet.client.ClientOptions;
 import com.mailjet.client.MailjetClient;
 import com.mailjet.client.errors.MailjetException;
@@ -48,14 +37,11 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
-import java.util.stream.IntStream;
 
 import okhttp3.OkHttpClient;
 
@@ -63,8 +49,6 @@ import okhttp3.OkHttpClient;
 @RequiresApi(api = Build.VERSION_CODES.O)
 public class MainActivity2 extends AppCompatActivity {
 
-  public static final int WORD_LIMIT_IN_BACKUP_EMAIL = 3000;
-  private static final String activity = MainActivity2.class.getSimpleName();
   public static final String MAIL_KEY = "mailjet.apiKey";
   public static final String MAIL_SECRET = "mailjet.apiSecret";
   public static final String MAIL_FROM = "mailjet.from";
@@ -73,22 +57,19 @@ public class MainActivity2 extends AppCompatActivity {
   public static final String JAVAMAIL_PASS = "javamail.pass";
   public static final String JAVAMAIL_FROM = "javamail.from";
   public static final String JAVAMAIL_TO = "javamail.to";
+  private static final String activity = MainActivity2.class.getSimpleName();
   private boolean defaultEmailProvider = true; //default email provider is MailJet. Other option is JavaMail.
 
   private MailjetClient mailjetClient;
-  private RequestQueue requestQueue;
   private Properties properties;
-  private ApiService apiService;
-  private FileService autoCompleteFileService;
+  private Repository repository;
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.activity_main2);
     mailjetClient();
-    setRequestQueue();
-    apiService = new ApiService(requestQueue, properties);
-    autoCompleteFileService = new FileService("autocomplete.txt");
+    repository = new Repository(loadProperty(JAVAMAIL_USER), loadProperty(JAVAMAIL_PASS));
   }
 
   public void seeLastFew(View view) {
@@ -121,20 +102,12 @@ public class MainActivity2 extends AppCompatActivity {
   public void syncAutocompleteActivity(View view) {
     List<View> buttons = findViewById(R.id.mainactivity2).getTouchables();
     toggleButtons(buttons, false);
-    supplyAsync(this::loadWords).thenAccept(dbWords -> {
-        autoCompleteFileService.writeFileExternalStorage(false, String.join(lineSeparator(), dbWords));
-      runOnUiThread(() -> Toast.makeText(MainActivity2.this, "Autocomplete and Database are in sync now.",
-                      LENGTH_SHORT).show());
-      }).thenRun(() -> toggleButtons(buttons, true)).thenRun(() -> {
-        Intent intent = new Intent(this, MainActivity.class);
-        startActivity(intent);
-    });
-  }
-
-  private void setRequestQueue() {
-    if (this.requestQueue == null) {
-      this.requestQueue = Volley.newRequestQueue(this);
-    }
+    runAsync(repository::reset).thenRun(() -> runOnUiThread(() -> Toast.makeText(MainActivity2.this,
+                    "Autocomplete and Database are in sync now.", LENGTH_SHORT).show()))
+            .thenRun(() -> toggleButtons(buttons, true)).thenRun(() -> {
+              Intent intent = new Intent(this, MainActivity.class);
+              startActivity(intent);
+            });
   }
 
   public void mailjetClient() {
@@ -207,59 +180,24 @@ public class MainActivity2 extends AppCompatActivity {
     return mail.send();
   }
 
-  private List<String> reverseList(List<String> list) {
-    reverse(list);
-    return list;
-  }
-
-  @NonNull
-  private String addDivStyling(List<String> words) {
-    return "<div style=\"font-size:20px\">" + join("<br>", words) + "</div>";
-  }
-
   private void backupData() {
     try {
-      List<String> words = loadWords().stream().map(this::anchor).collect(toList());
-      List<List<String>> wordPartitions = Lists.partition(words, WORD_LIMIT_IN_BACKUP_EMAIL);
-      IntStream.range(0, wordPartitions.size())
-              .forEach(index -> Optional.of(wordPartitions.get(index))
-                      .filter(ObjectUtils::isNotEmpty)
-                      .map(MainActivity2.this::reverseList)
-                      .map(wordPartition -> addCountToFirstLine(wordPartition, words.size()))
-                      .ifPresent(wordPartition -> sendBackupEmails(index, wordPartition)));
+      int count = repository.getLength();
+      String fulldata = repository.getValuesAsAString();
+      String fulldataWithCount = format("Total Count: '%d'.", count) + lineSeparator() + fulldata;
+      sendBackupEmail(fulldataWithCount, count);
     } catch (Exception e) {
       Log.e(activity.getClass().getSimpleName(), e.getLocalizedMessage(), e);
       runOnUiThread(() -> Toast.makeText(MainActivity2.this, ExceptionUtils.getStackTrace(e), LENGTH_LONG).show());
     }
   }
 
-  @NonNull
-  private List<String> loadWords() {
-    List<String> words = new ArrayList<>();
-    String limit = format(", \"limit\": %d ", WORD_LIMIT_IN_BACKUP_EMAIL);
-    String skip = ", \"skip\": %d";
-    int previousSkip = 0;
-    do {
-      String _skip = format(skip, previousSkip * WORD_LIMIT_IN_BACKUP_EMAIL);
-      String query = MONGO_PARTIAL_BODY + _skip + limit + CLOSE_CURLY;
-      List<String> list = apiService.executeQuery(query, MONGO_ACTION_FIND_ALL, "word");
-      words.addAll(list);
-      previousSkip = list.size() < WORD_LIMIT_IN_BACKUP_EMAIL ? -1 : previousSkip + 1;
-    } while (previousSkip != -1);
-    return words;
-  }
-
-  private List<String> addCountToFirstLine(List<String> partWords, int totalWordCount) {
-    String firstLine = format("Total Count: '%d'. (%d in this part-backup).", totalWordCount, partWords.size());
-    return ImmutableList.<String>builder().add(firstLine).addAll(partWords).build();
-  }
-
-  private void sendBackupEmails(int index, List<String> backup_words) {
-    String subject = format("Words Backup Part %d:", index + 1);
+  private void sendBackupEmail(String backup_words, int count) {
+    String subject = "Words Backup.";
     try {
-      if (sendEmail(subject, addDivStyling(backup_words))) {
+      if (sendEmail(subject, backup_words)) {
         runOnUiThread(() -> Toast.makeText(MainActivity2.this, format("'%d' words sent for backup.",
-                Math.max(backup_words.size() - 1, 0)), LENGTH_SHORT).show());
+                count), LENGTH_SHORT).show());
       } else {
         runOnUiThread(() -> Toast.makeText(MainActivity2.this, "Error occurred while backing up words.",
                 LENGTH_SHORT).show());
@@ -275,10 +213,5 @@ public class MainActivity2 extends AppCompatActivity {
                     Arrays.stream(mr).map(MessageResult::getErrors).allMatch(ObjectUtils::isEmpty);
     return ofNullable(response).map(SendEmailsResponse::getMessages).filter(allSuccessAndNoErrors)
             .isPresent();
-  }
-
-  private String anchor(String word) {
-    return "<a href='https://www.google.com/search?q=define: " + word + "' target='_blank'>" + capitalize(word) +
-            "</a>";
   }
 }
