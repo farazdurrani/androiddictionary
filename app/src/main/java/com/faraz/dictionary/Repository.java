@@ -1,10 +1,8 @@
 package com.faraz.dictionary;
 
-import static com.faraz.dictionary.CollectionOptional.ofEmptyable;
 import static com.faraz.dictionary.Completable.runAsync;
 import static com.faraz.dictionary.JavaMailRead.readMail;
 import static java.lang.System.lineSeparator;
-import static java.nio.file.StandardOpenOption.CREATE_NEW;
 import static java.util.stream.Collectors.toMap;
 
 import android.annotation.SuppressLint;
@@ -18,7 +16,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 
 public class Repository {
@@ -57,7 +54,7 @@ public class Repository {
         if (StringUtils.isBlank(json)) {
           json = readMail(email, password).replaceAll(CRLF, EMPTY_STRING).replaceAll(lineSeparator(),
                   EMPTY_STRING);
-          ofEmptyable(json).ifPresent(_json -> CompletableFuture.runAsync(() -> fileService.writeString(_json)));
+          fileService.writeFileExternalStorage(false, json);
         }
         List<WordEntity> wordEntities = objectMapper.readValue(json,
                 typeFactory.constructCollectionType(List.class, WordEntity.class));

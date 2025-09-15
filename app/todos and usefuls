@@ -39,6 +39,7 @@ bugs: pressing email on offline words sends emails twice.
 //    return json;
 //  }
 
+//no need for this method as I already have one.
     public void writeString(String json) {
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
         try {

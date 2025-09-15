@@ -9,8 +9,6 @@ import android.util.Log;
 
 import androidx.annotation.RequiresApi;
 
-import com.google.common.collect.ImmutableList;
-
 import org.apache.commons.lang3.ObjectUtils;
 
 import java.io.File;
@@ -25,7 +23,9 @@ import java.util.Optional;
 
 public class FileService {
 
-  public static final String externalFilesDir = "/storage/emulated/0/Documents/Dictionary/data";
+  // todo
+  // this line is gonna haunt me once I change my device.
+  public static final String externalFilesDir = "/storage/emulated/0/Android/data/com.faraz.dictionary/files";
   private final String filename;
 
   @SuppressWarnings("all")
@@ -41,6 +41,11 @@ public class FileService {
     }
   }
 
+  /**
+   *
+   * @param append -- TRUE IF WANT TO APPEND. FALSE FOR COMPLETE WRITE-OVER.
+   * @param words
+   */
   public void writeFileExternalStorage(boolean append, String... words) {
 
     //Checking the availability state of the External Storage.
@@ -107,14 +112,5 @@ public class FileService {
     Optional.of(words).filter(ObjectUtils::isEmpty)
             .ifPresentOrElse(ignore -> writeFileExternalStorage(false), () -> writeFileExternalStorage(false,
                     String.join(lineSeparator(), words)));
-  }
-
-  @RequiresApi(api = Build.VERSION_CODES.O)
-  public void writeString(String json) {
-    try {
-      Files.write(new File(externalFilesDir, filename).toPath(), ImmutableList.of(json));
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
   }
 }
