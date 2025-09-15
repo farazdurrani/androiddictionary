@@ -2,9 +2,10 @@ package com.faraz.dictionary;
 
 import static android.view.View.INVISIBLE;
 import static android.view.View.VISIBLE;
-import static android.widget.Toast.LENGTH_LONG;
 import static android.widget.Toast.LENGTH_SHORT;
 import static com.faraz.dictionary.Completable.runSync;
+import static com.faraz.dictionary.DBResult.INSERT;
+import static com.faraz.dictionary.DBResult.UPDATE;
 import static com.faraz.dictionary.MainActivity2.JAVAMAIL_PASS;
 import static com.faraz.dictionary.MainActivity2.JAVAMAIL_USER;
 import static com.faraz.dictionary.OfflineAndDeletedWordsActivity.LOOKUPTHISWORD;
@@ -15,7 +16,6 @@ import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.lang3.exception.ExceptionUtils.getStackTrace;
 import static java.lang.String.format;
 import static java.lang.System.lineSeparator;
-import static java.util.Collections.emptyList;
 import static java.util.Optional.ofNullable;
 import static java.util.concurrent.CompletableFuture.runAsync;
 import static java.util.stream.Collectors.joining;
@@ -47,17 +47,11 @@ import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.time.Clock;
-import java.time.Instant;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -66,13 +60,13 @@ import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
-import java.util.function.Predicate;
 
-@SuppressWarnings("all")
 public class MainActivity extends AppCompatActivity {
 
   public static final String FILE_NAME = "FILE_NAME";
   public static final List<String> AUTO_COMPLETE_WORDS_REMOVE = new ArrayList<>();
+  public static final Consumer<Object> NOOP = ignore -> {
+  };
   static final String MONGO_PARTIAL_BODY =
           "{\"collection\":\"dictionary\",\"database\":\"myFirstDatabase\",\"dataSource\":\"Cluster0\"";
   static final String MONGO_ACTION_FIND_ALL = "find";
@@ -82,16 +76,13 @@ public class MainActivity extends AppCompatActivity {
   static final String MONGODB_URI = "mongodb.data.uri";
   static final String MONGODB_API_KEY = "mongodb.data.api.key";
   static final String CHICAGO = "America/Chicago";
-  public static final Consumer<Object> NOOP = ignore -> {
-  };
   private static final String NO_DEFINITION_FOUND = "No definitions found for '%s'. Perhaps, you meant:";
   private static final String REGEX_WHITE_SPACES = "\\s+";
   private static final String MERRIAM_WEBSTER_KEY = "dictionary.merriamWebster.key";
   private static final String MERRIAM_WEBSTER_URL = "dictionary.merriamWebster.url";
-  private List<String> AUTO_COMPLETE_WORDS = new ArrayList<>();
-  private Properties properties;
+  public static Properties properties;
+  private final List<String> AUTO_COMPLETE_WORDS = new ArrayList<>();
   private RequestQueue requestQueue;
-  private ApiService apiService;
   private Repository repository;
   private FileService offlineWordsFileService;
   private Context context;
@@ -117,6 +108,7 @@ public class MainActivity extends AppCompatActivity {
     }
   }
 
+  @SuppressLint("InlinedApi")
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
@@ -124,7 +116,6 @@ public class MainActivity extends AppCompatActivity {
     offlineActivityButton = findViewById(R.id.offlineActivity);
     offlineActivityButton.setVisibility(INVISIBLE);
     context = getBaseContext();
-    apiService = new ApiService(Volley.newRequestQueue(this), properties());
     offlineWordsFileService = new FileService("offlinewords.txt");
     lookupWord = findViewById(R.id.wordBox);
     lookupWord.setThreshold(1);
@@ -148,6 +139,7 @@ public class MainActivity extends AppCompatActivity {
   /**
    * Call this method only at startup!
    */
+  @SuppressLint("NewApi")
   private void loadWordsForAutoComplete() {
     List<View> views = findViewById(R.id.mainactivity).getTouchables();
     runOnUiThread(() -> views.forEach(v -> v.setEnabled(false)));
@@ -157,7 +149,7 @@ public class MainActivity extends AppCompatActivity {
     runOnUiThread(() -> lookupWord.setHint(AUTO_COMPLETE_WORDS.size() + " autocomplete words."));
     ofNullable(getIntent().getExtras()).map(e -> e.getString(LOOKUPTHISWORD)).ifPresentOrElse(NOOP,
             () -> runOnUiThread(() -> Toast.makeText(MainActivity.this,
-            format("Loaded %s words for autocomplete.", AUTO_COMPLETE_WORDS.size()), LENGTH_SHORT).show()));
+                    format("Loaded %s words for autocomplete.", AUTO_COMPLETE_WORDS.size()), LENGTH_SHORT).show()));
     runOnUiThread(() -> views.forEach(v -> v.setEnabled(true)));
   }
 
@@ -177,6 +169,7 @@ public class MainActivity extends AppCompatActivity {
     runOnUiThread(() -> offlineActivityButton.setVisibility(offline ? VISIBLE : INVISIBLE));
   }
 
+  @SuppressLint("NewApi")
   public void deleteButton(View view) {
     try {
       offlineWordsFileService.delete(originalLookupWord);
@@ -224,12 +217,13 @@ public class MainActivity extends AppCompatActivity {
     openInWebBrowser();
   }
 
+  @SuppressLint("SetTextI18n")
   private void writeToOfflineFile() {
     if (StringUtils.isNotBlank(originalLookupWord)) {
       offlineWordsFileService.writeFileExternalStorage(true, originalLookupWord);
       runOnUiThread(() -> definitionsView.setText(format("'%s' has been stored offline.", originalLookupWord)));
     } else {
-      runOnUiThread(() -> definitionsView.setText(format("...yeah we don't store empty words buddy!")));
+      runOnUiThread(() -> definitionsView.setText("...yeah we don't store empty words buddy!"));
     }
   }
 
@@ -240,13 +234,13 @@ public class MainActivity extends AppCompatActivity {
     return format(mUrl, word, mk);
   }
 
-  @SuppressLint("SetTextI18n")
+  @SuppressLint({"SetTextI18n", "NewApi"})
   private void lookupWord() {
     try {
-      if (!existingWord().isEmpty()) {
+      if (existingWord()) {
         runOnUiThread(() -> definitionsView.setText(format("'%s's already looked-up.", originalLookupWord)));
-        deleteFromFileIfPresent();
-        markWordsAsReminded(Arrays.asList(originalLookupWord));
+        deleteFromOfflineFileIfPresent();
+        markWordsAsReminded();
         return;
       }
       String[] definition = lookupInMerriamWebster();
@@ -254,7 +248,8 @@ public class MainActivity extends AppCompatActivity {
       Optional.of(definition[0]).map(BooleanUtils::toBoolean).filter(BooleanUtils::isTrue)
               .ifPresent(ignore -> runAsync(this::saveWordInDb).thenRunAsync(this::storeWordInAutoComplete));
       Optional.of(definition[0]).map(BooleanUtils::toBoolean).filter(BooleanUtils::isFalse)
-              .flatMap(ignore -> offlineWordsFileService.readFile().stream().filter(originalLookupWord::equals).findFirst())
+              .flatMap(ignore -> offlineWordsFileService.readFile().stream().filter(originalLookupWord::equals)
+                      .findFirst())
               .ifPresent(_ignore -> runOnUiThread(() -> deleteButton.setVisibility(VISIBLE)));
     } catch (Exception e) {
       runOnUiThread(() -> definitionsView.setText(format("welp...%s%s%s", originalLookupWord, lineSeparator(),
@@ -263,14 +258,12 @@ public class MainActivity extends AppCompatActivity {
     }
   }
 
-  private List<String> existingWord() {
-    if (AUTO_COMPLETE_WORDS.contains(originalLookupWord)) {
-      return Collections.singletonList(originalLookupWord);
-    }
-    return emptyList();
+  private boolean existingWord() {
+    return AUTO_COMPLETE_WORDS.contains(originalLookupWord);
   }
 
-  private void deleteFromFileIfPresent() {
+  @SuppressLint("NewApi")
+  private void deleteFromOfflineFileIfPresent() {
     offlineWordsFileService.readFile().stream().filter(originalLookupWord::equals).findFirst()
             .ifPresent(ignore -> deleteButton(null));
   }
@@ -295,15 +288,15 @@ public class MainActivity extends AppCompatActivity {
   }
 
   private String loadProperty(String property) {
-    if (this.properties == null) {
-      this.properties = new Properties();
+    if (properties == null) {
+      properties = new Properties();
       try (InputStream is = getBaseContext().getAssets().open("application.properties")) {
         properties.load(is);
       } catch (IOException e) {
         throw new RuntimeException(e);
       }
     }
-    return this.properties.getProperty(property);
+    return properties.getProperty(property);
   }
 
   private void storeWord() {
@@ -330,9 +323,6 @@ public class MainActivity extends AppCompatActivity {
     if (!AUTO_COMPLETE_WORDS.contains(originalLookupWord)) {
       AUTO_COMPLETE_WORDS.add(originalLookupWord);
     }
-    if (!offlineWordsFileService.readFile().contains(originalLookupWord)) {
-      runOnUiThread(() -> Toast.makeText(context, "WHEN IS THIS FLOW INVOKED", LENGTH_LONG).show());
-    }
     runOnUiThread(() -> {
       lookupWord.setAdapter(new ArrayAdapter<>(this, android.R.layout.select_dialog_item,
               AUTO_COMPLETE_WORDS));
@@ -342,10 +332,10 @@ public class MainActivity extends AppCompatActivity {
 
   private void firstCheckIfExistsAndIfNotThenSaveWordInDb() {
     try {
-      if (!existingWord().isEmpty()) {
+      if (existingWord()) {
         runOnUiThread(() -> definitionsView.setText(format("'%s's already stored.", originalLookupWord)));
-        deleteFromFileIfPresent();
-        markWordsAsReminded(Arrays.asList(originalLookupWord));
+        deleteFromOfflineFileIfPresent();
+        markWordsAsReminded();
         return;
       }
       saveWordInDb();
@@ -356,8 +346,8 @@ public class MainActivity extends AppCompatActivity {
 
   private void saveWordInDb(boolean... ignore) {
     try {
-      saveWordInMongo();
-      deleteFromFileIfPresent();
+      saveWordInInMemoryDb();
+      deleteFromOfflineFileIfPresent();
     } catch (Exception e) {
       runOnUiThread(() -> definitionsView.setText(format("welp...%s%s%s", originalLookupWord, lineSeparator(),
               getStackTrace(e))));
@@ -365,28 +355,12 @@ public class MainActivity extends AppCompatActivity {
     }
   }
 
-  private String wordExistsQuery() {
-    return format("\"filter\": { \"word\": \"%s\" }", originalLookupWord);
-  }
-
-  private void saveWordInMongo() throws Exception {
-    String filter = wordExistsQuery();
-    String update = getUpdateQueryToUpsertWord();
-    String options = format("\"upsert\" : %b", true);
-    String query = MONGO_PARTIAL_BODY + "," + filter + ", " + update + ", " + options + CLOSE_CURLY;
-    Map<String, Object> response = apiService.upsert(query, MONGO_ACTION_UPDATE_MANY);
-    Predicate<Map<String, Object>> upsert = r -> r.containsKey("upsertedId");
-    Optional.of(response).filter(upsert).ifPresent(ignore -> runOnUiThread(
+  private void saveWordInInMemoryDb() {
+    DBResult response = repository.upsert(originalLookupWord);
+    Optional.of(response).filter(INSERT::equals).ifPresent(ignore -> runOnUiThread(
             () -> definitionsView.setText(format("'%s's saved!", capitalize(originalLookupWord)))));
-    Optional.of(response).filter(upsert.negate()).ifPresent(ignore -> runOnUiThread(() -> definitionsView.setText(
+    Optional.of(response).filter(UPDATE::equals).ifPresent(ignore -> runOnUiThread(() -> definitionsView.setText(
             format("%s%s's already looked-up.", lineSeparator(), capitalize(originalLookupWord)))));
-  }
-
-  @SuppressLint({"NewApi", "DefaultLocale"})
-  private String getUpdateQueryToUpsertWord() {
-    return format(
-            "\"update\": { \"$set\" : { \"word\": \"%s\" }, \"$setOnInsert\" : { \"lookupTime\" : {  \"$date\" : {  \"$numberLong\" : \"%d\"} } } }",
-            originalLookupWord, Instant.now(Clock.system(ZoneId.of(CHICAGO))).toEpochMilli());
   }
 
   private String[] parseMerriamWebsterResponse(String json) {
@@ -426,16 +400,6 @@ public class MainActivity extends AppCompatActivity {
     }
   }
 
-  private Properties properties() {
-    Properties properties = new Properties();
-    try (InputStream is = getBaseContext().getAssets().open("application.properties")) {
-      properties.load(is);
-    } catch (IOException e) {
-      runOnUiThread(() -> Toast.makeText(context, "Can't load properties.", LENGTH_SHORT).show());
-    }
-    return properties;
-  }
-
   private void setRequestQueue() {
     this.requestQueue = Volley.newRequestQueue(this);
   }
@@ -445,35 +409,11 @@ public class MainActivity extends AppCompatActivity {
     doLookup();
   }
 
-  private void markWordsAsReminded(List<String> words) throws ExecutionException, InterruptedException {
-    //must do an empty check!
-    if (words.isEmpty()) {
-      //If all word count and reminded = true count is same, (we will know this if words.isempty)
-      //then set all reminded = false;
-      runOnUiThread(() -> Toast.makeText(context, "TODO: set all words to 'reminded=false'.", LENGTH_SHORT).show());
-      return;
-    }
-    String markWordsAsRemindedFilterQuery = getFilterInQuery(words);
-    String updateSubQuery = getUpdateQueryToUpdateReminded();
-    String query = MONGO_PARTIAL_BODY + "," + markWordsAsRemindedFilterQuery + ", " + updateSubQuery + CLOSE_CURLY;
-    apiService.upsert(query, MONGO_ACTION_UPDATE_MANY);
+  private void markWordsAsReminded() {
+    repository.upsert(originalLookupWord);
   }
 
-  @SuppressLint({"NewApi", "DefaultLocale"})
-  private String getUpdateQueryToUpdateReminded() {
-    return format("\"update\": { \"$set\" : { \"remindedTime\" : {  \"$date\" : {  \"$numberLong\" : \"%d\"} } } }",
-            Instant.now(Clock.system(ZoneId.of(CHICAGO))).toEpochMilli());
-  }
-
-  private String getFilterInQuery(List<String> words) {
-    String in = "";
-    for (String word : words) {
-      in = in + format("\"%s\",", word);
-    }
-    in = in.replaceAll(",$", "");
-    return format("\"filter\": { \"word\" : { \"$in\" : [%s] } }", in);
-  }
-
+  @SuppressLint("NewApi")
   public boolean isOffline() {
     try {
       Process p = Runtime.getRuntime().exec("ping -c 1 google.com");

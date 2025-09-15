@@ -6,10 +6,10 @@ Now, Finding all the mongo queries in MainActivity (the main page).
 
 - autocomplete load all (done)
 - existing word (done)
-- save (1st flow)
-- save (2nd flow)
+- save (1st flow) (done)
+- save (2nd flow) (done)
 - lookup
-- add reminded time
+- mark as reminded (done)
 
 bugs: pressing email on offline words sends emails twice.
 
@@ -49,3 +49,6 @@ bugs: pressing email on offline words sends emails twice.
         }
       }
     }
+
+to use smaller string json
+json = "[{\"word\": \"varnish\",   \"lookupTime\": \"2025-09-05T09:23:28.525Z\"}]"

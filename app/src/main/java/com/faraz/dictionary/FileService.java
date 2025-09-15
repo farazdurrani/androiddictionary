@@ -3,6 +3,7 @@ package com.faraz.dictionary;
 import static java.lang.System.lineSeparator;
 import static java.util.stream.Collectors.toList;
 
+import android.annotation.SuppressLint;
 import android.os.Build;
 import android.os.Environment;
 import android.util.Log;
@@ -15,7 +16,6 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
@@ -28,12 +28,12 @@ public class FileService {
   public static final String externalFilesDir = "/storage/emulated/0/Android/data/com.faraz.dictionary/files";
   private final String filename;
 
-  @SuppressWarnings("all")
+  @SuppressLint("NewApi")
   public FileService(String filename) {
     this.filename = filename;
     try {
       if (!Files.exists(Paths.get(externalFilesDir))) {
-        Path path = Files.createDirectories(Paths.get(externalFilesDir));
+        Files.createDirectories(Paths.get(externalFilesDir));
       }
       new File(externalFilesDir, filename).createNewFile();
     } catch (IOException e) {
@@ -42,9 +42,7 @@ public class FileService {
   }
 
   /**
-   *
    * @param append -- TRUE IF WANT TO APPEND. FALSE FOR COMPLETE WRITE-OVER.
-   * @param words
    */
   public void writeFileExternalStorage(boolean append, String... words) {
 
