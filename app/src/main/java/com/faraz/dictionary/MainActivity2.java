@@ -20,8 +20,6 @@ import android.widget.Toast;
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.android.volley.RequestQueue;
-import com.android.volley.toolbox.Volley;
 import com.mailjet.client.ClientOptions;
 import com.mailjet.client.MailjetClient;
 import com.mailjet.client.errors.MailjetException;
