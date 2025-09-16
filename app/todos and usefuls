@@ -11,9 +11,22 @@ MainActivity (Done)
 - save (2nd flow) (done)
 - mark as reminded (done)
 
-MainActivity2
+MainActivity2 (done)
 - backeup (done)
 - sync up autocomplete (done)
+
+MainActivity3 (done)
+- pull words to remind (done)
+- undo reminders (done)
+- mark them as reminded (done)
+- count how many are already marked as reminded (done)
+
+MainActivity4 a.k.a OfflineAndDeletedWordsActivity (done)
+- nothing in this file (done)
+
+MainActivity5
+- delete a word from mongo
+- get last 30 words from mongo
 
 bugs: pressing email on offline words sends emails twice.
 

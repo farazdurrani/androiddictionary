@@ -67,14 +67,6 @@ public class MainActivity extends AppCompatActivity {
   public static final List<String> AUTO_COMPLETE_WORDS_REMOVE = new ArrayList<>();
   public static final Consumer<Object> NOOP = ignore -> {
   };
-  static final String MONGO_PARTIAL_BODY =
-          "{\"collection\":\"dictionary\",\"database\":\"myFirstDatabase\",\"dataSource\":\"Cluster0\"";
-  static final String MONGO_ACTION_FIND_ALL = "find";
-  static final String MONGO_ACTION_AGGREGATE = "aggregate";
-  static final String MONGO_ACTION_UPDATE_MANY = "updateMany";
-  static final String CLOSE_CURLY = "}";
-  static final String MONGODB_URI = "mongodb.data.uri";
-  static final String MONGODB_API_KEY = "mongodb.data.api.key";
   static final String CHICAGO = "America/Chicago";
   private static final String NO_DEFINITION_FOUND = "No definitions found for '%s'. Perhaps, you meant:";
   private static final String REGEX_WHITE_SPACES = "\\s+";

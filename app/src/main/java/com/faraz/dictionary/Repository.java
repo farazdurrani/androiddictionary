@@ -1,13 +1,20 @@
 package com.faraz.dictionary;
 
+import static com.faraz.dictionary.CollectionOptional.ofEmptyable;
 import static com.faraz.dictionary.Completable.runAsync;
 import static com.faraz.dictionary.Completable.runSync;
 import static com.faraz.dictionary.JavaMailRead.readMail;
 import static com.faraz.dictionary.MainActivity.CHICAGO;
 import static java.lang.System.lineSeparator;
+import static java.util.Optional.ofNullable;
+import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 
 import android.annotation.SuppressLint;
+import android.os.Build;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -21,16 +28,20 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BinaryOperator;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 public class Repository {
   private static final String CRLF = "\r\n";
   private static final String EMPTY_STRING = "";
-  private static final Map<String, WordEntity> inMemoryDb = new HashMap<>();
+  private static final Map<String, WordEntity> inMemoryDb = new LinkedHashMap<>();
   private static final String filename = "inmemorydb.json";
+  private static final Predicate<WordEntity> REMINDED_TIME_IS_ABSENT_PREDICATE = we -> we.getRemindedTime() == null;
   private final ObjectMapper objectMapper = new ObjectMapper();
   private final TypeFactory typeFactory = objectMapper.getTypeFactory();
   private final FileService fileService;
@@ -39,9 +50,9 @@ public class Repository {
   @SuppressLint("NewApi")
   private final DateTimeFormatter formatter = DateTimeFormatter.ISO_INSTANT;
 
-  public Repository(String email, String password) {
-    this.email = email;
-    this.password = password;
+  public Repository(String... creds) {
+    this.email = creds.length > 0 ? creds[0] : EMPTY_STRING;
+    this.password = creds.length > 1 ? creds[1] : EMPTY_STRING;
     this.fileService = new FileService(filename);
     init();
   }
@@ -69,7 +80,7 @@ public class Repository {
         List<WordEntity> wordEntities = objectMapper.readValue(json,
                 typeFactory.constructCollectionType(List.class, WordEntity.class));
         Map<String, WordEntity> wordMap = wordEntities.stream().collect(toMap(we -> we.getWord().toLowerCase(),
-                Function.identity()));
+                Function.identity(), throwForDuplicates(), LinkedHashMap::new));
         inMemoryDb.putAll(wordMap);
       } catch (Exception e) {
         throw new RuntimeException(e);
@@ -100,13 +111,7 @@ public class Repository {
       dbResult = DBResult.INSERT;
     }
     inMemoryDb.put(word, wordEntity);
-    runSync(() -> {
-      try {
-        fileService.writeFileExternalStorage(false, objectMapper.writeValueAsString(inMemoryDb.values()));
-      } catch (JsonProcessingException e) {
-        throw new RuntimeException(e);
-      }
-    });
+    flush();
     return dbResult;
   }
 
@@ -125,5 +130,65 @@ public class Repository {
     inMemoryDb.clear();
     fileService.writeFileExternalStorage(false);
     init();
+  }
+
+  public List<String> getWordsForReminder(int limit) {
+    return inMemoryDb.values().stream().filter(REMINDED_TIME_IS_ABSENT_PREDICATE).limit(limit).map(WordEntity::getWord)
+            .collect(toList());
+  }
+
+  public long getRemindedCount() {
+    return inMemoryDb.values().stream().filter(REMINDED_TIME_IS_ABSENT_PREDICATE.negate()).count();
+  }
+
+  public void unsetRemindedTime(List<String> words) {
+    words.stream().map(inMemoryDb::get).map(this::unsetRemindedTime).forEach(we -> inMemoryDb.put(we.getWord(), we));
+    flush();
+  }
+
+  @RequiresApi(api = Build.VERSION_CODES.O)
+  public void markAsReminded(List<String> words) {
+    words.stream().map(inMemoryDb::get).map(this::setRemindedTime).forEach(we -> inMemoryDb.put(we.getWord(), we));
+    flush();
+  }
+
+  @RequiresApi(api = Build.VERSION_CODES.O)
+  private WordEntity setRemindedTime(WordEntity wordEntity) {
+    String currentTime = formatter.format(Instant.now(Clock.system(ZoneId.of(CHICAGO))));
+    wordEntity.setRemindedTime(currentTime);
+    return wordEntity;
+  }
+
+  private WordEntity unsetRemindedTime(WordEntity wordEntity) {
+    wordEntity.setRemindedTime(null);
+    return wordEntity;
+  }
+
+  public List<String> getByRemindedTime(int limit) {
+    return inMemoryDb.values().stream().filter(we -> we.getRemindedTime() != null)
+            .sorted(Comparator.comparing(WordEntity::getRemindedTime).reversed()).limit(limit)
+            .map(WordEntity::getWord).collect(toList());
+  }
+
+  @NonNull
+  private static BinaryOperator<WordEntity> throwForDuplicates() {
+    return (u, v) -> {
+      throw new IllegalStateException(String.format("Duplicate key %s", u));
+    };
+  }
+
+  private void flush() {
+    runSync(() -> {
+      try {
+        fileService.writeFileExternalStorage(false, objectMapper.writeValueAsString(inMemoryDb.values()));
+      } catch (JsonProcessingException e) {
+        throw new RuntimeException(e);
+      }
+    });
+  }
+
+  public void remove(String word) {
+    inMemoryDb.remove(word);
+    flush();
   }
 }

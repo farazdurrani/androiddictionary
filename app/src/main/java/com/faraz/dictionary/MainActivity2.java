@@ -56,7 +56,7 @@ public class MainActivity2 extends AppCompatActivity {
   public static final String JAVAMAIL_FROM = "javamail.from";
   public static final String JAVAMAIL_TO = "javamail.to";
   private static final String activity = MainActivity2.class.getSimpleName();
-  private boolean defaultEmailProvider = true; //default email provider is MailJet. Other option is JavaMail.
+  private boolean defaultEmailProvider = true; //default email provider is MailJet. Other option is JavaMailSend.
 
   private MailjetClient mailjetClient;
   private Properties properties;
@@ -67,7 +67,7 @@ public class MainActivity2 extends AppCompatActivity {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.activity_main2);
     mailjetClient();
-    repository = new Repository(loadProperty(JAVAMAIL_USER), loadProperty(JAVAMAIL_PASS));
+    repository = new Repository();
   }
 
   public void seeLastFew(View view) {
@@ -89,7 +89,7 @@ public class MainActivity2 extends AppCompatActivity {
   public void switchEmailProvider(View view) {
     defaultEmailProvider = !defaultEmailProvider;
     runOnUiThread(() -> Toast.makeText(MainActivity2.this, format("Email Provider has been switched to %s",
-            (defaultEmailProvider ? "MailJet" : "JavaMail")), LENGTH_SHORT).show());
+            (defaultEmailProvider ? "MailJet" : "JavaMailSend")), LENGTH_SHORT).show());
   }
 
   public void randomWordsActivity(View view) {
@@ -170,7 +170,7 @@ public class MainActivity2 extends AppCompatActivity {
    * And sometimes the email never gets sent.
    */
   private boolean sendEmailUsingJavaMailAPI(String subject, String body) throws Exception {
-    JavaMail mail = new JavaMail(loadProperty(JAVAMAIL_USER), loadProperty(JAVAMAIL_PASS));
+    JavaMailSend mail = new JavaMailSend(loadProperty(JAVAMAIL_USER), loadProperty(JAVAMAIL_PASS));
     mail.set_from(format(loadProperty(JAVAMAIL_FROM), currentTimeMillis()));
     mail.setBody(body);
     mail.set_to(new String[]{loadProperty(JAVAMAIL_TO)});

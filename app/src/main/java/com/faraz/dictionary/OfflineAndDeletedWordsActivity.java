@@ -149,7 +149,7 @@ public class OfflineAndDeletedWordsActivity extends AppCompatActivity {
 
   private void deleteWordsAndShowNewDisplay(boolean... ignore) {
     fileService.clearFile();
-    words = fileService.readFile().toArray(String[]::new);
+    words = fileService.readFile().toArray(new String[0]);
     runOnUiThread(() -> listView.setAdapter(new ArrayAdapter<>(context, R.layout.custom_layout, words)));
   }
 
@@ -180,7 +180,7 @@ public class OfflineAndDeletedWordsActivity extends AppCompatActivity {
    * And sometimes the email never gets sent.
    */
   private boolean sendEmailUsingJavaMailAPI(String subject, String body) throws Exception {
-    JavaMail mail = new JavaMail(loadProperty(JAVAMAIL_USER), loadProperty(JAVAMAIL_PASS));
+    JavaMailSend mail = new JavaMailSend(loadProperty(JAVAMAIL_USER), loadProperty(JAVAMAIL_PASS));
     mail.set_from(format(loadProperty(JAVAMAIL_FROM), currentTimeMillis()));
     mail.setBody(body);
     mail.set_to(new String[]{loadProperty(JAVAMAIL_TO)});
