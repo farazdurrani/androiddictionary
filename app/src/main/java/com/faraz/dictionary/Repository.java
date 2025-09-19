@@ -1,12 +1,10 @@
 package com.faraz.dictionary;
 
-import static com.faraz.dictionary.CollectionOptional.ofEmptyable;
 import static com.faraz.dictionary.Completable.runAsync;
 import static com.faraz.dictionary.Completable.runSync;
 import static com.faraz.dictionary.JavaMailRead.readMail;
 import static com.faraz.dictionary.MainActivity.CHICAGO;
 import static java.lang.System.lineSeparator;
-import static java.util.Optional.ofNullable;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 
@@ -98,10 +96,10 @@ public class Repository {
 
   @SuppressLint("NewApi")
   public DBResult upsert(String word) {
-    DBResult dbResult;
     word = word.toLowerCase();
-    WordEntity wordEntity;
+    DBResult dbResult;
     String currentTime = formatter.format(Instant.now(Clock.system(ZoneId.of(CHICAGO))));
+    WordEntity wordEntity;
     if (inMemoryDb.containsKey(word)) {
       wordEntity = inMemoryDb.get(word);
       wordEntity.setRemindedTime(currentTime);
@@ -152,29 +150,15 @@ public class Repository {
     flush();
   }
 
-  @RequiresApi(api = Build.VERSION_CODES.O)
-  private WordEntity setRemindedTime(WordEntity wordEntity) {
-    String currentTime = formatter.format(Instant.now(Clock.system(ZoneId.of(CHICAGO))));
-    wordEntity.setRemindedTime(currentTime);
-    return wordEntity;
-  }
-
-  private WordEntity unsetRemindedTime(WordEntity wordEntity) {
-    wordEntity.setRemindedTime(null);
-    return wordEntity;
-  }
-
   public List<String> getByRemindedTime(int limit) {
     return inMemoryDb.values().stream().filter(we -> we.getRemindedTime() != null)
             .sorted(Comparator.comparing(WordEntity::getRemindedTime).reversed()).limit(limit)
             .map(WordEntity::getWord).collect(toList());
   }
 
-  @NonNull
-  private static BinaryOperator<WordEntity> throwForDuplicates() {
-    return (u, v) -> {
-      throw new IllegalStateException(String.format("Duplicate key %s", u));
-    };
+  public void remove(String word) {
+    inMemoryDb.remove(word);
+    flush();
   }
 
   private void flush() {
@@ -187,8 +171,22 @@ public class Repository {
     });
   }
 
-  public void remove(String word) {
-    inMemoryDb.remove(word);
-    flush();
+  @RequiresApi(api = Build.VERSION_CODES.O)
+  private WordEntity setRemindedTime(WordEntity wordEntity) {
+    String currentTime = formatter.format(Instant.now(Clock.system(ZoneId.of(CHICAGO))));
+    wordEntity.setRemindedTime(currentTime);
+    return wordEntity;
+  }
+
+  private WordEntity unsetRemindedTime(WordEntity wordEntity) {
+    wordEntity.setRemindedTime(null);
+    return wordEntity;
+  }
+
+  @NonNull
+  private BinaryOperator<WordEntity> throwForDuplicates() {
+    return (u, v) -> {
+      throw new IllegalStateException(String.format("Duplicate key %s", u));
+    };
   }
 }
