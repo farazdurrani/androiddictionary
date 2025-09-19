@@ -23,13 +23,14 @@ import java.util.Optional;
 
 public class FileService {
 
-  // todo
-  // this line is gonna haunt me once I change my device.
-  public static final String externalFilesDir = "/storage/emulated/0/Android/data/com.faraz.dictionary/files";
+
+  //Initialize it once when the app is loading up
+  public static String externalFilesDir;
   private final String filename;
 
   @SuppressLint("NewApi")
-  public FileService(String filename) {
+  public FileService(String filename, String... folder) {
+    externalFilesDir = folder.length > 0 ? folder[0] : externalFilesDir;
     this.filename = filename;
     try {
       if (!Files.exists(Paths.get(externalFilesDir))) {

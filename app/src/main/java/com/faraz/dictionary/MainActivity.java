@@ -108,7 +108,7 @@ public class MainActivity extends AppCompatActivity {
     offlineActivityButton = findViewById(R.id.offlineActivity);
     offlineActivityButton.setVisibility(INVISIBLE);
     context = getBaseContext();
-    offlineWordsFileService = new FileService("offlinewords.txt");
+    offlineWordsFileService = new FileService("offlinewords.txt", getExternalFilesDir(null).getAbsolutePath());
     lookupWord = findViewById(R.id.wordBox);
     lookupWord.setThreshold(1);
     lookupWord.setAdapter(new ArrayAdapter<>(this, android.R.layout.select_dialog_item, AUTO_COMPLETE_WORDS));
