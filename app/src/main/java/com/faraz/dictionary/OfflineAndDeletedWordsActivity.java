@@ -46,6 +46,7 @@ import com.mailjet.client.transactional.TransactionalEmail;
 import com.mailjet.client.transactional.response.MessageResult;
 import com.mailjet.client.transactional.response.SendEmailsResponse;
 
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -54,7 +55,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Properties;
@@ -90,7 +90,7 @@ public class OfflineAndDeletedWordsActivity extends AppCompatActivity {
     ofNullable(getIntent().getExtras()).map(e -> e.getString(FILE_NAME)).ifPresent(this::doInitiation);
     ofNullable(getIntent().getExtras()).filter(e -> StringUtils.isBlank(e.getString(FILE_NAME, EMPTY)))
             .ifPresent(ignore -> ((TextView) findViewById(R.id.filepath)).setText("can't locate the path"));
-    ((TextView) findViewById(R.id.wordsCount)).setText(fileService.readFile().size() + " total words in file.");
+    ((TextView) findViewById(R.id.wordsCount)).setText(words.length + " total words in file.");
     Optional.of(fileService.readFile()).filter(ObjectUtils::isEmpty)
             .ifPresent(ignore -> findViewById(R.id.emailButton).setEnabled(false));
     mailjetClient();
@@ -135,10 +135,9 @@ public class OfflineAndDeletedWordsActivity extends AppCompatActivity {
   }
 
   private void fetchWords() {
-    CompletableFuture.runAsync(() -> {
-      List<String> _words = fileService.readFile();
-      Collections.reverse(_words);
-      words = _words.toArray(new String[0]);
+    runAsync(() -> {
+      words = fileService.readFile().toArray(new String[0]);
+      ArrayUtils.reverse(words);
       runOnUiThread(() -> listView.setAdapter(new ShowNumbersArrayAdapter(context, R.layout.custom_layout, words)));
     });
   }
@@ -149,8 +148,8 @@ public class OfflineAndDeletedWordsActivity extends AppCompatActivity {
   }
 
   private void deleteWordsAndShowNewDisplay(boolean... ignore) {
-    fileService.clearFile();
-    words = fileService.readFile().toArray(new String[0]);
+    CompletableFuture.runAsync(() -> fileService.clearFile());
+    words = new String[0];
     runOnUiThread(() -> listView.setAdapter(new ArrayAdapter<>(context, R.layout.custom_layout, words)));
     runOnUiThread(() -> ((TextView) findViewById(R.id.wordsCount)).setText(words.length + " total " +
             "words in file."));
