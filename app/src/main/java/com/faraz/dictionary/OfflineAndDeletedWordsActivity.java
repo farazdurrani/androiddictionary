@@ -2,7 +2,7 @@ package com.faraz.dictionary;
 
 import static android.view.View.INVISIBLE;
 import static android.widget.Toast.LENGTH_SHORT;
-import static com.faraz.dictionary.Completable.runSync;
+import static com.faraz.dictionary.Completable.runAsync;
 import static com.faraz.dictionary.MainActivity.FILE_NAME;
 import static com.faraz.dictionary.MainActivity2.JAVAMAIL_FROM;
 import static com.faraz.dictionary.MainActivity2.JAVAMAIL_PASS;
@@ -12,6 +12,7 @@ import static com.faraz.dictionary.MainActivity2.MAIL_FROM;
 import static com.faraz.dictionary.MainActivity2.MAIL_KEY;
 import static com.faraz.dictionary.MainActivity2.MAIL_SECRET;
 import static com.faraz.dictionary.MainActivity2.MAIL_TO;
+import static com.faraz.dictionary.MainActivity2.defaultEmailProvider;
 import static com.faraz.dictionary.MainActivity5.WIPEOUT_DATA_BUTTON;
 import static com.mailjet.client.transactional.response.SentMessageStatus.SUCCESS;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
@@ -89,7 +90,7 @@ public class OfflineAndDeletedWordsActivity extends AppCompatActivity {
     ofNullable(getIntent().getExtras()).map(e -> e.getString(FILE_NAME)).ifPresent(this::doInitiation);
     ofNullable(getIntent().getExtras()).filter(e -> StringUtils.isBlank(e.getString(FILE_NAME, EMPTY)))
             .ifPresent(ignore -> ((TextView) findViewById(R.id.filepath)).setText("can't locate the path"));
-    ((TextView) findViewById(R.id.offlineWordsCount)).setText(fileService.readFile().size() + " total words in file.");
+    ((TextView) findViewById(R.id.wordsCount)).setText(fileService.readFile().size() + " total words in file.");
     Optional.of(fileService.readFile()).filter(ObjectUtils::isEmpty)
             .ifPresent(ignore -> findViewById(R.id.emailButton).setEnabled(false));
     mailjetClient();
@@ -151,12 +152,16 @@ public class OfflineAndDeletedWordsActivity extends AppCompatActivity {
     fileService.clearFile();
     words = fileService.readFile().toArray(new String[0]);
     runOnUiThread(() -> listView.setAdapter(new ArrayAdapter<>(context, R.layout.custom_layout, words)));
+    runOnUiThread(() -> ((TextView) findViewById(R.id.wordsCount)).setText(words.length + " total " +
+            "words in file."));
   }
 
   public void emailWords(View view) {
-    runSync(() -> runOnUiThread(() -> findViewById(R.id.emailButton).setEnabled(false)))
-            .thenRunAsync(() -> sendEmails(fileService.readFile()))
-            .thenRunSync(() -> runOnUiThread(() -> findViewById(R.id.emailButton).setEnabled(true)));
+    runOnUiThread(() -> Toast.makeText(OfflineAndDeletedWordsActivity.this, String.format("Using %s to send " +
+            "emails.", defaultEmailProvider ? "JavaMail" : "MailJet"), LENGTH_SHORT).show());
+    runOnUiThread(() -> findViewById(R.id.emailButton).setEnabled(false));
+    runAsync(() -> sendEmails(fileService.readFile()));
+    runOnUiThread(() -> findViewById(R.id.emailButton).setEnabled(true));
   }
 
   @SuppressLint("DefaultLocale")
@@ -189,7 +194,7 @@ public class OfflineAndDeletedWordsActivity extends AppCompatActivity {
   }
 
   private boolean sendEmail(String subject, String body) throws Exception {
-    if (true) {
+    if (defaultEmailProvider) {
       return sendEmailUsingJavaMailAPI(subject, body);
     }
     //lets skip this for now while it's abstracted away

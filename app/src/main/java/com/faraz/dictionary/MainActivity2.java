@@ -56,7 +56,7 @@ public class MainActivity2 extends AppCompatActivity {
   public static final String JAVAMAIL_FROM = "javamail.from";
   public static final String JAVAMAIL_TO = "javamail.to";
   private static final String activity = MainActivity2.class.getSimpleName();
-  private boolean defaultEmailProvider = true; //default email provider is MailJet. Other option is JavaMailSend.
+  public static boolean defaultEmailProvider = true; //default email provider is JavaMail. Other option is MailJet.
 
   private MailjetClient mailjetClient;
   private Properties properties;
@@ -89,7 +89,7 @@ public class MainActivity2 extends AppCompatActivity {
   public void switchEmailProvider(View view) {
     defaultEmailProvider = !defaultEmailProvider;
     runOnUiThread(() -> Toast.makeText(MainActivity2.this, format("Email Provider has been switched to %s",
-            (defaultEmailProvider ? "MailJet" : "JavaMailSend")), LENGTH_SHORT).show());
+            (defaultEmailProvider ? "JavaMail" : "MailJet")), LENGTH_SHORT).show());
   }
 
   public void randomWordsActivity(View view) {
@@ -130,8 +130,7 @@ public class MainActivity2 extends AppCompatActivity {
   }
 
   private boolean sendEmail(String subject, String body) throws Exception {
-    Thread.sleep(333L);
-    return defaultEmailProvider ? sendEmailUsingMailJetClient(subject, body) : sendEmailUsingJavaMailAPI(subject, body);
+    return defaultEmailProvider ? sendEmailUsingJavaMailAPI(subject, body) : sendEmailUsingMailJetClient(subject, body);
   }
 
   /**
