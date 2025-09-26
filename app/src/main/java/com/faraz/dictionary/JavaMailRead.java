@@ -19,7 +19,7 @@ import javax.mail.search.SubjectTerm;
 
 public class JavaMailRead {
   public static String readMail(String email, String password) {
-    System.out.println("Trying to read an email to load the database...");
+    System.out.println("Trying to read an all-important email to load the database...");
     Properties props = new Properties();
     props.put("mail.smtp.host", "smtp.gmail.com");
     props.put("mail.smtp.port", "587");
@@ -56,7 +56,7 @@ public class JavaMailRead {
                 BodyPart bodyPart = multipart.getBodyPart(i);
                 if (bodyPart.getContentType().toLowerCase().startsWith("text/plain")) {
                   plainContent = (String) bodyPart.getContent();
-                  System.out.println("Found an all important email.");
+                  System.out.println("Found an all-important email.");
                 } else if (bodyPart.getContentType().toLowerCase().startsWith("text/html")) {
                   // handle HTML content
                 } else {

@@ -1,5 +1,10 @@
 package com.faraz.dictionary;
 
+import androidx.annotation.NonNull;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 
@@ -20,26 +25,32 @@ public class WordEntity {
     this.remindedTime = remindedTime;
   }
 
+  @JsonProperty(value = "word")
   public String getWord() {
     return word;
   }
 
+  @JsonIgnore
   public void setWord(String word) {
     this.word = word;
   }
 
+  @JsonProperty(value = "lookupTime")
   public String getLookupTime() {
     return lookupTime;
   }
 
+  @JsonIgnore
   public void setLookupTime(String lookupTime) {
     this.lookupTime = lookupTime;
   }
 
+  @JsonProperty(value = "remindedTime")
   public String getRemindedTime() {
     return remindedTime;
   }
 
+  @JsonIgnore
   public void setRemindedTime(String remindedTime) {
     this.remindedTime = remindedTime;
   }
@@ -59,5 +70,15 @@ public class WordEntity {
   @Override
   public int hashCode() {
     return new HashCodeBuilder(17, 37).append(word).append(lookupTime).append(remindedTime).toHashCode();
+  }
+
+  @NonNull
+  @Override
+  public String toString() {
+    return "WordEntity{" +
+            "word='" + word + '\'' +
+            ", lookupTime='" + lookupTime + '\'' +
+            ", remindedTime='" + remindedTime + '\'' +
+            '}';
   }
 }

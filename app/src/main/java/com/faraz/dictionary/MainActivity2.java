@@ -13,6 +13,7 @@ import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
+import android.util.Base64;
 import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
@@ -40,6 +41,7 @@ import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 import okhttp3.OkHttpClient;
 
@@ -179,22 +181,22 @@ public class MainActivity2 extends AppCompatActivity {
 
   private void backupData() {
     try {
-      int count = repository.getLength();
-      String fulldata = repository.getValuesAsAString();
-      String fulldataWithCount = format("Total Count: '%d'.", count) + lineSeparator() + fulldata;
-      sendBackupEmail(fulldataWithCount, count);
+      String fullData = Base64.encodeToString(CompressUtil.compress(repository.getValuesAsAString()), Base64.DEFAULT);
+      String justWords = String.join(lineSeparator(), repository.getWords());
+      String fullDataWithCount = format("Total Count: '%d'.", repository.getLength()) + lineSeparator() + justWords;
+      Stream.of(fullData, fullDataWithCount).forEach(this::sendBackupEmail);
     } catch (Exception e) {
       Log.e(activity.getClass().getSimpleName(), e.getLocalizedMessage(), e);
       runOnUiThread(() -> Toast.makeText(MainActivity2.this, ExceptionUtils.getStackTrace(e), LENGTH_LONG).show());
     }
   }
 
-  private void sendBackupEmail(String backup_words, int count) {
+  private void sendBackupEmail(String backup_words) {
     String subject = "Words Backup.";
     try {
       if (sendEmail(subject, backup_words)) {
         runOnUiThread(() -> Toast.makeText(MainActivity2.this, format("'%d' words sent for backup.",
-                count), LENGTH_SHORT).show());
+                repository.getLength()), LENGTH_SHORT).show());
       } else {
         runOnUiThread(() -> Toast.makeText(MainActivity2.this, "Error occurred while backing up words.",
                 LENGTH_SHORT).show());

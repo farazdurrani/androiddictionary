@@ -6,12 +6,12 @@ import static com.faraz.dictionary.JavaMailRead.readMail;
 import static com.faraz.dictionary.MainActivity.CHICAGO;
 import static java.lang.System.lineSeparator;
 import static java.util.stream.Collectors.toList;
-import static java.util.stream.Collectors.toMap;
 
 import android.annotation.SuppressLint;
 import android.os.Build;
+import android.util.Base64;
 
-import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -30,14 +30,22 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.BinaryOperator;
-import java.util.function.Function;
 import java.util.function.Predicate;
 
 public class Repository {
   private static final String CRLF = "\r\n";
   private static final String EMPTY_STRING = "";
-  private static final Map<String, WordEntity> inMemoryDb = new LinkedHashMap<>();
+  private static final Map<String, WordEntity> inMemoryDb = new LinkedHashMap<>() {
+    @Nullable
+    @Override
+    public WordEntity put(String key, WordEntity value) {
+      if (containsKey(key)) {
+        throw new RuntimeException(
+                "yeah we don't allow no god-damn duplicates: " + value + ". Previous entry: " + get(key));
+      }
+      return super.put(key, value);
+    }
+  };
   private static final String filename = "inmemorydb.json";
   private static final Predicate<WordEntity> REMINDED_TIME_IS_ABSENT_PREDICATE = we -> we.getRemindedTime() == null;
   private final ObjectMapper objectMapper = new ObjectMapper();
@@ -68,19 +76,16 @@ public class Repository {
     }
     runAsync(() -> {
       try {
-        String json = new String(fileService.readFileAsByte()).replaceAll(CRLF, EMPTY_STRING)
-                .replaceAll(lineSeparator(), EMPTY_STRING);
+        String json = clearNewLines(new String(fileService.readFileAsByte()));
         if (StringUtils.isBlank(json)) {
-          json = readMail(email, password).replaceAll(CRLF, EMPTY_STRING).replaceAll(lineSeparator(),
-                  EMPTY_STRING);
+          json = CompressUtil.decompress(Base64.decode(clearNewLines(readMail(email, password)), Base64.DEFAULT));
           fileService.writeFileExternalStorage(false, json);
         }
-        List<WordEntity> wordEntities = objectMapper.readValue(json,
-                typeFactory.constructCollectionType(List.class, WordEntity.class));
-        Map<String, WordEntity> wordMap = wordEntities.stream().collect(toMap(we -> we.getWord().toLowerCase(),
-                Function.identity(), throwForDuplicates(), LinkedHashMap::new));
-        inMemoryDb.putAll(wordMap);
+        List<WordEntity> wordEntities = objectMapper.readValue(json, typeFactory.constructCollectionType(List.class,
+                WordEntity.class));
+        wordEntities.forEach(we -> inMemoryDb.put(we.getWord().toLowerCase().strip(), we));
       } catch (Exception e) {
+        e.printStackTrace();
         throw new RuntimeException(e);
       }
     });
@@ -183,10 +188,7 @@ public class Repository {
     return wordEntity;
   }
 
-  @NonNull
-  private BinaryOperator<WordEntity> throwForDuplicates() {
-    return (u, v) -> {
-      throw new IllegalStateException(String.format("Duplicate key %s", u));
-    };
+  private String clearNewLines(String source) {
+    return source.replaceAll(CRLF, EMPTY_STRING).replaceAll(lineSeparator(), EMPTY_STRING);
   }
 }
