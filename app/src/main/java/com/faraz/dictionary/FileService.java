@@ -76,6 +76,11 @@ public class FileService {
     }
   }
 
+  /**
+   * Since no data is written between the creation and closing of the stream in this specific snippet,
+   * the primary effect is to create an empty file at the specified location if it doesn't already exist,
+   * or to truncate an existing file to zero length.
+   */
   public void clearFile() {
     try {
       new FileOutputStream(new File(externalFilesDir, filename)).close();
@@ -109,7 +114,7 @@ public class FileService {
   public void delete(String word) {
     String[] words = readFile().stream().filter(w -> !w.equals(word)).distinct().toArray(String[]::new);
     Optional.of(words).filter(ObjectUtils::isEmpty)
-            .ifPresentOrElse(ignore -> writeFileExternalStorage(false), () -> writeFileExternalStorage(false,
+            .ifPresentOrElse(ignore -> clearFile(), () -> writeFileExternalStorage(false,
                     String.join(lineSeparator(), words)));
   }
 }

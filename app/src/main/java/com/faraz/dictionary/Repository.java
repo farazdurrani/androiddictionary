@@ -131,7 +131,7 @@ public class Repository {
    */
   public void reset() {
     inMemoryDb.clear();
-    fileService.writeFileExternalStorage(false);
+    fileService.clearFile();
     init();
   }
 
