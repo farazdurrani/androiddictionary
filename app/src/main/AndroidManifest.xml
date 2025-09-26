@@ -20,7 +20,8 @@
         android:exported="false" />
     <activity
         android:name=".MainActivity5"
-        android:exported="false" />
+        android:exported="false"
+        android:windowSoftInputMode="adjustNothing"/>
     <activity
       android:name=".MainActivity2"
       android:exported="false" />
@@ -30,17 +31,6 @@
       <intent-filter>
         <action android:name="android.intent.action.MAIN" />
         <category android:name="android.intent.category.LAUNCHER" />
-      </intent-filter>
-    </activity>
-    <activity
-      android:name=".DeepLinkActivity"
-      android:exported="true"> <!--what's this for-->
-      <intent-filter>
-        <action android:name="android.intent.action.VIEW" />
-        <category android:name="android.intent.category.BROWSABLE" />
-        <category android:name="android.intent.category.DEFAULT" />
-        <data android:scheme="markasfrequent" android:host="open.my.app"/>
-
       </intent-filter>
     </activity>
   </application>

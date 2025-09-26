@@ -28,10 +28,6 @@ MainActivity5 (done)
 - delete a word from mongo (done)
 - get last 30 words from mongo (done)
 
-bugs: pressing email on offline words sends emails twice.
-todo: when sending offline words, it's always using javamail. try to have it sent using either or.
-todo: delete any word. make it easy to find it easy to delete a word in MainActivity5.
-
 //    String json = loadJSONFromAsset();
 //
 //    try {
