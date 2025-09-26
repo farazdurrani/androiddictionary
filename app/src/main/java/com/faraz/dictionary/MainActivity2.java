@@ -72,7 +72,7 @@ public class MainActivity2 extends AppCompatActivity {
     repository = new Repository();
   }
 
-  public void seeLastFew(View view) {
+  public void seeAll(View view) {
     Intent intent = new Intent(this, MainActivity5.class);
     startActivity(intent);
   }
