@@ -5,7 +5,6 @@ import static com.faraz.dictionary.MainActivity.AUTO_COMPLETE_WORDS_REMOVE;
 import static java.lang.String.format;
 import static java.util.concurrent.CompletableFuture.supplyAsync;
 
-import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
@@ -53,7 +52,7 @@ public class MainActivity5 extends AppCompatActivity {
       lookupWord = findViewById(R.id.deleteWordBox);
       lookupWord.setThreshold(1);
       runOnUiThread(() -> lookupWord.setAdapter(new ArrayAdapter<>(this, android.R.layout.select_dialog_item,
-              Arrays.asList(words))));
+              words)));
       setAutocompleteListener();
     });
   }
@@ -95,7 +94,6 @@ public class MainActivity5 extends AppCompatActivity {
     startActivity(intent);
   }
 
-  @SuppressLint("NewApi")
   private void deleteWordFromAutoComplete(String word) {
     AUTO_COMPLETE_WORDS_REMOVE.add(word);
   }
