@@ -231,7 +231,7 @@ public class MainActivity extends AppCompatActivity {
     try {
       if (existingWord()) {
         runOnUiThread(() -> definitionsView.setText(format("'%s's already looked-up.", originalLookupWord)));
-        deleteFromOfflineFileIfPresent();
+        deleteButton(null);
         markWordsAsReminded();
         return;
       }
@@ -252,12 +252,6 @@ public class MainActivity extends AppCompatActivity {
 
   private boolean existingWord() {
     return AUTO_COMPLETE_WORDS.contains(originalLookupWord);
-  }
-
-  @SuppressLint("NewApi")
-  private void deleteFromOfflineFileIfPresent() {
-    offlineWordsFileService.readFile().stream().filter(originalLookupWord::equals).findFirst()
-            .ifPresent(ignore -> deleteButton(null));
   }
 
   private void openInWebBrowser() {
@@ -326,7 +320,7 @@ public class MainActivity extends AppCompatActivity {
     try {
       if (existingWord()) {
         runOnUiThread(() -> definitionsView.setText(format("'%s's already stored.", originalLookupWord)));
-        deleteFromOfflineFileIfPresent();
+        deleteButton(null);
         markWordsAsReminded();
         return;
       }
@@ -339,7 +333,7 @@ public class MainActivity extends AppCompatActivity {
   private void saveWordInDb(boolean... ignore) {
     try {
       saveWordInInMemoryDb();
-      deleteFromOfflineFileIfPresent();
+      deleteButton(null);
     } catch (Exception e) {
       runOnUiThread(() -> definitionsView.setText(format("welp...%s%s%s", originalLookupWord, lineSeparator(),
               getStackTrace(e))));

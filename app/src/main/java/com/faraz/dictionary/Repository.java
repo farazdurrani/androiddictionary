@@ -30,15 +30,18 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Predicate;
 
 public class Repository {
   private static final String CRLF = "\r\n";
   private static final String EMPTY_STRING = "";
   private static final Map<String, WordEntity> inMemoryDb = new LinkedHashMap<>() {
+    @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
     @Nullable
     @Override
     public WordEntity put(String key, WordEntity value) {
+      key = Optional.ofNullable(key).map(String::toLowerCase).map(String::strip).orElseThrow();
       if (containsKey(key)) {
         throw new RuntimeException("yeah we don't allow no god-damn duplicates: " + value + ". Previous entry: " +
                 get(key));
@@ -83,7 +86,7 @@ public class Repository {
         }
         List<WordEntity> wordEntities = objectMapper.readValue(json, typeFactory.constructCollectionType(List.class,
                 WordEntity.class));
-        wordEntities.forEach(we -> inMemoryDb.put(we.getWord().toLowerCase().strip(), we));
+        wordEntities.forEach(we -> inMemoryDb.put(we.getWord(), we));
       } catch (Exception e) {
         e.printStackTrace();
         throw new RuntimeException(e);
@@ -101,21 +104,16 @@ public class Repository {
 
   @SuppressLint("NewApi")
   public DBResult upsert(String word) {
-    word = word.toLowerCase().strip();
-    DBResult dbResult;
     String currentTime = formatter.format(Instant.now(Clock.system(ZoneId.of(CHICAGO))));
-    WordEntity wordEntity;
-    if (inMemoryDb.containsKey(word)) {
-      wordEntity = inMemoryDb.get(word);
+    WordEntity wordEntity = inMemoryDb.remove(word);
+    if (wordEntity != null) {
       wordEntity.setRemindedTime(currentTime);
-      dbResult = DBResult.UPDATE;
     } else {
       wordEntity = new WordEntity(word, currentTime, null);
-      dbResult = DBResult.INSERT;
     }
     inMemoryDb.put(word, wordEntity);
     flush();
-    return dbResult;
+    return wordEntity.getRemindedTime() == null ? DBResult.INSERT : DBResult.UPDATE;
   }
 
   public String getValuesAsAString() {
@@ -144,14 +142,17 @@ public class Repository {
     return inMemoryDb.values().stream().filter(REMINDED_TIME_IS_ABSENT_PREDICATE.negate()).count();
   }
 
+  @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
   public void unsetRemindedTime(List<String> words) {
-    words.stream().map(inMemoryDb::get).map(this::unsetRemindedTime).forEach(we -> inMemoryDb.put(we.getWord(), we));
+    words.forEach(w -> Optional.ofNullable(inMemoryDb.remove(w)).map(this::unsetRemindedTime)
+            .ifPresent(x -> inMemoryDb.put(x.getWord(), x)));
     flush();
   }
 
   @RequiresApi(api = Build.VERSION_CODES.O)
   public void markAsReminded(List<String> words) {
-    words.stream().map(inMemoryDb::get).map(this::setRemindedTime).forEach(we -> inMemoryDb.put(we.getWord(), we));
+    words.forEach(w -> Optional.ofNullable(inMemoryDb.remove(w)).map(this::setRemindedTime)
+            .ifPresent(x -> inMemoryDb.put(x.getWord(), x)));
     flush();
   }
 
