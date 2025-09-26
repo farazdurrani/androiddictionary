@@ -17,7 +17,6 @@ import static com.faraz.dictionary.MainActivity5.WIPEOUT_DATA_BUTTON;
 import static com.mailjet.client.transactional.response.SentMessageStatus.SUCCESS;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static java.lang.String.format;
-import static java.lang.String.join;
 import static java.lang.System.currentTimeMillis;
 import static java.util.Optional.ofNullable;
 
@@ -75,6 +74,11 @@ public class OfflineAndDeletedWordsActivity extends AppCompatActivity {
   private String filename;
   private Properties properties;
   private MailjetClient mailjetClient;
+
+  @NonNull
+  public static String addDivStyling(List<String> words) {
+    return "<div style=\"font-size:20px\">" + String.join("<br>", words) + "</div>";
+  }
 
   @SuppressLint("SetTextI18n")
   @Override
@@ -242,11 +246,6 @@ public class OfflineAndDeletedWordsActivity extends AppCompatActivity {
       }
     }
     return this.properties.getProperty(property);
-  }
-
-  @NonNull
-  private String addDivStyling(List<String> words) {
-    return "<div style=\"font-size:20px\">" + join("<br>", words) + "</div>";
   }
 
   private static class ShowNumbersArrayAdapter extends ArrayAdapter<String> {

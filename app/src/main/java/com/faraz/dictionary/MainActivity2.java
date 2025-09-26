@@ -2,10 +2,11 @@ package com.faraz.dictionary;
 
 import static android.widget.Toast.LENGTH_LONG;
 import static android.widget.Toast.LENGTH_SHORT;
+import static com.faraz.dictionary.OfflineAndDeletedWordsActivity.addDivStyling;
 import static com.mailjet.client.transactional.response.SentMessageStatus.SUCCESS;
+import static org.apache.commons.text.WordUtils.capitalize;
 import static java.lang.String.format;
 import static java.lang.System.currentTimeMillis;
-import static java.lang.System.lineSeparator;
 import static java.util.Optional.ofNullable;
 import static java.util.concurrent.CompletableFuture.runAsync;
 
@@ -21,6 +22,7 @@ import android.widget.Toast;
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.google.common.collect.ImmutableList;
 import com.mailjet.client.ClientOptions;
 import com.mailjet.client.MailjetClient;
 import com.mailjet.client.errors.MailjetException;
@@ -41,6 +43,7 @@ import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import okhttp3.OkHttpClient;
@@ -182,13 +185,19 @@ public class MainActivity2 extends AppCompatActivity {
   private void backupData() {
     try {
       String fullData = Base64.encodeToString(CompressUtil.compress(repository.getValuesAsAString()), Base64.DEFAULT);
-      String justWords = String.join(lineSeparator(), repository.getWords());
-      String fullDataWithCount = format("Total Count: '%d'.", repository.getLength()) + lineSeparator() + justWords;
-      Stream.of(fullData, fullDataWithCount).forEach(this::sendBackupEmail);
+      List<String> justWordsWithCount = ImmutableList.<String>builder().add(String.format("Total Count: '%d'.",
+                      repository.getLength())).addAll(repository.getWords().stream().map(this::anchor)
+                      .collect(Collectors.toList())).build();
+      Stream.of(fullData, addDivStyling(justWordsWithCount)).forEach(this::sendBackupEmail);
     } catch (Exception e) {
       Log.e(activity.getClass().getSimpleName(), e.getLocalizedMessage(), e);
       runOnUiThread(() -> Toast.makeText(MainActivity2.this, ExceptionUtils.getStackTrace(e), LENGTH_LONG).show());
     }
+  }
+
+  private String anchor(String word) {
+    return "<a href='https://www.google.com/search?q=define: " + word + "' target='_blank'>" + capitalize(word) +
+            "</a>";
   }
 
   private void sendBackupEmail(String backup_words) {
