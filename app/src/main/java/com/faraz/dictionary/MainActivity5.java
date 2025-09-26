@@ -12,6 +12,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.ArrayAdapter;
+import android.widget.AutoCompleteTextView;
 import android.widget.ListView;
 import android.widget.Toast;
 
@@ -30,6 +31,7 @@ public class MainActivity5 extends AppCompatActivity {
   public static final String WIPEOUT_DATA_BUTTON = "WIPEOUT_DATA_BUTTON";
   private static final String FILE_NAME = "FILE_NAME";
   private ListView listView;
+  private AutoCompleteTextView lookupWord;
   private Context context;
   private FileService fileService;
   private Repository repository;
@@ -47,14 +49,20 @@ public class MainActivity5 extends AppCompatActivity {
     supplyAsync(this::getLastFewWords).thenAccept(_words -> {
       words = _words;
       runOnUiThread(() -> listView.setAdapter(new ArrayAdapter<>(context, R.layout.custom_layout, words)));
+    }).thenAccept(ignore -> {
+      lookupWord = findViewById(R.id.deleteWordBox);
+      lookupWord.setThreshold(1);
+      runOnUiThread(() -> lookupWord.setAdapter(new ArrayAdapter<>(this, android.R.layout.select_dialog_item,
+              Arrays.asList(words))));
+      setAutocompleteListener();
     });
   }
 
-  public void deletedWordsActivity(View view) {
-    Intent intent = new Intent(this, OfflineAndDeletedWordsActivity.class);
-    intent.putExtra(FILE_NAME, "deletedwords.txt");
-    intent.putExtra(WIPEOUT_DATA_BUTTON, true);
-    startActivity(intent);
+  private void setAutocompleteListener() {
+    lookupWord.setOnItemClickListener((adapterViewParent, view, position, id) -> {
+      String w = (String) lookupWord.getAdapter().getItem(position);
+      runOnUiThread(() -> listView.setAdapter(new ArrayAdapter<>(context, R.layout.custom_layout, new String[]{w})));
+    });
   }
 
   private void setListener() {
@@ -64,11 +72,27 @@ public class MainActivity5 extends AppCompatActivity {
         writeToTextFile(word);
         deleteFromDb(word);
         deleteWordFromAutoComplete(word);
+        restoreAutocompleteBox();
       } catch (Exception exc) {
         Optional.of(exc).ifPresent(e -> runOnUiThread(() -> listView.setAdapter(new ArrayAdapter<>(context,
                 R.layout.custom_layout, new String[]{word, ExceptionUtils.getStackTrace(e)}))));
       }
     });
+  }
+
+  private void restoreAutocompleteBox() {
+    runOnUiThread(() -> {
+      lookupWord.setAdapter(new ArrayAdapter<>(this, android.R.layout.select_dialog_item, words));
+      lookupWord.setText(null);
+      lookupWord.setHint("Enter a word to delete");
+    });
+  }
+
+  public void deletedWordsActivity(View view) {
+    Intent intent = new Intent(this, OfflineAndDeletedWordsActivity.class);
+    intent.putExtra(FILE_NAME, "deletedwords.txt");
+    intent.putExtra(WIPEOUT_DATA_BUTTON, true);
+    startActivity(intent);
   }
 
   @SuppressLint("NewApi")

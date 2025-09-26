@@ -40,8 +40,8 @@ public class Repository {
     @Override
     public WordEntity put(String key, WordEntity value) {
       if (containsKey(key)) {
-        throw new RuntimeException(
-                "yeah we don't allow no god-damn duplicates: " + value + ". Previous entry: " + get(key));
+        throw new RuntimeException("yeah we don't allow no god-damn duplicates: " + value + ". Previous entry: " +
+                get(key));
       }
       return super.put(key, value);
     }
@@ -101,7 +101,7 @@ public class Repository {
 
   @SuppressLint("NewApi")
   public DBResult upsert(String word) {
-    word = word.toLowerCase();
+    word = word.toLowerCase().strip();
     DBResult dbResult;
     String currentTime = formatter.format(Instant.now(Clock.system(ZoneId.of(CHICAGO))));
     WordEntity wordEntity;

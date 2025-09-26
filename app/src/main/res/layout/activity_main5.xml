@@ -8,15 +8,13 @@
 
     <ListView
         android:id="@+id/wordsList"
-        android:layout_width="315dp"
-        android:layout_height="546dp"
+        android:layout_width="316dp"
+        android:layout_height="486dp"
         android:layout_weight="1"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.504"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.753" />
+        app:layout_constraintTop_toTopOf="parent" />
 
     <Button
         android:id="@+id/deletedWordsActivity"
@@ -30,5 +28,23 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintVertical_bias="0.0" />
+
+    <AutoCompleteTextView
+        android:id="@+id/deleteWordBox"
+        android:layout_width="339dp"
+        android:layout_height="66dp"
+        android:ems="10"
+        android:focusable="true"
+        android:hint="Enter a word to delete..."
+        android:clickable="true"
+        android:imeOptions="actionSearch"
+        android:inputType="text"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.505"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.952" >
+    </AutoCompleteTextView>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
