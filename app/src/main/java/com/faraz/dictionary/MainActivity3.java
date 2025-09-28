@@ -2,7 +2,6 @@ package com.faraz.dictionary;
 
 import static android.widget.Toast.LENGTH_LONG;
 import static android.widget.Toast.LENGTH_SHORT;
-import static com.faraz.dictionary.CollectionOptional.ofEmptyable;
 import static java.lang.Integer.parseInt;
 import static java.lang.String.format;
 import static java.util.concurrent.CompletableFuture.runAsync;
@@ -23,14 +22,10 @@ import android.widget.Toast;
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
-import org.apache.commons.lang3.ArrayUtils;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import java.util.Properties;
 
 public class MainActivity3 extends AppCompatActivity {
@@ -53,6 +48,7 @@ public class MainActivity3 extends AppCompatActivity {
     context = getBaseContext();
     properties = properties();
     listView = findViewById(R.id.wordsList);
+    setWordsListListener();
     remindedWordCountView = findViewById(R.id.remindedWordsCount);
     repository = new Repository();
     toggleButtons(false);
@@ -60,7 +56,7 @@ public class MainActivity3 extends AppCompatActivity {
     runOnUiThread(() -> listView.setAdapter(new ArrayAdapter<>(context, R.layout.custom_layout, new String[0])));
     runAsync(() -> {
       try {
-        fetchWordsOr(true, Collections.emptyList());
+        fetchWords();
         toggleButtons(true);
       } catch (Exception e) {
         Log.e(activity, e.getLocalizedMessage(), e);
@@ -69,24 +65,23 @@ public class MainActivity3 extends AppCompatActivity {
     });
   }
 
+  private void setWordsListListener() {
+    listView.setOnItemClickListener((parent, view, position, id) -> {
+      String word = (String) listView.getAdapter().getItem(position);
+      Uri uri = Uri.parse(format("https://www.google.com/search?q=define: %s", word));
+      startActivity(new Intent(Intent.ACTION_VIEW, uri));
+    });
+  }
+
   @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
   @SuppressLint("SetTextI18n")
-  private void fetchWordsOr(boolean setItemClickListener, List<String> showWords) {
-    words = ofEmptyable(showWords).orElseGet(
-                    () -> repository.getWordsForReminder(parseInt(properties.getProperty(NUMBER_OF_WORDS_TO_SHOW))))
+  private void fetchWords() {
+    words = repository.getWordsForReminder(parseInt(properties.getProperty(NUMBER_OF_WORDS_TO_SHOW)))
             .toArray(new String[0]);
-    ArrayUtils.reverse(words);
     ArrayAdapter<String> adapter = new ArrayAdapter<>(context, R.layout.custom_layout, words);
     runOnUiThread(() -> listView.setAdapter(adapter));
-    if (setItemClickListener) {
-      listView.setOnItemClickListener((parent, view, position, id) -> {
-        String word = (String) listView.getAdapter().getItem(position);
-        Uri uri = Uri.parse(format("https://www.google.com/search?q=define: %s", word));
-        startActivity(new Intent(Intent.ACTION_VIEW, uri));
-      });
-    }
-    String remindedWordCount = Optional.of(repository.getRemindedCount()).filter(count -> count > 0)
-            .map(String::valueOf).orElse("Can't find none.");
+    String remindedWordCount = repository.getRemindedCount() == repository.getLength() ? "All" :
+            String.valueOf(repository.getRemindedCount());
     runOnUiThread(() -> remindedWordCountView.setText(format("'%s' words have been marked as reminded.",
             remindedWordCount)));
   }
@@ -104,10 +99,10 @@ public class MainActivity3 extends AppCompatActivity {
     runOnUiThread(() -> listView.setAdapter(new ArrayAdapter<>(context, R.layout.custom_layout, new String[0])));
     runAsync(() -> {
       try {
-        List<String> words = repository.getByRemindedTime(parseInt(properties.getProperty(NUMBER_OF_WORDS_TO_SHOW)));
-        repository.unsetRemindedTime(words);
+        List<String> _words = repository.getByRemindedTime(parseInt(properties.getProperty(NUMBER_OF_WORDS_TO_SHOW)));
+        repository.unsetRemindedTime(_words);
         clearWords();
-        fetchWordsOr(false, words);
+        fetchWords();
         toggleButtons(true);
       } catch (Exception e) {
         runOnUiThread(() -> Toast.makeText(context, "Not sure what went wrong.", LENGTH_LONG).show());
@@ -125,7 +120,7 @@ public class MainActivity3 extends AppCompatActivity {
       try {
         repository.markAsReminded(Arrays.asList(words));
         clearWords();
-        fetchWordsOr(false, Collections.emptyList());
+        fetchWords();
         toggleButtons(true);
       } catch (Exception e) {
         Log.e(activity, e.getLocalizedMessage(), e);

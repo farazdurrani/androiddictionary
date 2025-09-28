@@ -11,6 +11,7 @@ import android.annotation.SuppressLint;
 import android.os.Build;
 import android.util.Base64;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 
@@ -26,38 +27,40 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 
+@SuppressLint("NewApi")
+@RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
 public class Repository {
   private static final String CRLF = "\r\n";
   private static final String EMPTY_STRING = "";
   private static final Map<String, WordEntity> inMemoryDb = new LinkedHashMap<>() {
-    @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
+
     @Nullable
     @Override
     public WordEntity put(String key, WordEntity value) {
       key = Optional.ofNullable(key).map(String::toLowerCase).map(String::strip).orElseThrow();
       if (containsKey(key)) {
-        throw new RuntimeException("yeah we don't allow no god-damn duplicates: " + value + ". Previous entry: " +
-                get(key));
+        throw new RuntimeException(
+                "yeah we don't allow no god-damn duplicates: " + value + ". Previous entry: " + get(key));
       }
       return super.put(key, value);
     }
   };
   private static final String filename = "inmemorydb.json";
   private static final Predicate<WordEntity> REMINDED_TIME_IS_ABSENT_PREDICATE = we -> we.getRemindedTime() == null;
+  private static final ZoneId CHICAGO_ZONE_ID = ZoneId.of(CHICAGO);
   private final ObjectMapper objectMapper = new ObjectMapper();
   private final TypeFactory typeFactory = objectMapper.getTypeFactory();
   private final FileService fileService;
   private final String email;
   private final String password;
-  @SuppressLint("NewApi")
-  private final DateTimeFormatter formatter = DateTimeFormatter.ISO_INSTANT;
+  private final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ISO_INSTANT;
 
   public Repository(String... creds) {
     this.email = creds.length > 0 ? creds[0] : EMPTY_STRING;
@@ -70,7 +73,6 @@ public class Repository {
    * This repo is initialized automatically at startup and is initialized exactly once no matter how many times the
    * constructor is invoked.
    */
-  @SuppressLint("NewApi")
   private void init() {
     // halt erroneous attempt to re-init repository;
     if (!inMemoryDb.isEmpty()) {
@@ -102,16 +104,15 @@ public class Repository {
     return inMemoryDb.size();
   }
 
-  @SuppressLint("NewApi")
   public DBResult upsert(String word) {
-    String currentTime = formatter.format(Instant.now(Clock.system(ZoneId.of(CHICAGO))));
-    WordEntity wordEntity = inMemoryDb.remove(word);
+    String currentTime = DATE_TIME_FORMATTER.format(Instant.now(Clock.system(CHICAGO_ZONE_ID)));
+    WordEntity wordEntity = inMemoryDb.get(word);
     if (wordEntity != null) {
       wordEntity.setRemindedTime(currentTime);
     } else {
       wordEntity = new WordEntity(word, currentTime, null);
+      inMemoryDb.put(word, wordEntity);
     }
-    inMemoryDb.put(word, wordEntity);
     flush();
     return wordEntity.getRemindedTime() == null ? DBResult.INSERT : DBResult.UPDATE;
   }
@@ -142,23 +143,21 @@ public class Repository {
     return inMemoryDb.values().stream().filter(REMINDED_TIME_IS_ABSENT_PREDICATE.negate()).count();
   }
 
-  @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
   public void unsetRemindedTime(List<String> words) {
-    words.forEach(w -> Optional.ofNullable(inMemoryDb.remove(w)).map(this::unsetRemindedTime)
-            .ifPresent(x -> inMemoryDb.put(x.getWord(), x)));
+    words.forEach(w -> Optional.ofNullable(inMemoryDb.get(w)).map(this::unsetRemindedTime)
+            .orElseThrow(throwKeyNotFoundException(w)));
     flush();
   }
 
-  @RequiresApi(api = Build.VERSION_CODES.O)
   public void markAsReminded(List<String> words) {
-    words.forEach(w -> Optional.ofNullable(inMemoryDb.remove(w)).map(this::setRemindedTime)
-            .ifPresent(x -> inMemoryDb.put(x.getWord(), x)));
+    words.forEach(w -> Optional.ofNullable(inMemoryDb.get(w)).map(this::setRemindedTime)
+            .orElseThrow(throwKeyNotFoundException(w)));
     flush();
   }
 
   public List<String> getByRemindedTime(int limit) {
     return inMemoryDb.values().stream().filter(we -> we.getRemindedTime() != null)
-            .sorted(Comparator.comparing(WordEntity::getRemindedTime).reversed()).limit(limit)
+            .sorted((w1, w2) -> toDateRemindedTime(w2).compareTo(toDateRemindedTime(w1))).limit(limit)
             .map(WordEntity::getWord).collect(toList());
   }
 
@@ -177,9 +176,8 @@ public class Repository {
     });
   }
 
-  @RequiresApi(api = Build.VERSION_CODES.O)
   private WordEntity setRemindedTime(WordEntity wordEntity) {
-    String currentTime = formatter.format(Instant.now(Clock.system(ZoneId.of(CHICAGO))));
+    String currentTime = DATE_TIME_FORMATTER.format(Instant.now(Clock.system(CHICAGO_ZONE_ID)));
     wordEntity.setRemindedTime(currentTime);
     return wordEntity;
   }
@@ -191,5 +189,14 @@ public class Repository {
 
   private String clearNewLines(String source) {
     return source.replaceAll(CRLF, EMPTY_STRING).replaceAll(lineSeparator(), EMPTY_STRING);
+  }
+
+  @NonNull
+  private Supplier<RuntimeException> throwKeyNotFoundException(String w) {
+    return () -> new RuntimeException(w + " is absent.");
+  }
+
+  private Instant toDateRemindedTime(WordEntity w) {
+    return Instant.parse(w.getRemindedTime());
   }
 }

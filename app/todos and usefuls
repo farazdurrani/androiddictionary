@@ -67,3 +67,25 @@ MainActivity5 (done)
 
 to use smaller string json
 json = "[{\"word\": \"varnish\",   \"lookupTime\": \"2025-09-05T09:23:28.525Z\"}]"
+
+to use to test markWordsAsReminded and undoRemind
+                        "[{\"lookupTime\":\"2022-04-12T09:28:22.076Z\",\"remindedTime\":\"1970-01-03T00:00:00.000Z\",\"word\":\"11\"}," +
+                        "{\"lookupTime\":\"2022-04-12T09:29:22.076Z\",\"remindedTime\":\"1970-01-09T00:00:00.000Z\",\"word\":\"12\"}," +
+                        "{\"lookupTime\":\"2022-04-12T09:30:22.076Z\",\"remindedTime\":\"1970-02-11T00:00:00.000Z\",\"word\":\"13\"}," +
+                        "{\"lookupTime\":\"2022-04-12T09:31:22.076Z\",\"remindedTime\":\"1970-04-05T00:00:00.000Z\",\"word\":\"14\"}," +
+                        "{\"lookupTime\":\"2022-04-12T09:32:22.076Z\",\"remindedTime\":\"1970-04-06T00:00:00.000Z\",\"word\":\"15\"}," +
+                        "{\"lookupTime\":\"2022-04-12T09:33:22.076Z\",\"remindedTime\":\"1970-05-04T00:00:00.000Z\",\"word\":\"16\"}," +
+                        "{\"lookupTime\":\"2022-04-12T09:34:22.076Z\",\"remindedTime\":\"1970-08-04T00:00:00.000Z\",\"word\":\"17\"}," +
+                        "{\"lookupTime\":\"2022-04-12T09:35:22.076Z\",\"remindedTime\":\"1970-09-07T00:00:00.000Z\",\"word\":\"18\"}," +
+                        "{\"lookupTime\":\"2022-04-12T09:36:22.076Z\",\"remindedTime\":\"1970-10-08T00:00:00.000Z\",\"word\":\"19\"}," +
+                        "{\"lookupTime\":\"2022-04-12T09:37:22.076Z\",\"remindedTime\":\"1970-10-10T00:00:00.000Z\",\"word\":\"20\"}," +
+                        "{\"lookupTime\":\"2023-10-14T17:50:42.344Z\",\"remindedTime\":null,\"word\":\"1\"}," +
+                        "{\"lookupTime\":\"2023-10-14T17:55:01.369Z\",\"remindedTime\":null,\"word\":\"2\"}," +
+                        "{\"lookupTime\":\"2023-10-14T17:55:12.907Z\",\"remindedTime\":null,\"word\":\"3\"}," +
+                        "{\"lookupTime\":\"2023-10-14T17:58:11.739Z\",\"remindedTime\":null,\"word\":\"4\"}," +
+                        "{\"lookupTime\":\"2023-10-14T18:00:13.594Z\",\"remindedTime\":null,\"word\":\"5\"}," +
+                        "{\"lookupTime\":\"2023-10-14T18:00:43.178Z\",\"remindedTime\":null,\"word\":\"6\"}," +
+                        "{\"lookupTime\":\"2023-10-14T18:00:57.420Z\",\"remindedTime\":null,\"word\":\"7\"}," +
+                        "{\"lookupTime\":\"2023-10-14T18:10:19.802Z\",\"remindedTime\":null,\"word\":\"8\"}," +
+                        "{\"lookupTime\":\"2023-10-14T18:16:36.936Z\",\"remindedTime\":null,\"word\":\"9\"}," +
+                        "{\"lookupTime\":\"2023-10-14T18:17:12.862Z\",\"remindedTime\":null,\"word\":\"10\"}]";

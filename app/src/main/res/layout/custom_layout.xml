@@ -3,5 +3,5 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:textSize="28dp"
-    android:textColor="@color/white"
+    android:textColor="@color/teal_200"
     android:textFontWeight="700"/>
