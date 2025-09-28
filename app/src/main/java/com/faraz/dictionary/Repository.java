@@ -33,6 +33,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 @SuppressLint("NewApi")
 @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
@@ -157,8 +158,9 @@ public class Repository {
 
   public List<String> getByRemindedTime(int limit) {
     return inMemoryDb.values().stream().filter(we -> we.getRemindedTime() != null)
-            .sorted((w1, w2) -> toDateRemindedTime(w2).compareTo(toDateRemindedTime(w1))).limit(limit)
-            .map(WordEntity::getWord).collect(toList());
+            .sorted((w1, w2) -> toDateRemindedTime(w2).compareTo(toDateRemindedTime(w1)))
+            .collect(Collectors.toList()).stream().map(WordEntity::getWord).limit(limit).collect(Collectors.toList());
+    //need to open collect'em twice and then apply limit on the last one.
   }
 
   public void remove(String word) {
