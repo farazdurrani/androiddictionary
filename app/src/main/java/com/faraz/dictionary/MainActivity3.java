@@ -56,7 +56,8 @@ public class MainActivity3 extends AppCompatActivity {
     runOnUiThread(() -> listView.setAdapter(new ArrayAdapter<>(context, R.layout.custom_layout, new String[0])));
     runAsync(() -> {
       try {
-        fetchWords();
+        List<String> _words = repository.getWordsForReminder(parseInt(properties.getProperty(NUMBER_OF_WORDS_TO_SHOW)));
+        showWordsAndCount(_words);
         toggleButtons(true);
       } catch (Exception e) {
         Log.e(activity, e.getLocalizedMessage(), e);
@@ -75,9 +76,8 @@ public class MainActivity3 extends AppCompatActivity {
 
   @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
   @SuppressLint("SetTextI18n")
-  private void fetchWords() {
-    words = repository.getWordsForReminder(parseInt(properties.getProperty(NUMBER_OF_WORDS_TO_SHOW)))
-            .toArray(new String[0]);
+  private void showWordsAndCount(List<String> _words) {
+    words = _words.toArray(new String[0]);
     ArrayAdapter<String> adapter = new ArrayAdapter<>(context, R.layout.custom_layout, words);
     runOnUiThread(() -> listView.setAdapter(adapter));
     String remindedWordCount = repository.getRemindedCount() == repository.getLength() ? "All" :
@@ -102,7 +102,7 @@ public class MainActivity3 extends AppCompatActivity {
         List<String> _words = repository.getByRemindedTime(parseInt(properties.getProperty(NUMBER_OF_WORDS_TO_SHOW)));
         repository.unsetRemindedTime(_words);
         clearWords();
-        fetchWords();
+        showWordsAndCount(_words);
         toggleButtons(true);
       } catch (Exception e) {
         runOnUiThread(() -> Toast.makeText(context, "Not sure what went wrong.", LENGTH_LONG).show());
@@ -120,7 +120,8 @@ public class MainActivity3 extends AppCompatActivity {
       try {
         repository.markAsReminded(Arrays.asList(words));
         clearWords();
-        fetchWords();
+        List<String> _words = repository.getWordsForReminder(parseInt(properties.getProperty(NUMBER_OF_WORDS_TO_SHOW)));
+        showWordsAndCount(_words);
         toggleButtons(true);
       } catch (Exception e) {
         Log.e(activity, e.getLocalizedMessage(), e);

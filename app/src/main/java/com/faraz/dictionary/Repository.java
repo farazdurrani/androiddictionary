@@ -19,6 +19,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 
+import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 
@@ -27,6 +28,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -56,6 +58,7 @@ public class Repository {
   private static final String filename = "inmemorydb.json";
   private static final Predicate<WordEntity> REMINDED_TIME_IS_ABSENT_PREDICATE = we -> we.getRemindedTime() == null;
   private static final ZoneId CHICAGO_ZONE_ID = ZoneId.of(CHICAGO);
+  private static boolean initialized = false;
   private final ObjectMapper objectMapper = new ObjectMapper();
   private final TypeFactory typeFactory = objectMapper.getTypeFactory();
   private final FileService fileService;
@@ -76,20 +79,24 @@ public class Repository {
    */
   private void init() {
     // halt erroneous attempt to re-init repository;
-    if (!inMemoryDb.isEmpty()) {
+    if (initialized) {
       System.out.println("Yeah we ain't initializing again.");
       return;
     }
     runAsync(() -> {
       try {
-        String json = clearNewLines(new String(fileService.readFileAsByte()));
+        String json = stripLines(new String(fileService.readFileAsByte()));
         if (StringUtils.isBlank(json)) {
-          json = CompressUtil.decompress(Base64.decode(clearNewLines(readMail(email, password)), Base64.DEFAULT));
-          fileService.writeFileExternalStorage(false, json);
+          json = stripLines(readMail(email, password));
+          if (StringUtils.isNotBlank(json)) {
+            json = CompressUtil.decompress(Base64.decode(json, Base64.DEFAULT));
+            fileService.writeFileExternalStorage(false, json);
+          }
         }
-        List<WordEntity> wordEntities = objectMapper.readValue(json, typeFactory.constructCollectionType(List.class,
-                WordEntity.class));
+        List<WordEntity> wordEntities = StringUtils.isNotBlank(json) ? objectMapper.readValue(json,
+                typeFactory.constructCollectionType(List.class, WordEntity.class)) : Collections.emptyList();
         wordEntities.forEach(we -> inMemoryDb.put(we.getWord(), we));
+        Optional.of(inMemoryDb).map(ObjectUtils::isNotEmpty).ifPresent(bool -> initialized = bool);
       } catch (Exception e) {
         e.printStackTrace();
         throw new RuntimeException(e);
@@ -159,8 +166,7 @@ public class Repository {
   public List<String> getByRemindedTime(int limit) {
     return inMemoryDb.values().stream().filter(we -> we.getRemindedTime() != null)
             .sorted((w1, w2) -> toDateRemindedTime(w2).compareTo(toDateRemindedTime(w1)))
-            .collect(Collectors.toList()).stream().map(WordEntity::getWord).limit(limit).collect(Collectors.toList());
-    //need to open collect'em twice and then apply limit on the last one.
+            .map(WordEntity::getWord).limit(limit).collect(Collectors.toList());
   }
 
   public void remove(String word) {
@@ -189,8 +195,9 @@ public class Repository {
     return wordEntity;
   }
 
-  private String clearNewLines(String source) {
-    return source.replaceAll(CRLF, EMPTY_STRING).replaceAll(lineSeparator(), EMPTY_STRING);
+  private String stripLines(String source) {
+    return StringUtils.isNotBlank(source) ? source.replaceAll(CRLF, EMPTY_STRING).replaceAll(lineSeparator(),
+            EMPTY_STRING) : EMPTY_STRING;
   }
 
   @NonNull
