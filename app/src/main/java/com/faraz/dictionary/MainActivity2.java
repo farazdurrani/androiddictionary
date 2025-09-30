@@ -186,8 +186,8 @@ public class MainActivity2 extends AppCompatActivity {
     try {
       String fullData = Base64.encodeToString(CompressUtil.compress(repository.getValuesAsAString()), Base64.DEFAULT);
       List<String> justWordsWithCount = ImmutableList.<String>builder().add(String.format("Total Count: '%d'.",
-                      repository.getLength())).addAll(repository.getWords().stream().map(this::anchor)
-                      .collect(Collectors.toList())).build();
+              repository.getLength())).addAll(ImmutableList.<String>builder().addAll(repository.getWords().stream()
+              .map(this::anchor).collect(Collectors.toList())).build().reverse()).build();
       Stream.of(fullData, addDivStyling(justWordsWithCount)).forEach(this::sendBackupEmail);
     } catch (Exception e) {
       Log.e(activity.getClass().getSimpleName(), e.getLocalizedMessage(), e);
