@@ -1,7 +1,6 @@
 package com.faraz.dictionary;
 
 import static com.faraz.dictionary.Completable.runAsync;
-import static com.faraz.dictionary.Completable.runSync;
 import static com.faraz.dictionary.JavaMailRead.readMail;
 import static com.faraz.dictionary.MainActivity.CHICAGO;
 import static java.lang.System.lineSeparator;
@@ -33,6 +32,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -49,8 +49,8 @@ public class Repository {
     public WordEntity put(String key, WordEntity value) {
       key = Optional.ofNullable(key).map(String::toLowerCase).map(String::strip).orElseThrow();
       if (containsKey(key)) {
-        throw new RuntimeException(
-                "yeah we don't allow no god-damn duplicates: " + value + ". Previous entry: " + get(key));
+        throw new RuntimeException("yeah we don't do no god-damn duplicates: " + value + ". Previous entry: " +
+                get(key));
       }
       return super.put(key, value);
     }
@@ -176,7 +176,7 @@ public class Repository {
   }
 
   private void flush() {
-    runSync(() -> {
+    CompletableFuture.runAsync(() -> {
       try {
         fileService.writeFileExternalStorage(false, objectMapper.writeValueAsString(inMemoryDb.values()));
       } catch (JsonProcessingException e) {
