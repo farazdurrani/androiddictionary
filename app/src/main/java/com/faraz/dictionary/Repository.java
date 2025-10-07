@@ -3,7 +3,6 @@ package com.faraz.dictionary;
 import static com.faraz.dictionary.Completable.runAsync;
 import static com.faraz.dictionary.JavaMailRead.readMail;
 import static com.faraz.dictionary.MainActivity.CHICAGO;
-import static java.lang.System.lineSeparator;
 import static java.util.stream.Collectors.toList;
 
 import android.annotation.SuppressLint;
@@ -95,7 +94,7 @@ public class Repository {
         }
         List<WordEntity> wordEntities = StringUtils.isNotBlank(json) ? objectMapper.readValue(json,
                 typeFactory.constructCollectionType(List.class, WordEntity.class)) : Collections.emptyList();
-        wordEntities.forEach(we -> inMemoryDb.put(we.getWord(), we));
+        wordEntities.forEach(we -> inMemoryDb.put(we.getWord(), stripWhiteSpaces(we)));
         Optional.of(inMemoryDb).map(ObjectUtils::isNotEmpty).ifPresent(bool -> initialized = bool);
       } catch (Exception e) {
         e.printStackTrace();
@@ -197,8 +196,7 @@ public class Repository {
   }
 
   private String stripLines(String source) {
-    return StringUtils.isNotBlank(source) ? source.replaceAll(CRLF, EMPTY_STRING).replaceAll(lineSeparator(),
-            EMPTY_STRING) : EMPTY_STRING;
+    return StringUtils.isNotBlank(source) ? StringUtils.strip(source) : EMPTY_STRING;
   }
 
   @NonNull
@@ -208,5 +206,9 @@ public class Repository {
 
   private Instant toDateRemindedTime(WordEntity w) {
     return Instant.parse(w.getRemindedTime());
+  }
+
+  private WordEntity stripWhiteSpaces(WordEntity we) {
+    return new WordEntity(StringUtils.strip(we.getWord()), we.getLookupTime(), we.getRemindedTime());
   }
 }
