@@ -24,6 +24,7 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
@@ -35,6 +36,7 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.android.volley.RequestQueue;
@@ -48,6 +50,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.json.JSONArray;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -61,8 +64,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
+@RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
 public class MainActivity extends AppCompatActivity {
-
   public static final String FILE_NAME = "FILE_NAME";
   public static final List<String> AUTO_COMPLETE_WORDS_REMOVE = new ArrayList<>();
   public static final Consumer<Object> NOOP = ignore -> {
@@ -108,7 +111,8 @@ public class MainActivity extends AppCompatActivity {
     offlineActivityButton = findViewById(R.id.offlineActivity);
     offlineActivityButton.setVisibility(INVISIBLE);
     context = getBaseContext();
-    offlineWordsFileService = new FileService("offlinewords.txt", getExternalFilesDir(null).getAbsolutePath());
+    offlineWordsFileService = new FileService("offlinewords.txt", Optional.ofNullable(getExternalFilesDir(null))
+            .map(File::getAbsolutePath).orElseThrow());
     lookupWord = findViewById(R.id.wordBox);
     lookupWord.setThreshold(1);
     lookupWord.setAdapter(new ArrayAdapter<>(this, android.R.layout.select_dialog_item, AUTO_COMPLETE_WORDS));

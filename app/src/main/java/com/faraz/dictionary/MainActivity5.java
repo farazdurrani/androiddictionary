@@ -24,7 +24,7 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import java.util.Arrays;
 import java.util.Optional;
 
-@RequiresApi(api = Build.VERSION_CODES.O)
+@RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
 public class MainActivity5 extends AppCompatActivity {
 
   public static final String WIPEOUT_DATA_BUTTON = "WIPEOUT_DATA_BUTTON";
@@ -99,7 +99,7 @@ public class MainActivity5 extends AppCompatActivity {
   }
 
   private void deleteFromDb(String word) {
-    repository.remove(word);
+    repository.delete(word);
     words = Arrays.stream(words).filter(w -> !w.equals(word)).toArray(String[]::new);
     ArrayAdapter<String> adapter = new ArrayAdapter<>(context, R.layout.custom_layout, words);
     runOnUiThread(() -> {

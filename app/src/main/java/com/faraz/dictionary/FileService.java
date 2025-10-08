@@ -1,7 +1,6 @@
 package com.faraz.dictionary;
 
 import static java.lang.System.lineSeparator;
-import static java.util.stream.Collectors.toList;
 
 import android.annotation.SuppressLint;
 import android.os.Build;
@@ -20,6 +19,7 @@ import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class FileService {
 
@@ -36,7 +36,7 @@ public class FileService {
       if (!Files.exists(Paths.get(externalFilesDir))) {
         Files.createDirectories(Paths.get(externalFilesDir));
       }
-      new File(externalFilesDir, filename).createNewFile();
+      boolean ignore = new File(externalFilesDir, filename).createNewFile();
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
@@ -93,7 +93,7 @@ public class FileService {
   public List<String> readFile() {
     try {
       return Files.readAllLines(Paths.get(new File(externalFilesDir, filename).toURI()))
-              .stream().distinct().collect(toList());
+              .stream().distinct().collect(Collectors.toList());
     } catch (Exception e) {
       Log.e(this.getClass().getSimpleName(), "Error", e);
       return Collections.emptyList();
