@@ -2,7 +2,6 @@ package com.faraz.dictionary;
 
 import static android.widget.Toast.LENGTH_LONG;
 import static android.widget.Toast.LENGTH_SHORT;
-import static com.faraz.dictionary.OfflineAndDeletedWordsActivity.addDivStyling;
 import static com.mailjet.client.transactional.response.SentMessageStatus.SUCCESS;
 import static org.apache.commons.text.WordUtils.capitalize;
 import static java.lang.String.format;
@@ -41,10 +40,10 @@ import java.io.InputStream;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import okhttp3.OkHttpClient;
 
@@ -184,11 +183,14 @@ public class MainActivity2 extends AppCompatActivity {
 
   private void backupData() {
     try {
-      String fullData = Base64.encodeToString(CompressUtil.compress(repository.getValuesAsAString()), Base64.DEFAULT);
-      List<String> justWordsWithCount = ImmutableList.<String>builder().add(String.format("Total Count: '%d'.",
-              repository.getLength())).addAll(ImmutableList.<String>builder().addAll(repository.getWords().stream()
-              .map(this::anchor).collect(Collectors.toList())).build().reverse()).build();
-      Stream.of(fullData, addDivStyling(justWordsWithCount)).forEach(this::sendBackupEmail);
+      CompletableFuture<String> fullDataCF = CompletableFuture.supplyAsync(() ->
+              Base64.encodeToString(CompressUtil.compress(repository.getValuesAsAString()), Base64.DEFAULT));
+      CompletableFuture<String> justWordsWithCountAndStylingCF = CompletableFuture.supplyAsync(() ->
+                      ImmutableList.<String>builder().add(String.format("Total Count: '%d'.", repository.getLength()))
+                              .addAll(ImmutableList.<String>builder().addAll(repository.getWords().stream()
+                                      .map(this::anchor).collect(Collectors.toList())).build().reverse()).build())
+              .thenApply(OfflineAndDeletedWordsActivity::addDivStyling);
+      fullDataCF.thenCombine(justWordsWithCountAndStylingCF, List::of).join().forEach(this::sendBackupEmail);
     } catch (Exception e) {
       Log.e(activity.getClass().getSimpleName(), e.getLocalizedMessage(), e);
       runOnUiThread(() -> Toast.makeText(MainActivity2.this, ExceptionUtils.getStackTrace(e), LENGTH_LONG).show());
