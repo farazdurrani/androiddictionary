@@ -46,6 +46,7 @@ import com.android.volley.toolbox.Volley;
 import com.github.wnameless.json.flattener.JsonFlattener;
 
 import org.apache.commons.lang3.BooleanUtils;
+import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.json.JSONArray;
@@ -96,6 +97,11 @@ public class MainActivity extends AppCompatActivity {
     if (!AUTO_COMPLETE_WORDS_REMOVE.isEmpty()) {
       runOnUiThread(() -> lookupWord.setHint(EMPTY));
       AUTO_COMPLETE_WORDS.removeAll(AUTO_COMPLETE_WORDS_REMOVE);
+      List<String> offlineWords = offlineWordsFileService.readFile();
+      offlineWords.removeAll(AUTO_COMPLETE_WORDS_REMOVE);
+      Optional.of(offlineWords).filter(ObjectUtils::isNotEmpty)
+              .ifPresentOrElse(ow -> offlineWordsFileService.writeFileExternalStorage(false,
+                      String.join(lineSeparator(), ow)), () -> offlineWordsFileService.clearFile());
       AUTO_COMPLETE_WORDS_REMOVE.clear();
       runOnUiThread(() -> lookupWord.setAdapter(new ArrayAdapter<>(this, android.R.layout.select_dialog_item,
               AUTO_COMPLETE_WORDS)));
