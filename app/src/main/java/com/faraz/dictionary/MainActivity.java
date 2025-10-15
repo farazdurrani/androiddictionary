@@ -56,6 +56,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -98,10 +99,12 @@ public class MainActivity extends AppCompatActivity {
       runOnUiThread(() -> lookupWord.setHint(EMPTY));
       AUTO_COMPLETE_WORDS.removeAll(AUTO_COMPLETE_WORDS_REMOVE);
       List<String> offlineWords = offlineWordsFileService.readFile();
-      offlineWords.removeAll(AUTO_COMPLETE_WORDS_REMOVE);
-      Optional.of(offlineWords).filter(ObjectUtils::isNotEmpty)
-              .ifPresentOrElse(ow -> offlineWordsFileService.writeFileExternalStorage(false,
-                      String.join(lineSeparator(), ow)), () -> offlineWordsFileService.clearFile());
+      if (!Collections.disjoint(offlineWords, AUTO_COMPLETE_WORDS)) {
+        offlineWords.removeAll(AUTO_COMPLETE_WORDS_REMOVE);
+        Optional.of(offlineWords).filter(ObjectUtils::isNotEmpty)
+                .ifPresentOrElse(ow -> offlineWordsFileService.writeFileExternalStorage(false,
+                        String.join(lineSeparator(), ow)), () -> offlineWordsFileService.clearFile());
+      }
       AUTO_COMPLETE_WORDS_REMOVE.clear();
       runOnUiThread(() -> lookupWord.setAdapter(new ArrayAdapter<>(this, android.R.layout.select_dialog_item,
               AUTO_COMPLETE_WORDS)));
