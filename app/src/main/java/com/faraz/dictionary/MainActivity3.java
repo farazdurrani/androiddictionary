@@ -3,7 +3,6 @@ package com.faraz.dictionary;
 import static android.widget.Toast.LENGTH_LONG;
 import static android.widget.Toast.LENGTH_SHORT;
 import static java.lang.Integer.parseInt;
-import static java.util.concurrent.CompletableFuture.runAsync;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
@@ -28,6 +27,7 @@ import java.math.RoundingMode;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.CompletableFuture;
 
 public class MainActivity3 extends AppCompatActivity {
 
@@ -56,7 +56,7 @@ public class MainActivity3 extends AppCompatActivity {
     toggleButtons(false);
     runOnUiThread(() -> remindedWordCountView.setText("Loading..."));
     runOnUiThread(() -> listView.setAdapter(new ArrayAdapter<>(context, R.layout.custom_layout, new String[0])));
-    runAsync(() -> {
+    CompletableFuture.runAsync(() -> {
       try {
         List<String> _words = repository.getWordsForReminder(parseInt(properties.getProperty(NUMBER_OF_WORDS_TO_SHOW)));
         showWordsAndCount(_words);
@@ -100,17 +100,16 @@ public class MainActivity3 extends AppCompatActivity {
     toggleButtons(false);
     runOnUiThread(() -> remindedWordCountView.setText("Loading..."));
     runOnUiThread(() -> listView.setAdapter(new ArrayAdapter<>(context, R.layout.custom_layout, new String[0])));
-    runAsync(() -> {
+    CompletableFuture.runAsync(() -> {
       try {
         List<String> _words = repository.getByRemindedTime(parseInt(properties.getProperty(NUMBER_OF_WORDS_TO_SHOW)));
         repository.unsetRemindedTime(_words);
         clearWords();
         showWordsAndCount(_words);
-        toggleButtons(true);
       } catch (Exception e) {
         runOnUiThread(() -> Toast.makeText(context, "Not sure what went wrong.", LENGTH_LONG).show());
       }
-    });
+    }).thenRun(this::sleepThenEnableButtons);
   }
 
   @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
@@ -119,18 +118,17 @@ public class MainActivity3 extends AppCompatActivity {
     toggleButtons(false);
     runOnUiThread(() -> remindedWordCountView.setText("Loading..."));
     runOnUiThread(() -> listView.setAdapter(new ArrayAdapter<>(context, R.layout.custom_layout, new String[0])));
-    runAsync(() -> {
+    CompletableFuture.runAsync(() -> {
       try {
         repository.markAsReminded(Arrays.asList(words));
         clearWords();
         List<String> _words = repository.getWordsForReminder(parseInt(properties.getProperty(NUMBER_OF_WORDS_TO_SHOW)));
         showWordsAndCount(_words);
-        toggleButtons(true);
       } catch (Exception e) {
         Log.e(activity, e.getLocalizedMessage(), e);
         runOnUiThread(() -> Toast.makeText(context, "Not sure what went wrong.", LENGTH_LONG).show());
       }
-    });
+    }).thenRun(this::sleepThenEnableButtons);
   }
 
   private void clearWords() {
@@ -148,7 +146,21 @@ public class MainActivity3 extends AppCompatActivity {
   }
 
   public String toPercentageOf(long value, int total) {
-    return BigDecimal.valueOf(value).divide(BigDecimal.valueOf(total), 3, RoundingMode.HALF_EVEN.ordinal())
+    String perc = BigDecimal.valueOf(value).divide(BigDecimal.valueOf(total), 4, RoundingMode.HALF_EVEN.ordinal())
             .multiply(ONE_HUNDRED).toBigDecimal().toPlainString();
+    return perc.substring(0, perc.length() > 4 ? 5 : perc.length());
+  }
+
+  /**
+   * TODO: The stop-gap solution to avoid reading of the data that hasn't been written yet due to the writing of the
+   * TODO: data in an asynchronous fashion.
+   */
+  private void sleepThenEnableButtons() {
+    try {
+      Thread.sleep(1000L);
+    } catch (InterruptedException e) {
+      throw new RuntimeException(e);
+    }
+    toggleButtons(true);
   }
 }

@@ -1,6 +1,5 @@
 package com.faraz.dictionary;
 
-import static com.faraz.dictionary.Completable.runAsync;
 import static com.faraz.dictionary.JavaMailRead.readMail;
 import static com.faraz.dictionary.MainActivity.CHICAGO;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
@@ -80,7 +79,7 @@ public class Repository {
       System.out.println("Yeah we ain't initializing again.");
       return;
     }
-    runAsync(() -> {
+    Completable.runAsync(() -> {
       try {
         String json = StringUtils.strip((new String(fileService.readFileAsByte())));
         if (StringUtils.isBlank(json)) {
