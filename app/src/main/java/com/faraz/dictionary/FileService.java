@@ -13,8 +13,6 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -38,6 +36,7 @@ public class FileService {
         System.out.println("File already exists at " + file.getAbsolutePath());
       }
     } catch (IOException e) {
+      Log.e(TAG, "error...", e);
       throw new RuntimeException(e);
     }
   }
@@ -72,7 +71,7 @@ public class FileService {
       outputStream.flush();
       outputStream.close();
     } catch (Exception e) {
-      Log.e("MainActivity", "Something went wrong", e);
+      Log.e(TAG, "Something went wrong", e);
     }
   }
 
@@ -85,6 +84,7 @@ public class FileService {
     try {
       new FileOutputStream(new File(externalFilesDir, filename)).close();
     } catch (IOException e) {
+      Log.e(TAG, "error...", e);
       throw new RuntimeException(e);
     }
   }

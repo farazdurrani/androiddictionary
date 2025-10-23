@@ -179,6 +179,7 @@ public class OfflineAndDeletedWordsActivity extends AppCompatActivity {
                 LENGTH_SHORT).show());
       }
     } catch (Exception e) {
+      Log.e(TAG, "error...", e);
       throw new RuntimeException(e);
     }
   }
@@ -224,6 +225,7 @@ public class OfflineAndDeletedWordsActivity extends AppCompatActivity {
     } catch (MailjetException e) {
       runOnUiThread(() -> Toast.makeText(OfflineAndDeletedWordsActivity.this, "Error occurred while sending email.",
               LENGTH_SHORT).show());
+      Log.e(TAG, "error...", e);
     }
     return noErrors(response);
   }
@@ -242,6 +244,7 @@ public class OfflineAndDeletedWordsActivity extends AppCompatActivity {
       try (InputStream is = getBaseContext().getAssets().open("application.properties")) {
         properties.load(is);
       } catch (IOException e) {
+        Log.e(TAG, "error...", e);
         throw new RuntimeException(e);
       }
     }
