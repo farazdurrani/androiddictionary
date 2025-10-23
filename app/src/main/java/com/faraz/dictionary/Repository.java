@@ -5,6 +5,7 @@ import static com.faraz.dictionary.MainActivity.CHICAGO;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 
 import android.util.Base64;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -33,6 +34,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public class Repository {
+  private static final String TAG = Repository.class.getSimpleName();
   private static final String filename = "inmemorydb.json";
   private static final Predicate<WordEntity> REMINDED_TIME_IS_ABSENT_PREDICATE = we -> we.getRemindedTime() == null;
   private static final ZoneId CHICAGO_ZONE_ID = ZoneId.of(CHICAGO);
@@ -89,7 +91,7 @@ public class Repository {
         wordEntities.forEach(we -> inMemoryDb.put(we.getWord(), stripWhiteSpaces(we)));
         Optional.of(inMemoryDb).map(ObjectUtils::isNotEmpty).ifPresent(bool -> initialized = bool);
       } catch (Exception e) {
-        throw new RuntimeException(e);
+        Log.e(TAG, "error...", e);
       }
     });
   }

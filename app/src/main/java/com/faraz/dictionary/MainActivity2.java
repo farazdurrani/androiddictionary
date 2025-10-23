@@ -36,6 +36,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
@@ -54,7 +55,7 @@ public class MainActivity2 extends AppCompatActivity {
   public static final String JAVAMAIL_PASS = "javamail.pass";
   public static final String JAVAMAIL_FROM = "javamail.from";
   public static final String JAVAMAIL_TO = "javamail.to";
-  private static final String activity = MainActivity2.class.getSimpleName();
+  private static final String TAG = MainActivity2.class.getSimpleName();
   public static boolean defaultEmailProvider = true; //default email provider is JavaMail. Other option is MailJet.
 
   private MailjetClient mailjetClient;
@@ -158,7 +159,7 @@ public class MainActivity2 extends AppCompatActivity {
     try {
       response = request.sendWith(mailjetClient);
     } catch (MailjetException e) {
-      Log.e(activity, e.getLocalizedMessage(), e);
+      Log.e(TAG, e.getLocalizedMessage(), e);
     }
     return noErrors(response);
   }
@@ -181,13 +182,14 @@ public class MainActivity2 extends AppCompatActivity {
       CompletableFuture<String> fullDataCF = CompletableFuture.supplyAsync(() ->
               Base64.encodeToString(CompressUtil.compress(repository.getValuesAsAString()), Base64.DEFAULT));
       CompletableFuture<String> justWordsWithCountAndStylingCF = CompletableFuture.supplyAsync(() ->
-                      ImmutableList.<String>builder().add(String.format("Total Count: '%d'.", repository.getLength()))
+                      ImmutableList.<String>builder().add(String.format(Locale.US, "Total Count: '%d'.",
+                                      repository.getLength()))
                               .addAll(ImmutableList.<String>builder().addAll(repository.getWords().stream()
                                       .map(this::anchor).collect(Collectors.toList())).build().reverse()).build())
               .thenApply(OfflineAndDeletedWordsActivity::addDivStyling);
       fullDataCF.thenCombine(justWordsWithCountAndStylingCF, List::of).join().forEach(this::sendBackupEmail);
     } catch (Exception e) {
-      Log.e(activity.getClass().getSimpleName(), e.getLocalizedMessage(), e);
+      Log.e(TAG, e.getLocalizedMessage(), e);
       runOnUiThread(() -> Toast.makeText(MainActivity2.this, ExceptionUtils.getStackTrace(e), LENGTH_LONG).show());
     }
   }
@@ -201,7 +203,7 @@ public class MainActivity2 extends AppCompatActivity {
     String subject = "Words Backup.";
     try {
       if (sendEmail(subject, backup_words)) {
-        runOnUiThread(() -> Toast.makeText(MainActivity2.this, format("'%d' words sent for backup.",
+        runOnUiThread(() -> Toast.makeText(MainActivity2.this, String.format(Locale.US, "'%d' words sent for backup.",
                 repository.getLength()), LENGTH_SHORT).show());
       } else {
         runOnUiThread(() -> Toast.makeText(MainActivity2.this, "Error occurred while backing up words.",

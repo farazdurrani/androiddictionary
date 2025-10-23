@@ -52,6 +52,8 @@ import org.json.JSONArray;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -61,7 +63,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 public class MainActivity extends AppCompatActivity {
@@ -74,6 +75,7 @@ public class MainActivity extends AppCompatActivity {
   private static final String REGEX_WHITE_SPACES = "\\s+";
   private static final String MERRIAM_WEBSTER_KEY = "dictionary.merriamWebster.key";
   private static final String MERRIAM_WEBSTER_URL = "dictionary.merriamWebster.url";
+  public static final String TAG = MainActivity.class.getSimpleName();
   public static Properties properties;
   private final List<String> AUTO_COMPLETE_WORDS = new ArrayList<>();
   private RequestQueue requestQueue;
@@ -174,7 +176,7 @@ public class MainActivity extends AppCompatActivity {
       offlineWordsFileService.delete(originalLookupWord);
       runOnUiThread(() -> deleteButton.setVisibility(INVISIBLE));
     } catch (Exception e) {
-      Log.e(this.getClass().getSimpleName(), "error...", e);
+      Log.e(TAG, "error...", e);
       runOnUiThread(() -> definitionsView.setText(format("Error deleting '%s'. %s ", originalLookupWord,
               ExceptionUtils.getStackTrace(e))));
     }
@@ -216,6 +218,7 @@ public class MainActivity extends AppCompatActivity {
     openInWebBrowser();
   }
 
+  @SuppressLint("SetTextI18n")
   private void writeToOfflineFile() {
     if (StringUtils.isNotBlank(originalLookupWord)) {
       offlineWordsFileService.writeFileExternalStorage(true, originalLookupWord);
@@ -404,11 +407,30 @@ public class MainActivity extends AppCompatActivity {
   }
 
   public boolean isOffline() {
+    return pingURL("google.com", 555);
+  }
+
+  /**
+   * Pings a HTTP URL. This effectively sends a HEAD request and returns <code>true</code> if the response code is in
+   * the 200-399 range.
+   *
+   * @param url     The HTTP URL to be pinged.
+   * @param timeout The timeout in millis for both the connection timeout and the response read timeout. Note that
+   *                the total timeout is effectively two times the given timeout.
+   * @return <code>true</code> if the given HTTP URL has returned response code 200-399 on a HEAD request within the
+   * given timeout, otherwise <code>false</code>.
+   */
+  public static boolean pingURL(String url, int timeout) {
+    url = url.replaceFirst("^https", "http"); // Otherwise an exception may be thrown on invalid SSL certificates.
     try {
-      Process p = Runtime.getRuntime().exec("ping -c 1 google.com");
-      return p.waitFor(555L, TimeUnit.MILLISECONDS) && p.exitValue() != 0;
-    } catch (Exception e) {
-      return true;
+      HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
+      connection.setConnectTimeout(timeout);
+      connection.setReadTimeout(timeout);
+      connection.setRequestMethod("HEAD");
+      int responseCode = connection.getResponseCode();
+      return (200 <= responseCode && responseCode <= 399);
+    } catch (IOException exception) {
+      return false;
     }
   }
 }

@@ -7,31 +7,36 @@ import android.util.Log;
 
 import org.apache.commons.lang3.ObjectUtils;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.file.Files;
-import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 public class FileService {
 
-
+  public static final String TAG = FileService.class.getSimpleName();
   //Initialize it once when the app is loading up
-  public static String externalFilesDir;
+  private static String externalFilesDir;
   private final String filename;
 
   public FileService(String filename, String... folder) {
     externalFilesDir = folder.length > 0 ? folder[0] : externalFilesDir;
     this.filename = filename;
     try {
-      if (!Files.exists(Paths.get(externalFilesDir))) {
-        Files.createDirectories(Paths.get(externalFilesDir));
+      File file = new File(externalFilesDir, filename);
+      if (file.createNewFile()) {
+        System.out.println("Successfully created file at " + file.getAbsolutePath());
+      } else {
+        System.out.println("File already exists at " + file.getAbsolutePath());
       }
-      boolean ignore = new File(externalFilesDir, filename).createNewFile();
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
@@ -85,22 +90,29 @@ public class FileService {
   }
 
   public List<String> readFile() {
-    try {
-      return Files.readAllLines(Paths.get(new File(externalFilesDir, filename).toURI()))
-              .stream().distinct().collect(Collectors.toList());
+    try (BufferedReader buffer = new BufferedReader(new FileReader(new File(externalFilesDir, filename)))) {
+      List<String> lines = new ArrayList<>();
+      String line;
+      while ((line = buffer.readLine()) != null) {
+        lines.add(line);
+      }
+      return lines;
     } catch (Exception e) {
-      Log.e(this.getClass().getSimpleName(), "Error", e);
+      Log.e(TAG, "Error", e);
       return Collections.emptyList();
     }
   }
 
   public byte[] readFileAsByte() {
-    try {
-      return Files.readAllBytes(Paths.get(new File(externalFilesDir, filename).toURI()));
-    } catch (Exception e) {
-      Log.e(this.getClass().getSimpleName(), "Error", e);
+    File myFile = new File(externalFilesDir, filename);
+    byte[] byteArray = new byte[(int) myFile.length()];
+    try (FileInputStream inputStream = new FileInputStream(myFile)) {
+      int ignore = inputStream.read(byteArray);
+    } catch (IOException e) {
+      Log.e(TAG, "Error", e);
       return new byte[0];
     }
+    return byteArray;
   }
 
   public void delete(String word) {

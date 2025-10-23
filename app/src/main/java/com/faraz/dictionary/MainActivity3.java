@@ -4,6 +4,7 @@ import static android.widget.Toast.LENGTH_LONG;
 import static android.widget.Toast.LENGTH_SHORT;
 import static java.lang.Integer.parseInt;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.icu.math.BigDecimal;
@@ -28,7 +29,7 @@ import java.util.concurrent.CompletableFuture;
 
 public class MainActivity3 extends AppCompatActivity {
 
-  private static final String activity = MainActivity3.class.getSimpleName();
+  private static final String TAG = MainActivity3.class.getSimpleName();
   private static final String NUMBER_OF_WORDS_TO_SHOW = "number.of.words.to.show";
   private static final BigDecimal ONE_HUNDRED = new BigDecimal("100");
   private String[] words;
@@ -38,6 +39,7 @@ public class MainActivity3 extends AppCompatActivity {
   private Properties properties;
   private Repository repository;
 
+  @SuppressLint("SetTextI18n")
   @Override
   public void onCreate(Bundle icicle) {
     super.onCreate(icicle);
@@ -57,7 +59,7 @@ public class MainActivity3 extends AppCompatActivity {
         showWordsAndCount(_words);
         toggleButtons(true);
       } catch (Exception e) {
-        Log.e(activity, e.getLocalizedMessage(), e);
+        Log.e(TAG, e.getLocalizedMessage(), e);
         runOnUiThread(() -> Toast.makeText(context, "Mongo has gone belly up!", LENGTH_SHORT).show());
       }
     });
@@ -87,6 +89,7 @@ public class MainActivity3 extends AppCompatActivity {
     runOnUiThread(() -> findViewById(R.id.undoRemind).setEnabled(visible));
   }
 
+  @SuppressLint("SetTextI18n")
   public void undoRemind(View view) {
     toggleButtons(false);
     runOnUiThread(() -> remindedWordCountView.setText("Loading..."));
@@ -103,6 +106,7 @@ public class MainActivity3 extends AppCompatActivity {
     }).thenRun(this::sleepThenEnableButtons);
   }
 
+  @SuppressLint("SetTextI18n")
   public void markWordsAsReminded(View view) {
     toggleButtons(false);
     runOnUiThread(() -> remindedWordCountView.setText("Loading..."));
@@ -114,7 +118,7 @@ public class MainActivity3 extends AppCompatActivity {
         List<String> _words = repository.getWordsForReminder(parseInt(properties.getProperty(NUMBER_OF_WORDS_TO_SHOW)));
         showWordsAndCount(_words);
       } catch (Exception e) {
-        Log.e(activity, e.getLocalizedMessage(), e);
+        Log.e(TAG, e.getLocalizedMessage(), e);
         runOnUiThread(() -> Toast.makeText(context, "Not sure what went wrong.", LENGTH_LONG).show());
       }
     }).thenRun(this::sleepThenEnableButtons);
