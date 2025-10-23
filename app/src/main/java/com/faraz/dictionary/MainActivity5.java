@@ -7,7 +7,6 @@ import static java.util.concurrent.CompletableFuture.supplyAsync;
 
 import android.content.Context;
 import android.content.Intent;
-import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.ArrayAdapter;
@@ -15,7 +14,6 @@ import android.widget.AutoCompleteTextView;
 import android.widget.ListView;
 import android.widget.Toast;
 
-import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
 import org.apache.commons.lang3.ArrayUtils;
@@ -24,7 +22,6 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import java.util.Arrays;
 import java.util.Optional;
 
-@RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
 public class MainActivity5 extends AppCompatActivity {
 
   public static final String WIPEOUT_DATA_BUTTON = "WIPEOUT_DATA_BUTTON";

@@ -4,12 +4,10 @@ import static android.widget.Toast.LENGTH_LONG;
 import static android.widget.Toast.LENGTH_SHORT;
 import static java.lang.Integer.parseInt;
 
-import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.icu.math.BigDecimal;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -18,7 +16,6 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
 import java.io.IOException;
@@ -41,8 +38,6 @@ public class MainActivity3 extends AppCompatActivity {
   private Properties properties;
   private Repository repository;
 
-  @SuppressLint("SetTextI18n")
-  @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
   @Override
   public void onCreate(Bundle icicle) {
     super.onCreate(icicle);
@@ -76,8 +71,6 @@ public class MainActivity3 extends AppCompatActivity {
     });
   }
 
-  @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
-  @SuppressLint("SetTextI18n")
   private void showWordsAndCount(List<String> _words) {
     words = _words.toArray(new String[0]);
     ArrayAdapter<String> adapter = new ArrayAdapter<>(context, R.layout.custom_layout, words);
@@ -94,8 +87,6 @@ public class MainActivity3 extends AppCompatActivity {
     runOnUiThread(() -> findViewById(R.id.undoRemind).setEnabled(visible));
   }
 
-  @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
-  @SuppressLint("SetTextI18n")
   public void undoRemind(View view) {
     toggleButtons(false);
     runOnUiThread(() -> remindedWordCountView.setText("Loading..."));
@@ -112,8 +103,6 @@ public class MainActivity3 extends AppCompatActivity {
     }).thenRun(this::sleepThenEnableButtons);
   }
 
-  @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
-  @SuppressLint("SetTextI18n")
   public void markWordsAsReminded(View view) {
     toggleButtons(false);
     runOnUiThread(() -> remindedWordCountView.setText("Loading..."));

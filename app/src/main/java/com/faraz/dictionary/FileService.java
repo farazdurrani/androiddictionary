@@ -2,12 +2,8 @@ package com.faraz.dictionary;
 
 import static java.lang.System.lineSeparator;
 
-import android.annotation.SuppressLint;
-import android.os.Build;
 import android.os.Environment;
 import android.util.Log;
-
-import androidx.annotation.RequiresApi;
 
 import org.apache.commons.lang3.ObjectUtils;
 
@@ -28,7 +24,6 @@ public class FileService {
   public static String externalFilesDir;
   private final String filename;
 
-  @SuppressLint("NewApi")
   public FileService(String filename, String... folder) {
     externalFilesDir = folder.length > 0 ? folder[0] : externalFilesDir;
     this.filename = filename;
@@ -89,7 +84,6 @@ public class FileService {
     }
   }
 
-  @RequiresApi(api = Build.VERSION_CODES.O)
   public List<String> readFile() {
     try {
       return Files.readAllLines(Paths.get(new File(externalFilesDir, filename).toURI()))
@@ -100,7 +94,6 @@ public class FileService {
     }
   }
 
-  @RequiresApi(api = Build.VERSION_CODES.O)
   public byte[] readFileAsByte() {
     try {
       return Files.readAllBytes(Paths.get(new File(externalFilesDir, filename).toURI()));
@@ -110,7 +103,6 @@ public class FileService {
     }
   }
 
-  @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
   public void delete(String word) {
     String[] words = readFile().stream().filter(w -> !w.equals(word)).distinct().toArray(String[]::new);
     Optional.of(words).filter(ObjectUtils::isEmpty)

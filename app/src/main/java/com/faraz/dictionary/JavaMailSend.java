@@ -45,7 +45,7 @@ public class JavaMailSend extends javax.mail.Authenticator {
     // There is something wrong with MailCap, javamail can not find a
     // handler for the multipart/mixed part, so this bit needs to be added.
     MailcapCommandMap mc = (MailcapCommandMap) CommandMap
-        .getDefaultCommandMap();
+            .getDefaultCommandMap();
     mc.addMailcap("text/html;; x-java-content-handler=com.sun.mail.handlers.text_html");
     mc.addMailcap("text/xml;; x-java-content-handler=com.sun.mail.handlers.text_xml");
     mc.addMailcap("text/plain;; x-java-content-handler=com.sun.mail.handlers.text_plain");
@@ -64,8 +64,8 @@ public class JavaMailSend extends javax.mail.Authenticator {
     Properties props = _setProperties();
 
     if (!_user.equals("") && !_pass.equals("") && _to.length > 0
-        && !_from.equals("") && !_subject.equals("")
-        && !_body.equals("")) {
+            && !_from.equals("") && !_subject.equals("")
+            && !_body.equals("")) {
       Session session = Session.getInstance(props, this);
 
       MimeMessage msg = new MimeMessage(session);
@@ -89,8 +89,7 @@ public class JavaMailSend extends javax.mail.Authenticator {
       // send email
       Transport.send(msg);
       return true;
-    }
-    else {
+    } else {
       return false;
     }
   }
@@ -125,7 +124,7 @@ public class JavaMailSend extends javax.mail.Authenticator {
     props.put("mail.smtp.port", _port);
     props.put("mail.smtp.socketFactory.port", _sport);
     props.put("mail.smtp.socketFactory.class",
-        "javax.net.ssl.SSLSocketFactory");
+            "javax.net.ssl.SSLSocketFactory");
     props.put("mail.smtp.socketFactory.fallback", "false");
 
     return props;

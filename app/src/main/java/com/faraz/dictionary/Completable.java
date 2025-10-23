@@ -4,11 +4,6 @@ import java.util.concurrent.CompletableFuture;
 
 public class Completable<T> {
 
-  @FunctionalInterface
-  public interface Operation {
-    void run();
-  }
-
   private final Object result;
 
   public Completable() {
@@ -24,22 +19,22 @@ public class Completable<T> {
     return new Completable<>();
   }
 
-  public Completable<Void> thenRunSync(Operation s) {
-    return runSync(s);
-  }
-
   //still synchronous
   public static Completable<Void> runAsync(Runnable r) {
     CompletableFuture<Void> cf = CompletableFuture.runAsync(r);
-    while(!cf.isDone()) {
+    while (!cf.isDone()) {
       // till I die
     }
     return new Completable<>();
   }
 
+  public Completable<Void> thenRunSync(Operation s) {
+    return runSync(s);
+  }
+
   public Completable<Void> thenRunAsync(Runnable r) {
     CompletableFuture<Void> cf = CompletableFuture.runAsync(r);
-    while(!cf.isDone()) {
+    while (!cf.isDone()) {
       // till I am done with life
     }
     return new Completable<>();
@@ -47,5 +42,10 @@ public class Completable<T> {
 
   private Object getResult() {
     return result;
+  }
+
+  @FunctionalInterface
+  public interface Operation {
+    void run();
   }
 }

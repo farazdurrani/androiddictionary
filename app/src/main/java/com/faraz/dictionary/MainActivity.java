@@ -24,7 +24,6 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
@@ -36,7 +35,6 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.android.volley.RequestQueue;
@@ -66,7 +64,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
-@RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
 public class MainActivity extends AppCompatActivity {
   public static final String FILE_NAME = "FILE_NAME";
   public static final List<String> AUTO_COMPLETE_WORDS_REMOVE = new ArrayList<>();
@@ -112,7 +109,6 @@ public class MainActivity extends AppCompatActivity {
     }
   }
 
-  @SuppressLint("InlinedApi")
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
@@ -144,7 +140,6 @@ public class MainActivity extends AppCompatActivity {
   /**
    * Call this method only at startup!
    */
-  @SuppressLint("NewApi")
   private void loadWordsForAutoComplete() {
     List<View> views = findViewById(R.id.mainactivity).getTouchables();
     runOnUiThread(() -> views.forEach(v -> v.setEnabled(false)));
@@ -174,7 +169,6 @@ public class MainActivity extends AppCompatActivity {
     runOnUiThread(() -> offlineActivityButton.setVisibility(offline ? VISIBLE : INVISIBLE));
   }
 
-  @SuppressLint("NewApi")
   public void deleteButton(View view) {
     try {
       offlineWordsFileService.delete(originalLookupWord);
@@ -222,7 +216,6 @@ public class MainActivity extends AppCompatActivity {
     openInWebBrowser();
   }
 
-  @SuppressLint("SetTextI18n")
   private void writeToOfflineFile() {
     if (StringUtils.isNotBlank(originalLookupWord)) {
       offlineWordsFileService.writeFileExternalStorage(true, originalLookupWord);
@@ -239,7 +232,6 @@ public class MainActivity extends AppCompatActivity {
     return format(mUrl, word, mk);
   }
 
-  @SuppressLint({"SetTextI18n", "NewApi"})
   private void lookupWord() {
     try {
       if (existingWord()) {
@@ -386,7 +378,6 @@ public class MainActivity extends AppCompatActivity {
     }
   }
 
-  @SuppressLint("SetTextI18n")
   private String[] lookupInMerriamWebster() {
     String url = formMerriamWebsterUrl();
     RequestFuture<JSONArray> requestFuture = RequestFuture.newFuture();
@@ -412,7 +403,6 @@ public class MainActivity extends AppCompatActivity {
     repository.upsert(originalLookupWord);
   }
 
-  @SuppressLint("NewApi")
   public boolean isOffline() {
     try {
       Process p = Runtime.getRuntime().exec("ping -c 1 google.com");

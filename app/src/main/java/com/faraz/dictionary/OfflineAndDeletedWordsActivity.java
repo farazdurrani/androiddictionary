@@ -20,7 +20,6 @@ import static java.lang.String.format;
 import static java.lang.System.currentTimeMillis;
 import static java.util.Optional.ofNullable;
 
-import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
@@ -63,7 +62,6 @@ import java.util.function.Predicate;
 
 import okhttp3.OkHttpClient;
 
-@SuppressWarnings({"SetTextI18n", "NewApi"})
 public class OfflineAndDeletedWordsActivity extends AppCompatActivity {
 
   public static final String LOOKUPTHISWORD = "lookupthisword";
@@ -80,7 +78,6 @@ public class OfflineAndDeletedWordsActivity extends AppCompatActivity {
     return "<div style=\"font-size:20px\">" + String.join("<br>", words) + "</div>";
   }
 
-  @SuppressLint("SetTextI18n")
   @Override
   public void onCreate(Bundle icicle) {
     super.onCreate(icicle);
@@ -167,7 +164,6 @@ public class OfflineAndDeletedWordsActivity extends AppCompatActivity {
     runOnUiThread(() -> findViewById(R.id.emailButton).setEnabled(true));
   }
 
-  @SuppressLint("DefaultLocale")
   private void sendEmails(List<String> words) {
     String subject = "Offline Words.";
     try {

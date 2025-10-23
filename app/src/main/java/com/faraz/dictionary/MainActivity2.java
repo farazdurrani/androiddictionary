@@ -9,16 +9,13 @@ import static java.lang.System.currentTimeMillis;
 import static java.util.Optional.ofNullable;
 import static java.util.concurrent.CompletableFuture.runAsync;
 
-import android.annotation.SuppressLint;
 import android.content.Intent;
-import android.os.Build;
 import android.os.Bundle;
 import android.util.Base64;
 import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
 
-import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.common.collect.ImmutableList;
@@ -47,8 +44,6 @@ import java.util.stream.Collectors;
 
 import okhttp3.OkHttpClient;
 
-@SuppressLint({"DefaultLocale", "NewApi"})
-@RequiresApi(api = Build.VERSION_CODES.O)
 public class MainActivity2 extends AppCompatActivity {
 
   public static final String MAIL_KEY = "mailjet.apiKey";
