@@ -146,7 +146,7 @@ public class MainActivity3 extends AppCompatActivity {
 
   /**
    * TODO: The stop-gap solution to avoid reading of the data that hasn't been written yet due to the writing of the
-   * TODO: data in an asynchronous fashion.
+   *       data in an asynchronous fashion.
    */
   private void sleepThenEnableButtons() {
     try {

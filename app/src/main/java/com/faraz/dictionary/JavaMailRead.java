@@ -17,6 +17,10 @@ import javax.mail.search.AndTerm;
 import javax.mail.search.FlagTerm;
 import javax.mail.search.SubjectTerm;
 
+@Deprecated
+/**
+ * Deprecated for now. Don't remove tho.
+ */
 public class JavaMailRead {
   public static String readMail(String email, String password) {
     System.out.println("Trying to read an all-important email to load the database...");

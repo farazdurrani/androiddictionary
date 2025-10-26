@@ -1,10 +1,8 @@
 package com.faraz.dictionary;
 
-import static com.faraz.dictionary.JavaMailRead.readMail;
 import static com.faraz.dictionary.MainActivity.CHICAGO;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 
-import android.util.Base64;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
@@ -14,6 +12,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
 
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -23,9 +22,12 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -56,12 +58,12 @@ public class Repository {
 
   private static boolean initialized;
   private static FileService fileService;
-  private static String email;
-  private static String password;
+  private final String pastebinDeveloperKey;
+  private final String pastebinUserKey;
 
   public Repository(String... creds) {
-    email = creds.length > 0 ? creds[0] : EMPTY;
-    password = creds.length > 1 ? creds[1] : EMPTY;
+    pastebinDeveloperKey = creds.length > 0 ? creds[0] : EMPTY;
+    pastebinUserKey = creds.length > 1 ? creds[1] : EMPTY;
     fileService = new FileService(filename);
     init();
   }
@@ -78,22 +80,26 @@ public class Repository {
     }
     Completable.runAsync(() -> {
       try {
+        List<WordEntity> wordEntities = Collections.emptyList();
         String json = StringUtils.strip((new String(fileService.readFileAsByte())));
         if (StringUtils.isBlank(json)) {
-          json = StringUtils.strip(readMail(email, password));
-          if (StringUtils.isNotBlank(json)) {
-            json = CompressUtil.decompress(Base64.decode(json, Base64.DEFAULT));
-            writeOverFile(json);
-          }
+          wordEntities = Optional.of(new PastebinService(pastebinDeveloperKey, pastebinUserKey))
+                  .map(pbs -> Optional.of(pbs).map(PastebinService::lastBackupAndCleanup).stream()
+                          .flatMap(List::stream).peek(this::print).map(pbs::get).map(this::toWordEntities).toList())
+                  .flatMap(list -> Optional.of(list.stream().flatMap(List::stream).toList())).orElseGet(ArrayList::new);
+          writeOverFile(getValuesAsString(wordEntities));
         }
-        List<WordEntity> wordEntities = StringUtils.isBlank(json) ? Collections.emptyList() :
-                objectMapper.readValue(json, typeFactory.constructCollectionType(List.class, WordEntity.class));
-        wordEntities.forEach(we -> inMemoryDb.put(we.getWord(), stripWhiteSpaces(we)));
-        Optional.of(inMemoryDb).map(ObjectUtils::isNotEmpty).ifPresent(bool -> initialized = bool);
+        Optional.of(wordEntities).filter(ObjectUtils::isNotEmpty).orElseGet(() -> toWordEntities(json))
+                .forEach(we -> inMemoryDb.put(we.getWord(), stripWhiteSpaces(we)));
+        initialized = ObjectUtils.isNotEmpty(inMemoryDb);
       } catch (Exception e) {
         Log.e(TAG, "error...", e);
       }
     });
+  }
+
+  private void print(String string) {
+    Log.i(TAG, String.format(Locale.US, "Pastebin: Getting key '%s'.", string));
   }
 
   public List<String> getWords() {
@@ -117,20 +123,29 @@ public class Repository {
     return wordEntity.getRemindedTime() == null ? DBResult.INSERT : DBResult.UPDATE;
   }
 
-  public String getValuesAsAString() {
+  public List<String> getValuesAsStrings() {
+    return Lists.partition(inMemoryDb.values().stream().toList(), 4000).stream().map(this::getValuesAsString)
+            .toList();
+  }
+
+  private String getValuesAsString(Collection<WordEntity> values) {
     try {
-      return objectMapper.writeValueAsString(inMemoryDb.values());
+      return values.isEmpty() ? EMPTY : objectMapper.writeValueAsString(values);
     } catch (JsonProcessingException e) {
       return ExceptionUtils.getStackTrace(e);
     }
+  }
+
+  private String getValuesAsString() {
+    return getValuesAsString(inMemoryDb.values());
   }
 
   /**
    * Dangerous method!
    */
   public void reset() {
-    inMemoryDb.clear();
     fileService.clearFile();
+    inMemoryDb.clear();
     initialized = false;
     init();
   }
@@ -157,10 +172,10 @@ public class Repository {
   }
 
   public List<String> getByRemindedTime(int limit) {
-    return inMemoryDb.values().stream().filter(we -> we.getRemindedTime() != null)
+    List<String> list = inMemoryDb.values().stream().filter(we -> we.getRemindedTime() != null)
             .sorted((w1, w2) -> toDateRemindedTime(w2).compareTo(toDateRemindedTime(w1)))
-            .map(WordEntity::getWord).limit(limit)
-            .collect(Collectors.collectingAndThen(Collectors.toList(), ImmutableList::copyOf));
+            .map(WordEntity::getWord).toList();
+    return list.subList(0, Math.min(limit, list.size()));
   }
 
   public void delete(String word) {
@@ -169,7 +184,7 @@ public class Repository {
   }
 
   private void flush() {
-    CompletableFuture.runAsync(() -> writeOverFile(getValuesAsAString()));
+    CompletableFuture.runAsync(() -> writeOverFile(getValuesAsString()));
   }
 
   private WordEntity setRemindedTime(WordEntity wordEntity) {
@@ -189,7 +204,7 @@ public class Repository {
   }
 
   private Instant toDateRemindedTime(WordEntity w) {
-    return Instant.parse(w.getRemindedTime());
+    return toInstant(w.getRemindedTime());
   }
 
   private WordEntity stripWhiteSpaces(WordEntity we) {
@@ -198,5 +213,19 @@ public class Repository {
 
   private void writeOverFile(String value) {
     fileService.writeFileExternalStorage(false, value);
+  }
+
+  public static Instant toInstant(String instant) {
+    return Optional.ofNullable(instant).map(StringUtils::strip).filter(StringUtils::isNotBlank).map(Instant::parse)
+            .orElseThrow(() -> new RuntimeException("String 'instant' cannot be empty/null"));
+  }
+
+  private List<WordEntity> toWordEntities(String json) {
+    try {
+      return StringUtils.isBlank(json) ? Collections.emptyList() :
+              objectMapper.readValue(json, typeFactory.constructCollectionType(List.class, WordEntity.class));
+    } catch (JsonProcessingException e) {
+      throw new RuntimeException(e);
+    }
   }
 }

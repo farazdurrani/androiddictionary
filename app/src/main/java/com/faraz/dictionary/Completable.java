@@ -19,6 +19,10 @@ public class Completable<T> {
     return new Completable<>();
   }
 
+  public Completable<Void> thenRunSync(Operation s) {
+    return runSync(s);
+  }
+
   //still synchronous
   public static Completable<Void> runAsync(Runnable r) {
     CompletableFuture<Void> cf = CompletableFuture.runAsync(r);
@@ -28,16 +32,8 @@ public class Completable<T> {
     return new Completable<>();
   }
 
-  public Completable<Void> thenRunSync(Operation s) {
-    return runSync(s);
-  }
-
   public Completable<Void> thenRunAsync(Runnable r) {
-    CompletableFuture<Void> cf = CompletableFuture.runAsync(r);
-    while (!cf.isDone()) {
-      // till I am done with life
-    }
-    return new Completable<>();
+    return runAsync(r);
   }
 
   private Object getResult() {

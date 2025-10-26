@@ -3,11 +3,8 @@ package com.faraz.dictionary;
 import static android.view.View.INVISIBLE;
 import static android.view.View.VISIBLE;
 import static android.widget.Toast.LENGTH_SHORT;
-import static com.faraz.dictionary.Completable.runSync;
 import static com.faraz.dictionary.DBResult.INSERT;
 import static com.faraz.dictionary.DBResult.UPDATE;
-import static com.faraz.dictionary.MainActivity2.JAVAMAIL_PASS;
-import static com.faraz.dictionary.MainActivity2.JAVAMAIL_USER;
 import static com.faraz.dictionary.OfflineAndDeletedWordsActivity.LOOKUPTHISWORD;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.apache.commons.lang3.StringUtils.SPACE;
@@ -62,6 +59,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 
@@ -70,12 +68,14 @@ public class MainActivity extends AppCompatActivity {
   public static final List<String> AUTO_COMPLETE_WORDS_REMOVE = new ArrayList<>();
   public static final Consumer<Object> NOOP = ignore -> {
   };
+  public static final String TAG = MainActivity.class.getSimpleName();
+  public static final String PASTEBIN_DEV_KEY = "pastebin.dev.key";
+  public static final String PASTEBIN_USER_KEY = "pastebin.user.key";
   static final String CHICAGO = "America/Chicago";
   private static final String NO_DEFINITION_FOUND = "No definitions found for '%s'. Perhaps, you meant:";
   private static final String REGEX_WHITE_SPACES = "\\s+";
   private static final String MERRIAM_WEBSTER_KEY = "dictionary.merriamWebster.key";
   private static final String MERRIAM_WEBSTER_URL = "dictionary.merriamWebster.url";
-  public static final String TAG = MainActivity.class.getSimpleName();
   public static Properties properties;
   private final List<String> AUTO_COMPLETE_WORDS = new ArrayList<>();
   private RequestQueue requestQueue;
@@ -134,8 +134,8 @@ public class MainActivity extends AppCompatActivity {
     setLookupWordListener();
     setStoreWordListener();
     Optional.of(isOffline()).ifPresent(this::setOfflineFlagAndButton);
-    repository = new Repository(loadProperty(JAVAMAIL_USER), loadProperty(JAVAMAIL_PASS));
-    runSync(this::loadWordsForAutoComplete).thenRunSync(() -> ofNullable(getIntent().getExtras())
+    repository = new Repository(loadProperty(PASTEBIN_DEV_KEY), loadProperty(PASTEBIN_USER_KEY));
+    Completable.runSync(this::loadWordsForAutoComplete).thenRunSync(() -> ofNullable(getIntent().getExtras())
             .map(e -> e.getString(LOOKUPTHISWORD)).ifPresent(this::doLookup));
   }
 
@@ -192,7 +192,7 @@ public class MainActivity extends AppCompatActivity {
   }
 
   private void setOpenInBrowserListener() {
-    googleLink.setOnClickListener(ignore -> runAsync(this::openInWebBrowser));
+    googleLink.setOnClickListener(ignore -> CompletableFuture.runAsync(this::openInWebBrowser));
   }
 
   private void setLookupWordListener() {
@@ -209,7 +209,8 @@ public class MainActivity extends AppCompatActivity {
   private void doLookup() {
     runOnUiThread(() -> offlineActivityButton.setVisibility(offline ? VISIBLE : INVISIBLE));
     doInitialWork();
-    Optional.of(offline).filter(BooleanUtils::isTrue).ifPresent(ignore -> runAsync(this::writeToOfflineFile));
+    Optional.of(offline).filter(BooleanUtils::isTrue)
+            .ifPresent(ignore -> CompletableFuture.runAsync(this::writeToOfflineFile));
     Optional.of(offline).filter(BooleanUtils::isFalse).ifPresent(this::lookupAndstoreInDbAndOpenBrowser);
   }
 
@@ -246,7 +247,8 @@ public class MainActivity extends AppCompatActivity {
       String[] definition = lookupInMerriamWebster();
       runOnUiThread(() -> definitionsView.setText(definition[1]));
       Optional.of(definition[0]).map(BooleanUtils::toBoolean).filter(BooleanUtils::isTrue)
-              .ifPresent(ignore -> runAsync(this::saveWordInDb).thenRunAsync(this::storeWordInAutoComplete));
+              .ifPresent(ignore -> CompletableFuture.runAsync(this::saveWordInDb)
+                      .thenRun(this::storeWordInAutoComplete));
       Optional.of(definition[0]).map(BooleanUtils::toBoolean).filter(BooleanUtils::isFalse)
               .flatMap(ignore -> offlineWordsFileService.readFile().stream().filter(originalLookupWord::equals)
                       .findFirst())
@@ -301,10 +303,12 @@ public class MainActivity extends AppCompatActivity {
 
   private void storeWord(String ignore) {
     runOnUiThread(() -> offlineActivityButton.setVisibility(offline ? VISIBLE : INVISIBLE));
-    Optional.of(offline).filter(BooleanUtils::isTrue).ifPresent(_ignore -> runAsync(this::writeToOfflineFile));
+    Optional.of(offline).filter(BooleanUtils::isTrue)
+            .ifPresent(_ignore -> CompletableFuture.runAsync(this::writeToOfflineFile));
     try {
       Optional.of(offline).filter(BooleanUtils::isFalse).ifPresent(_ignore ->
-              runAsync(this::firstCheckIfExistsAndIfNotThenSaveWordInDb).thenRunAsync(this::storeWordInAutoComplete));
+              CompletableFuture.runAsync(this::firstCheckIfExistsAndIfNotThenSaveWordInDb)
+                      .thenRun(this::storeWordInAutoComplete));
     } catch (Exception e) {
       runOnUiThread(() -> definitionsView.setText(format("welp...%s%s%s", originalLookupWord, lineSeparator(),
               getStackTrace(e))));
