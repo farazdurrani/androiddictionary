@@ -107,6 +107,7 @@ public class MainActivity2 extends AppCompatActivity {
     new AlertDialog.Builder(context).setTitle("Confirm Action")
             .setMessage("This action will delete the database before syncing. Are you sure?")
             .setPositiveButton("Yes", (dialog, which) -> {
+              dialog.dismiss();
               List<View> buttons = findViewById(R.id.mainactivity2).getTouchables();
               toggleButtons(buttons, false);
               Completable.runAsync(repository::reset).thenRunAsync(() -> runOnUiThread(() ->
