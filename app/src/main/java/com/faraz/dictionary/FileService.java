@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 public class FileService {
@@ -31,9 +32,9 @@ public class FileService {
     try {
       File file = new File(externalFilesDir, filename);
       if (file.createNewFile()) {
-        System.out.println("Successfully created file at " + file.getAbsolutePath());
+        Log.i(TAG, String.format(Locale.US, "Successfully created file at %s", file.getAbsolutePath()));
       } else {
-        System.out.println("File already exists at " + file.getAbsolutePath());
+        Log.i(TAG, String.format(Locale.US, "File already exists at %s" , file.getAbsolutePath()));
       }
     } catch (IOException e) {
       Log.e(TAG, "error...", e);

@@ -2,8 +2,6 @@ mongo api https://www.mongodb.com/developer/products/atlas/atlas-data-api-introd
 termux https://termux.dev/docs
 linker https://play.google.com/store/apps/details?id=com.jcoder.linker
 
-todo: backingup emails is causing problems. just added exceptionally. replace devkey and userkey for pastebin tomorrow
-
 MainActivity (Done)
 - autocomplete load all (done)
 - existing word (done)

@@ -75,7 +75,7 @@ public class Repository {
   private void init() {
     // halt erroneous attempt to re-init repository;
     if (initialized) {
-      System.out.println("Yeah we ain't initializing again.");
+      Log.i(TAG, "Repository already initialized.");
       return;
     }
     Completable.runAsync(() -> {

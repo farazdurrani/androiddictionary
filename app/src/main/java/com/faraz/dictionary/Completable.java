@@ -2,7 +2,10 @@ package com.faraz.dictionary;
 
 import android.util.Log;
 
+import androidx.annotation.NonNull;
+
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Function;
 
 public class Completable<T> {
 
@@ -32,11 +35,16 @@ public class Completable<T> {
     while (!cf.isDone()) {
       // till I die
     }
-    cf.exceptionally(ex -> {
-      Log.e(TAG, "error..", ex);
-      return null;
-    });
+    cf.exceptionally(logExceptionFunction(TAG));
     return new Completable<>();
+  }
+
+  @NonNull
+  public static Function<Throwable, Void> logExceptionFunction(String tag) {
+    return ex -> {
+      Log.e(tag, "error..", ex);
+      return null;
+    };
   }
 
   public Completable<Void> thenRunAsync(Runnable r) {

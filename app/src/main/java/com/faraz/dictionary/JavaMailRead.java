@@ -1,5 +1,7 @@
 package com.faraz.dictionary;
 
+import android.util.Log;
+
 import java.io.IOException;
 import java.util.Properties;
 
@@ -22,8 +24,11 @@ import javax.mail.search.SubjectTerm;
  * Deprecated for now. Don't remove tho.
  */
 public class JavaMailRead {
+
+  private static final String TAG = JavaMailRead.class.getSimpleName();
+
   public static String readMail(String email, String password) {
-    System.out.println("Trying to read an all-important email to load the database...");
+    Log.i(TAG, "Trying to read an all-important email to load the database...");
     Properties props = new Properties();
     props.put("mail.smtp.host", "smtp.gmail.com");
     props.put("mail.smtp.port", "587");
@@ -60,7 +65,7 @@ public class JavaMailRead {
                 BodyPart bodyPart = multipart.getBodyPart(i);
                 if (bodyPart.getContentType().toLowerCase().startsWith("text/plain")) {
                   plainContent = (String) bodyPart.getContent();
-                  System.out.println("Found an all-important email.");
+                  Log.i(TAG, "Found an all-important email.");
                 } else if (bodyPart.getContentType().toLowerCase().startsWith("text/html")) {
                   // handle HTML content
                 } else {

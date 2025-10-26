@@ -2,6 +2,7 @@ package com.faraz.dictionary;
 
 import static android.widget.Toast.LENGTH_LONG;
 import static android.widget.Toast.LENGTH_SHORT;
+import static com.faraz.dictionary.Completable.logExceptionFunction;
 import static com.faraz.dictionary.MainActivity.PASTEBIN_DEV_KEY;
 import static com.faraz.dictionary.MainActivity.PASTEBIN_USER_KEY;
 import static com.mailjet.client.transactional.response.SentMessageStatus.SUCCESS;
@@ -87,7 +88,7 @@ public class MainActivity2 extends AppCompatActivity {
   }
 
   private void toggleButtons(List<View> buttons, boolean enable) {
-    runOnUiThread(() -> buttons.forEach(v -> v.setEnabled(enable)));
+    runOnUiThread(() -> buttons.forEach(bt -> bt.setEnabled(enable)));
   }
 
   public void switchEmailProvider(View view) {
@@ -182,23 +183,18 @@ public class MainActivity2 extends AppCompatActivity {
 
   private void backupData() {
     try {
-      CompletableFuture.supplyAsync(() -> repository.getValuesAsStrings())
+      CompletableFuture<Void> one = CompletableFuture.supplyAsync(() -> repository.getValuesAsStrings())
               .thenAccept(list -> Optional.of(pastebinServiceObject()).ifPresent(pbs -> Optional.of(list).stream()
                       .flatMap(List::stream).filter(ObjectUtils::isNotEmpty).forEach(pbs::create)))
-              .exceptionally(ex -> {
-                Log.e(TAG, "error", ex);
-                return null;
-              });
-      CompletableFuture.supplyAsync(() -> ImmutableList.<String>builder()
+              .exceptionally(logExceptionFunction(TAG));
+      CompletableFuture<Void> two = CompletableFuture.supplyAsync(() -> ImmutableList.<String>builder()
                       .add(String.format(Locale.US, "Total Count: '%d'.", repository.getLength()))
                       .addAll(ImmutableList.<String>builder().addAll(repository.getWords().stream().map(this::anchor)
                               .toList()).build().reverse()).build())
               .thenApply(OfflineAndDeletedWordsActivity::addDivStyling)
               .thenAccept(this::sendBackupEmail)
-              .exceptionally(ex -> {
-                Log.e(TAG, "error", ex);
-                return null;
-              });
+              .exceptionally(logExceptionFunction(TAG));
+      CompletableFuture.allOf(one, two).join();
     } catch (Exception e) {
       Log.e(TAG, e.getLocalizedMessage(), e);
       runOnUiThread(() -> Toast.makeText(MainActivity2.this, ExceptionUtils.getStackTrace(e), LENGTH_LONG).show());
