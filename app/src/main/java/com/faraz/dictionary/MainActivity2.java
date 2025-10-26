@@ -71,7 +71,7 @@ public class MainActivity2 extends AppCompatActivity {
     setContentView(R.layout.activity_main2);
     context = this;
     mailjetClient();
-    repository = new Repository();
+    repository = new Repository(loadProperty(PASTEBIN_DEV_KEY), loadProperty(PASTEBIN_USER_KEY));
   }
 
   public void seeAll(View view) {
@@ -184,13 +184,21 @@ public class MainActivity2 extends AppCompatActivity {
     try {
       CompletableFuture.supplyAsync(() -> repository.getValuesAsStrings())
               .thenAccept(list -> Optional.of(pastebinServiceObject()).ifPresent(pbs -> Optional.of(list).stream()
-                      .flatMap(List::stream).forEach(pbs::create)));
+                      .flatMap(List::stream).filter(ObjectUtils::isNotEmpty).forEach(pbs::create)))
+              .exceptionally(ex -> {
+                Log.e(TAG, "error", ex);
+                return null;
+              });
       CompletableFuture.supplyAsync(() -> ImmutableList.<String>builder()
                       .add(String.format(Locale.US, "Total Count: '%d'.", repository.getLength()))
                       .addAll(ImmutableList.<String>builder().addAll(repository.getWords().stream().map(this::anchor)
                               .toList()).build().reverse()).build())
               .thenApply(OfflineAndDeletedWordsActivity::addDivStyling)
-              .thenAccept(this::sendBackupEmail);
+              .thenAccept(this::sendBackupEmail)
+              .exceptionally(ex -> {
+                Log.e(TAG, "error", ex);
+                return null;
+              });
     } catch (Exception e) {
       Log.e(TAG, e.getLocalizedMessage(), e);
       runOnUiThread(() -> Toast.makeText(MainActivity2.this, ExceptionUtils.getStackTrace(e), LENGTH_LONG).show());

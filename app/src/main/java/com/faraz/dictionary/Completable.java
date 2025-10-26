@@ -1,9 +1,12 @@
 package com.faraz.dictionary;
 
+import android.util.Log;
+
 import java.util.concurrent.CompletableFuture;
 
 public class Completable<T> {
 
+  private static final String TAG = Completable.class.getSimpleName();
   private final Object result;
 
   public Completable() {
@@ -29,6 +32,10 @@ public class Completable<T> {
     while (!cf.isDone()) {
       // till I die
     }
+    cf.exceptionally(ex -> {
+      Log.e(TAG, "error..", ex);
+      return null;
+    });
     return new Completable<>();
   }
 
