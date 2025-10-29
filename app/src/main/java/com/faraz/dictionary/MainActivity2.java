@@ -186,7 +186,8 @@ public class MainActivity2 extends AppCompatActivity {
     try {
       CompletableFuture<Void> one = CompletableFuture.supplyAsync(() -> repository.getValuesAsStrings())
               .thenAccept(list -> Optional.of(pastebinServiceObject()).ifPresent(pbs -> Optional.of(list).stream()
-                      .flatMap(List::stream).filter(ObjectUtils::isNotEmpty).forEach(pbs::create)))
+                      .flatMap(List::stream).filter(ObjectUtils::isNotEmpty).map(pbs::create)
+                      .forEach(this::printCreated)))
               .exceptionally(logExceptionFunction(TAG));
       CompletableFuture<Void> two = CompletableFuture.supplyAsync(() -> ImmutableList.<String>builder()
                       .add(String.format(Locale.US, "Total Count: '%d'.", repository.getLength()))
@@ -200,6 +201,10 @@ public class MainActivity2 extends AppCompatActivity {
       Log.e(TAG, e.getLocalizedMessage(), e);
       runOnUiThread(() -> Toast.makeText(MainActivity2.this, ExceptionUtils.getStackTrace(e), LENGTH_LONG).show());
     }
+  }
+
+  private void printCreated(String s) {
+    Log.i(TAG, String.format(Locale.US, "paste: %s created.", s));
   }
 
   private PastebinService pastebinServiceObject() {

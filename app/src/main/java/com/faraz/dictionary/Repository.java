@@ -39,7 +39,7 @@ public class Repository {
   private static final String TAG = Repository.class.getSimpleName();
   private static final String filename = "inmemorydb.json";
   private static final Predicate<WordEntity> REMINDED_TIME_IS_ABSENT_PREDICATE = we -> we.getRemindedTime() == null;
-  private static final ZoneId CHICAGO_ZONE_ID = ZoneId.of(CHICAGO);
+  public static final ZoneId CHICAGO_ZONE_ID = ZoneId.of(CHICAGO);
   private static final ObjectMapper objectMapper = new ObjectMapper();
   private static final TypeFactory typeFactory = objectMapper.getTypeFactory();
   private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ISO_INSTANT;

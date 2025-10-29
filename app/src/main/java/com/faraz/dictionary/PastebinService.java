@@ -4,11 +4,12 @@ import static org.apache.commons.lang3.StringUtils.EMPTY;
 
 import android.util.Log;
 
-import com.pastebin.api.Expiration;
-import com.pastebin.api.Format;
-import com.pastebin.api.PastebinClient;
-import com.pastebin.api.Visibility;
-import com.pastebin.api.request.PasteRequest;
+import com.faraz.dictionary.pastebin.Expiration;
+import com.faraz.dictionary.pastebin.Format;
+import com.faraz.dictionary.pastebin.Paste;
+import com.faraz.dictionary.pastebin.PasteRequest;
+import com.faraz.dictionary.pastebin.PastebinClient;
+import com.faraz.dictionary.pastebin.Visibility;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -32,22 +33,16 @@ public class PastebinService {
     if (values == null || values.length != 2) {
       throw new RuntimeException("Provide pastebin devkey and userkey");
     }
-    this.client = PastebinClient.builder().developerKey(values[0]).userKey(values[1]).build();
+    this.client = new PastebinClient(values[0], values[1]);
     this.series = Instant.now().toEpochMilli();
   }
 
-  public void create(String content) {
-    final PasteRequest pasteRequest = PasteRequest
-            .content(content)
-            .visibility(Visibility.PRIVATE)
-            .format(Format.JSON)
-            .name(String.format(Locale.US, "Words backup %d %s %s", this.series, SERIES_SPLITTER,
-                    Instant.now().toString()))
-            .expiration(Expiration.NEVER)
-            .folderKey("WordBkup")
-            .build();
+  public String create(String content) {
+    final PasteRequest pasteRequest =new PasteRequest(content, Format.JSON, Visibility.PRIVATE,
+            String.format(Locale.US, "Words backup %d %s %s", this.series, SERIES_SPLITTER,
+                    Instant.now().toString()), Expiration.NEVER, "WordBkup");
     try {
-      this.client.paste(pasteRequest);
+      return this.client.paste(pasteRequest);
     } catch (Exception e) {
       Log.e(TAG, "error...", e);
       throw new RuntimeException(e);
@@ -55,11 +50,11 @@ public class PastebinService {
   }
 
   public List<String> lastBackupAndCleanup() {
-    List<PasteExtension> pastes = this.client.list(100).stream().map(PasteExtension::create)
+    List<Paste> pastes = this.client.list(100).stream()
             .sorted((p1, p2) -> toDate(p2).compareTo(toDate(p1))).toList();
     deleteLastFew(pastes);
     String firstTitleWithSeries = EMPTY;
-    List<PasteExtension> pertinentPastes = new ArrayList<>();
+    List<Paste> pertinentPastes = new ArrayList<>();
     if (!pastes.isEmpty()) {
       firstTitleWithSeries = splitTitleBySeries(pastes.get(0));
       pertinentPastes.add(pastes.get(0));
@@ -69,7 +64,7 @@ public class PastebinService {
         pertinentPastes.add(pastes.get(i));
       }
     }
-    return pertinentPastes.stream().sorted(Comparator.comparing(PasteExtension::getKey)).map(PasteExtension::getKey)
+    return pertinentPastes.stream().sorted(Comparator.comparing(Paste::getKey)).map(Paste::getKey)
             .toList();
   }
 
@@ -85,18 +80,18 @@ public class PastebinService {
     }
   }
 
-  private String splitTitleBySeries(PasteExtension paste) {
+  private String splitTitleBySeries(Paste paste) {
     return paste.getTitle().split(SERIES_SPLITTER)[0];
   }
 
-  private void deleteLastFew(List<PasteExtension> pastes) {
+  private void deleteLastFew(List<Paste> pastes) {
     if (pastes.size() > 80) {
-      pastes.stream().skip(80).map(PasteExtension::getKey).forEach(this.client::delete);
+      pastes.stream().skip(80).map(Paste::getKey).forEach(this.client::delete);
     }
   }
 
-  private Instant toDate(PasteExtension paste) {
-    return Optional.of(paste).map(PasteExtension::getTitle).map(title -> title.split(SERIES_SPLITTER)[1])
+  private Instant toDate(Paste paste) {
+    return Optional.of(paste).map(Paste::getTitle).map(title -> title.split(SERIES_SPLITTER)[1])
             .map(StringUtils::strip).filter(StringUtils::isNotBlank).map(Repository::toInstant)
             .orElseThrow(() -> new RuntimeException("Paste must have a title and a date after the series splitter"));
   }
