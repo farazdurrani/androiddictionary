@@ -5,6 +5,7 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 public class Completable<T> {
@@ -35,14 +36,15 @@ public class Completable<T> {
     while (!cf.isDone()) {
       // till I die
     }
-    cf.exceptionally(logExceptionFunction(TAG));
+    cf.exceptionally(logExceptionFunction(TAG, null));
     return new Completable<>();
   }
 
   @NonNull
-  public static Function<Throwable, Void> logExceptionFunction(String tag) {
+  public static Function<Throwable, Void> logExceptionFunction(String tag, Consumer<Throwable> consumer) {
     return ex -> {
       Log.e(tag, "error..", ex);
+      if (consumer != null) consumer.accept(ex);
       return null;
     };
   }

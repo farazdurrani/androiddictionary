@@ -44,6 +44,7 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 import okhttp3.OkHttpClient;
@@ -60,7 +61,8 @@ public class MainActivity2 extends AppCompatActivity {
   public static final String JAVAMAIL_TO = "javamail.to";
   private static final String TAG = MainActivity2.class.getSimpleName();
   public static boolean defaultEmailProvider = true; //default email provider is JavaMail. Other option is MailJet.
-
+  private final Consumer<Throwable> exceptionToast = ex -> runOnUiThread(() -> Toast.makeText(MainActivity2.this,
+          ExceptionUtils.getStackTrace(ex), LENGTH_LONG).show());
   private MailjetClient mailjetClient;
   private Properties properties;
   private Repository repository;
@@ -190,10 +192,10 @@ public class MainActivity2 extends AppCompatActivity {
               .thenAccept(list -> Optional.of(pastebinServiceObject()).ifPresent(pbs -> Optional.of(list).stream()
                       .flatMap(List::stream).filter(ObjectUtils::isNotEmpty).map(pbs::create)
                       .forEach(this::printCreated)))
-              .exceptionally(logExceptionFunction(TAG));
+              .exceptionally(logExceptionFunction(TAG, exceptionToast));
       CompletableFuture<Void> two = CompletableFuture.supplyAsync(this::getWordsForEmailCompletable)
               .thenAccept(this::sendBackupEmail)
-              .exceptionally(logExceptionFunction(TAG));
+              .exceptionally(logExceptionFunction(TAG, exceptionToast));
       CompletableFuture.allOf(one, two).join();
     } catch (Exception e) {
       Log.e(TAG, e.getLocalizedMessage(), e);
@@ -204,12 +206,12 @@ public class MainActivity2 extends AppCompatActivity {
 
   private void sendLastFewRemindedWordsBeforeSyncing() {
     CompletableFuture.supplyAsync(this::getLastFewRemindedWordsToSendInAnEmail)
-            .thenAccept(this::sendLastFewRemindedWordsInAnEmail).exceptionally(logExceptionFunction(TAG)).join();
+            .thenAccept(this::sendLastFewRemindedWordsInAnEmail).exceptionally(logExceptionFunction(TAG, exceptionToast)).join();
   }
 
   private void sendWordsInAnEmailBeforeSyncing() {
     CompletableFuture.supplyAsync(this::getWordsForEmailCompletable).thenAccept(this::sendBackupBeforeSync)
-            .exceptionally(logExceptionFunction(TAG)).join();
+            .exceptionally(logExceptionFunction(TAG, exceptionToast)).join();
   }
 
   private String getWordsForEmailCompletable() {
