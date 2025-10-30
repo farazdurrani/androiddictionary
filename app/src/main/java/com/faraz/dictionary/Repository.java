@@ -25,6 +25,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -36,10 +37,10 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public class Repository {
+  public static final ZoneId CHICAGO_ZONE_ID = ZoneId.of(CHICAGO);
   private static final String TAG = Repository.class.getSimpleName();
   private static final String filename = "inmemorydb.json";
   private static final Predicate<WordEntity> REMINDED_TIME_IS_ABSENT_PREDICATE = we -> we.getRemindedTime() == null;
-  public static final ZoneId CHICAGO_ZONE_ID = ZoneId.of(CHICAGO);
   private static final ObjectMapper objectMapper = new ObjectMapper();
   private static final TypeFactory typeFactory = objectMapper.getTypeFactory();
   private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ISO_INSTANT;
@@ -55,7 +56,8 @@ public class Repository {
       return super.put(key, value);
     }
   };
-
+  private static final Comparator<WordEntity> SORT_BY_REMINDED_TIME_COMPARATOR =
+          (w1, w2) -> toDateRemindedTime(w2).compareTo(toDateRemindedTime(w1));
   private static boolean initialized;
   private static FileService fileService;
   private final String pastebinDeveloperKey;
@@ -104,6 +106,12 @@ public class Repository {
 
   public List<String> getWords() {
     return ImmutableList.copyOf(inMemoryDb.keySet());
+  }
+
+  public List<String> getLast100RemindedWords() {
+    List<String> list = inMemoryDb.values().stream().filter(we -> we.getRemindedTime() != null)
+            .sorted(SORT_BY_REMINDED_TIME_COMPARATOR).map(WordEntity::getWord).toList();
+    return list.subList(0, Math.min(100, list.size()));
   }
 
   public int getLength() {
@@ -173,8 +181,7 @@ public class Repository {
 
   public List<String> getByRemindedTime(int limit) {
     List<String> list = inMemoryDb.values().stream().filter(we -> we.getRemindedTime() != null)
-            .sorted((w1, w2) -> toDateRemindedTime(w2).compareTo(toDateRemindedTime(w1)))
-            .map(WordEntity::getWord).toList();
+            .sorted(SORT_BY_REMINDED_TIME_COMPARATOR).map(WordEntity::getWord).toList();
     return list.subList(0, Math.min(limit, list.size()));
   }
 
@@ -203,7 +210,7 @@ public class Repository {
     return () -> new RuntimeException(w + " is absent.");
   }
 
-  private Instant toDateRemindedTime(WordEntity w) {
+  private static Instant toDateRemindedTime(WordEntity w) {
     return toInstant(w.getRemindedTime());
   }
 

@@ -110,7 +110,9 @@ public class MainActivity2 extends AppCompatActivity {
               dialog.dismiss();
               List<View> buttons = findViewById(R.id.mainactivity2).getTouchables();
               toggleButtons(buttons, false);
-              Completable.runAsync(repository::reset).thenRunAsync(() -> runOnUiThread(() ->
+              Completable.runAsync(this::sendWordsInAnEmailBeforeSyncing)
+                      .thenRunAsync(this::sendLastFewRemindedWordsBeforeSyncing).thenRunAsync(repository::reset)
+                      .thenRunAsync(() -> runOnUiThread(() ->
                               Toast.makeText(MainActivity2.this, "Autocomplete and Database are in sync now.",
                                       LENGTH_SHORT).show())).thenRunAsync(() -> toggleButtons(buttons, true))
                       .thenRunAsync(() -> {
@@ -189,11 +191,7 @@ public class MainActivity2 extends AppCompatActivity {
                       .flatMap(List::stream).filter(ObjectUtils::isNotEmpty).map(pbs::create)
                       .forEach(this::printCreated)))
               .exceptionally(logExceptionFunction(TAG));
-      CompletableFuture<Void> two = CompletableFuture.supplyAsync(() -> ImmutableList.<String>builder()
-                      .add(String.format(Locale.US, "Total Count: '%d'.", repository.getLength()))
-                      .addAll(ImmutableList.<String>builder().addAll(repository.getWords().stream().map(this::anchor)
-                              .toList()).build().reverse()).build())
-              .thenApply(OfflineAndDeletedWordsActivity::addDivStyling)
+      CompletableFuture<Void> two = CompletableFuture.supplyAsync(this::getWordsForEmailCompletable)
               .thenAccept(this::sendBackupEmail)
               .exceptionally(logExceptionFunction(TAG));
       CompletableFuture.allOf(one, two).join();
@@ -203,8 +201,29 @@ public class MainActivity2 extends AppCompatActivity {
     }
   }
 
+
+  private void sendLastFewRemindedWordsBeforeSyncing() {
+    CompletableFuture.supplyAsync(this::getLastFewRemindedWordsToSendInAnEmail)
+            .thenAccept(this::sendLastFewRemindedWordsInAnEmail).exceptionally(logExceptionFunction(TAG)).join();
+  }
+
+  private void sendWordsInAnEmailBeforeSyncing() {
+    CompletableFuture.supplyAsync(this::getWordsForEmailCompletable).thenAccept(this::sendBackupBeforeSync)
+            .exceptionally(logExceptionFunction(TAG)).join();
+  }
+
+  private String getWordsForEmailCompletable() {
+    return OfflineAndDeletedWordsActivity.addDivStyling(ImmutableList.<String>builder().add(String.format(Locale.US,
+            "Total Count: '%d'.", repository.getLength())).addAll(ImmutableList.<String>builder()
+            .addAll(repository.getWords().stream().map(this::anchor).toList()).build().reverse()).build());
+  }
+
+  private String getLastFewRemindedWordsToSendInAnEmail() {
+    return OfflineAndDeletedWordsActivity.addDivStyling(repository.getLast100RemindedWords());
+  }
+
   private void printCreated(String s) {
-    Log.i(TAG, String.format(Locale.US, "paste: %s created.", s));
+    Log.i(TAG, String.format(Locale.US, "backup: %s created.", s));
   }
 
   private PastebinService pastebinServiceObject() {
@@ -217,14 +236,28 @@ public class MainActivity2 extends AppCompatActivity {
   }
 
   private void sendBackupEmail(String backup_words) {
-    String subject = "Words Backup.";
+    sendEmailWithSubject(backup_words, "Words Backup.", String.format(Locale.US, "'%d' words sent for backup.",
+            repository.getLength()), "Error occurred while backing-up words.");
+  }
+
+  private void sendBackupBeforeSync(String backup_words) {
+    sendEmailWithSubject(backup_words, "Words Backup before the sync.",
+            String.format(Locale.US, "'%d' words sent for backup before the sync", repository.getLength()),
+            "Error occurred while backing-up data before sync.");
+  }
+
+  private void sendLastFewRemindedWordsInAnEmail(String remindedWords) {
+    sendEmailWithSubject(remindedWords, "Sending the Last few Reminded Words before the sync.",
+            "Sent the last few reminded words before the sync",
+            "Error occurred while sending the last few reminded words before the sync.");
+  }
+
+  private void sendEmailWithSubject(String body, String subject, String successMsg, String failMsg) {
     try {
-      if (sendEmail(subject, backup_words)) {
-        runOnUiThread(() -> Toast.makeText(MainActivity2.this,
-                String.format(Locale.US, "'%d' words sent for backup.", repository.getLength()), LENGTH_SHORT).show());
+      if (sendEmail(subject, body)) {
+        runOnUiThread(() -> Toast.makeText(MainActivity2.this, successMsg, LENGTH_SHORT).show());
       } else {
-        runOnUiThread(() -> Toast.makeText(MainActivity2.this, "Error occurred while backing up words.", LENGTH_SHORT)
-                .show());
+        runOnUiThread(() -> Toast.makeText(MainActivity2.this, failMsg, LENGTH_SHORT).show());
       }
     } catch (Exception e) {
       throw new RuntimeException(e);
