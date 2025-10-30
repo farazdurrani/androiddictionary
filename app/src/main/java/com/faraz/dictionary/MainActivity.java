@@ -3,11 +3,8 @@ package com.faraz.dictionary;
 import static android.view.View.INVISIBLE;
 import static android.view.View.VISIBLE;
 import static android.widget.Toast.LENGTH_SHORT;
-import static com.faraz.dictionary.Completable.runSync;
 import static com.faraz.dictionary.DBResult.INSERT;
 import static com.faraz.dictionary.DBResult.UPDATE;
-import static com.faraz.dictionary.MainActivity2.JAVAMAIL_PASS;
-import static com.faraz.dictionary.MainActivity2.JAVAMAIL_USER;
 import static com.faraz.dictionary.OfflineAndDeletedWordsActivity.LOOKUPTHISWORD;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.apache.commons.lang3.StringUtils.SPACE;
@@ -24,7 +21,6 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
@@ -36,7 +32,6 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.android.volley.RequestQueue;
@@ -54,6 +49,8 @@ import org.json.JSONArray;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -62,16 +59,18 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
-@RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
 public class MainActivity extends AppCompatActivity {
   public static final String FILE_NAME = "FILE_NAME";
   public static final List<String> AUTO_COMPLETE_WORDS_REMOVE = new ArrayList<>();
   public static final Consumer<Object> NOOP = ignore -> {
   };
+  public static final String TAG = MainActivity.class.getSimpleName();
+  public static final String PASTEBIN_DEV_KEY = "pastebin.dev.key";
+  public static final String PASTEBIN_USER_KEY = "pastebin.user.key";
   static final String CHICAGO = "America/Chicago";
   private static final String NO_DEFINITION_FOUND = "No definitions found for '%s'. Perhaps, you meant:";
   private static final String REGEX_WHITE_SPACES = "\\s+";
@@ -112,7 +111,6 @@ public class MainActivity extends AppCompatActivity {
     }
   }
 
-  @SuppressLint("InlinedApi")
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
@@ -136,15 +134,14 @@ public class MainActivity extends AppCompatActivity {
     setLookupWordListener();
     setStoreWordListener();
     Optional.of(isOffline()).ifPresent(this::setOfflineFlagAndButton);
-    repository = new Repository(loadProperty(JAVAMAIL_USER), loadProperty(JAVAMAIL_PASS));
-    runSync(this::loadWordsForAutoComplete).thenRunSync(() -> ofNullable(getIntent().getExtras())
+    repository = new Repository(loadProperty(PASTEBIN_DEV_KEY), loadProperty(PASTEBIN_USER_KEY));
+    Completable.runSync(this::loadWordsForAutoComplete).thenRunSync(() -> ofNullable(getIntent().getExtras())
             .map(e -> e.getString(LOOKUPTHISWORD)).ifPresent(this::doLookup));
   }
 
   /**
    * Call this method only at startup!
    */
-  @SuppressLint("NewApi")
   private void loadWordsForAutoComplete() {
     List<View> views = findViewById(R.id.mainactivity).getTouchables();
     runOnUiThread(() -> views.forEach(v -> v.setEnabled(false)));
@@ -174,13 +171,12 @@ public class MainActivity extends AppCompatActivity {
     runOnUiThread(() -> offlineActivityButton.setVisibility(offline ? VISIBLE : INVISIBLE));
   }
 
-  @SuppressLint("NewApi")
   public void deleteButton(View view) {
     try {
       offlineWordsFileService.delete(originalLookupWord);
       runOnUiThread(() -> deleteButton.setVisibility(INVISIBLE));
     } catch (Exception e) {
-      Log.e(this.getClass().getSimpleName(), "error...", e);
+      Log.e(TAG, "error...", e);
       runOnUiThread(() -> definitionsView.setText(format("Error deleting '%s'. %s ", originalLookupWord,
               ExceptionUtils.getStackTrace(e))));
     }
@@ -196,7 +192,7 @@ public class MainActivity extends AppCompatActivity {
   }
 
   private void setOpenInBrowserListener() {
-    googleLink.setOnClickListener(ignore -> runAsync(this::openInWebBrowser));
+    googleLink.setOnClickListener(ignore -> CompletableFuture.runAsync(this::openInWebBrowser));
   }
 
   private void setLookupWordListener() {
@@ -213,7 +209,8 @@ public class MainActivity extends AppCompatActivity {
   private void doLookup() {
     runOnUiThread(() -> offlineActivityButton.setVisibility(offline ? VISIBLE : INVISIBLE));
     doInitialWork();
-    Optional.of(offline).filter(BooleanUtils::isTrue).ifPresent(ignore -> runAsync(this::writeToOfflineFile));
+    Optional.of(offline).filter(BooleanUtils::isTrue)
+            .ifPresent(ignore -> CompletableFuture.runAsync(this::writeToOfflineFile));
     Optional.of(offline).filter(BooleanUtils::isFalse).ifPresent(this::lookupAndstoreInDbAndOpenBrowser);
   }
 
@@ -239,7 +236,6 @@ public class MainActivity extends AppCompatActivity {
     return format(mUrl, word, mk);
   }
 
-  @SuppressLint({"SetTextI18n", "NewApi"})
   private void lookupWord() {
     try {
       if (existingWord()) {
@@ -251,7 +247,8 @@ public class MainActivity extends AppCompatActivity {
       String[] definition = lookupInMerriamWebster();
       runOnUiThread(() -> definitionsView.setText(definition[1]));
       Optional.of(definition[0]).map(BooleanUtils::toBoolean).filter(BooleanUtils::isTrue)
-              .ifPresent(ignore -> runAsync(this::saveWordInDb).thenRunAsync(this::storeWordInAutoComplete));
+              .ifPresent(ignore -> CompletableFuture.runAsync(this::saveWordInDb)
+                      .thenRun(this::storeWordInAutoComplete));
       Optional.of(definition[0]).map(BooleanUtils::toBoolean).filter(BooleanUtils::isFalse)
               .flatMap(ignore -> offlineWordsFileService.readFile().stream().filter(originalLookupWord::equals)
                       .findFirst())
@@ -306,10 +303,12 @@ public class MainActivity extends AppCompatActivity {
 
   private void storeWord(String ignore) {
     runOnUiThread(() -> offlineActivityButton.setVisibility(offline ? VISIBLE : INVISIBLE));
-    Optional.of(offline).filter(BooleanUtils::isTrue).ifPresent(_ignore -> runAsync(this::writeToOfflineFile));
+    Optional.of(offline).filter(BooleanUtils::isTrue)
+            .ifPresent(_ignore -> CompletableFuture.runAsync(this::writeToOfflineFile));
     try {
       Optional.of(offline).filter(BooleanUtils::isFalse).ifPresent(_ignore ->
-              runAsync(this::firstCheckIfExistsAndIfNotThenSaveWordInDb).thenRunAsync(this::storeWordInAutoComplete));
+              CompletableFuture.runAsync(this::firstCheckIfExistsAndIfNotThenSaveWordInDb)
+                      .thenRun(this::storeWordInAutoComplete));
     } catch (Exception e) {
       runOnUiThread(() -> definitionsView.setText(format("welp...%s%s%s", originalLookupWord, lineSeparator(),
               getStackTrace(e))));
@@ -386,7 +385,6 @@ public class MainActivity extends AppCompatActivity {
     }
   }
 
-  @SuppressLint("SetTextI18n")
   private String[] lookupInMerriamWebster() {
     String url = formMerriamWebsterUrl();
     RequestFuture<JSONArray> requestFuture = RequestFuture.newFuture();
@@ -412,13 +410,31 @@ public class MainActivity extends AppCompatActivity {
     repository.upsert(originalLookupWord);
   }
 
-  @SuppressLint("NewApi")
   public boolean isOffline() {
+    return pingURL("google.com", 555);
+  }
+
+  /**
+   * Pings a HTTP URL. This effectively sends a HEAD request and returns <code>true</code> if the response code is in
+   * the 200-399 range.
+   *
+   * @param url     The HTTP URL to be pinged.
+   * @param timeout The timeout in millis for both the connection timeout and the response read timeout. Note that
+   *                the total timeout is effectively two times the given timeout.
+   * @return <code>true</code> if the given HTTP URL has returned response code 200-399 on a HEAD request within the
+   * given timeout, otherwise <code>false</code>.
+   */
+  public static boolean pingURL(String url, int timeout) {
+    url = url.replaceFirst("^https", "http"); // Otherwise an exception may be thrown on invalid SSL certificates.
     try {
-      Process p = Runtime.getRuntime().exec("ping -c 1 google.com");
-      return p.waitFor(555L, TimeUnit.MILLISECONDS) && p.exitValue() != 0;
-    } catch (Exception e) {
-      return true;
+      HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
+      connection.setConnectTimeout(timeout);
+      connection.setReadTimeout(timeout);
+      connection.setRequestMethod("HEAD");
+      int responseCode = connection.getResponseCode();
+      return (200 <= responseCode && responseCode <= 399);
+    } catch (IOException exception) {
+      return false;
     }
   }
 }

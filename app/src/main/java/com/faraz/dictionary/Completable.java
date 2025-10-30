@@ -1,14 +1,15 @@
 package com.faraz.dictionary;
 
+import android.util.Log;
+
+import androidx.annotation.NonNull;
+
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Function;
 
 public class Completable<T> {
 
-  @FunctionalInterface
-  public interface Operation {
-    void run();
-  }
-
+  private static final String TAG = Completable.class.getSimpleName();
   private final Object result;
 
   public Completable() {
@@ -31,21 +32,31 @@ public class Completable<T> {
   //still synchronous
   public static Completable<Void> runAsync(Runnable r) {
     CompletableFuture<Void> cf = CompletableFuture.runAsync(r);
-    while(!cf.isDone()) {
+    while (!cf.isDone()) {
       // till I die
     }
+    cf.exceptionally(logExceptionFunction(TAG));
     return new Completable<>();
   }
 
+  @NonNull
+  public static Function<Throwable, Void> logExceptionFunction(String tag) {
+    return ex -> {
+      Log.e(tag, "error..", ex);
+      return null;
+    };
+  }
+
   public Completable<Void> thenRunAsync(Runnable r) {
-    CompletableFuture<Void> cf = CompletableFuture.runAsync(r);
-    while(!cf.isDone()) {
-      // till I am done with life
-    }
-    return new Completable<>();
+    return runAsync(r);
   }
 
   private Object getResult() {
     return result;
+  }
+
+  @FunctionalInterface
+  public interface Operation {
+    void run();
   }
 }

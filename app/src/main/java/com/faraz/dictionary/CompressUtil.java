@@ -9,6 +9,10 @@ import java.nio.charset.StandardCharsets;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
+@Deprecated
+/**
+ * It is corrupt. it did fine for 8766 words. But not after that.
+ */
 public class CompressUtil {
 
   public static byte[] compress(String str) {

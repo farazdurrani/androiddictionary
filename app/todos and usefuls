@@ -1,8 +1,10 @@
+todos: get rid of 'com.github.wnameless.json:json-flattener:0.16.4' and use the jackson mapper.
+todos: get rid of volley and bring in okhttp? perhaps?
+todos: when loading random words when there are no words, mongo error comes up.
+
 mongo api https://www.mongodb.com/developer/products/atlas/atlas-data-api-introduction/
 termux https://termux.dev/docs
 linker https://play.google.com/store/apps/details?id=com.jcoder.linker
-
-Now, Finding all the mongo queries in MainActivity (the main page).
 
 MainActivity (Done)
 - autocomplete load all (done)

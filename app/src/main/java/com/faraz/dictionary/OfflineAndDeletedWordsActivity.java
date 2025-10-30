@@ -24,6 +24,7 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
@@ -55,6 +56,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
@@ -63,8 +65,9 @@ import java.util.function.Predicate;
 
 import okhttp3.OkHttpClient;
 
-@SuppressWarnings({"SetTextI18n", "NewApi"})
 public class OfflineAndDeletedWordsActivity extends AppCompatActivity {
+
+  public static final String TAG = OfflineAndDeletedWordsActivity.class.getSimpleName();
 
   public static final String LOOKUPTHISWORD = "lookupthisword";
   private String[] words;
@@ -74,11 +77,6 @@ public class OfflineAndDeletedWordsActivity extends AppCompatActivity {
   private String filename;
   private Properties properties;
   private MailjetClient mailjetClient;
-
-  @NonNull
-  public static String addDivStyling(List<String> words) {
-    return "<div style=\"font-size:20px\">" + String.join("<br>", words) + "</div>";
-  }
 
   @SuppressLint("SetTextI18n")
   @Override
@@ -94,7 +92,8 @@ public class OfflineAndDeletedWordsActivity extends AppCompatActivity {
     ofNullable(getIntent().getExtras()).map(e -> e.getString(FILE_NAME)).ifPresent(this::doInitiation);
     ofNullable(getIntent().getExtras()).filter(e -> StringUtils.isBlank(e.getString(FILE_NAME, EMPTY)))
             .ifPresent(ignore -> ((TextView) findViewById(R.id.filepath)).setText("can't locate the path"));
-    ((TextView) findViewById(R.id.wordsCount)).setText(words.length + " total words in file.");
+    ((TextView) findViewById(R.id.wordsCount)).setText(ofNullable(words).map(x -> x.length).orElse(0) + " words" +
+            " in file.");
     Optional.of(fileService.readFile()).filter(ObjectUtils::isEmpty)
             .ifPresent(ignore -> findViewById(R.id.emailButton).setEnabled(false));
     mailjetClient();
@@ -132,6 +131,7 @@ public class OfflineAndDeletedWordsActivity extends AppCompatActivity {
     startActivity(intent);
   }
 
+  @SuppressLint("SetTextI18n")
   private void filepath() {
     runOnUiThread(() -> ((TextView) findViewById(R.id.filepath)).setText(
             ofNullable(getExternalFilesDir(null)).map(File::getAbsolutePath).orElse("can't locate the path") +
@@ -151,6 +151,7 @@ public class OfflineAndDeletedWordsActivity extends AppCompatActivity {
             .ifPresent(this::deleteWordsAndShowNewDisplay);
   }
 
+  @SuppressLint("SetTextI18n")
   private void deleteWordsAndShowNewDisplay(boolean... ignore) {
     CompletableFuture.runAsync(() -> fileService.clearFile());
     words = new String[0];
@@ -167,18 +168,18 @@ public class OfflineAndDeletedWordsActivity extends AppCompatActivity {
     runOnUiThread(() -> findViewById(R.id.emailButton).setEnabled(true));
   }
 
-  @SuppressLint("DefaultLocale")
   private void sendEmails(List<String> words) {
     String subject = "Offline Words.";
     try {
       if (sendEmail(subject, addDivStyling(words))) {
-        runOnUiThread(() -> Toast.makeText(OfflineAndDeletedWordsActivity.this, format("'%d' offline words sent.",
-                words.size()), LENGTH_SHORT).show());
+        runOnUiThread(() -> Toast.makeText(OfflineAndDeletedWordsActivity.this, String.format(Locale.US,
+                "'%d' offline words sent.", words.size()), LENGTH_SHORT).show());
       } else {
         runOnUiThread(() -> Toast.makeText(OfflineAndDeletedWordsActivity.this, "Error occurred while sending email.",
                 LENGTH_SHORT).show());
       }
     } catch (Exception e) {
+      Log.e(TAG, "error...", e);
       throw new RuntimeException(e);
     }
   }
@@ -224,6 +225,7 @@ public class OfflineAndDeletedWordsActivity extends AppCompatActivity {
     } catch (MailjetException e) {
       runOnUiThread(() -> Toast.makeText(OfflineAndDeletedWordsActivity.this, "Error occurred while sending email.",
               LENGTH_SHORT).show());
+      Log.e(TAG, "error...", e);
     }
     return noErrors(response);
   }
@@ -242,10 +244,16 @@ public class OfflineAndDeletedWordsActivity extends AppCompatActivity {
       try (InputStream is = getBaseContext().getAssets().open("application.properties")) {
         properties.load(is);
       } catch (IOException e) {
+        Log.e(TAG, "error...", e);
         throw new RuntimeException(e);
       }
     }
     return this.properties.getProperty(property);
+  }
+
+  @NonNull
+  public static String addDivStyling(List<String> words) {
+    return "<div style=\"font-size:20px\">" + String.join("<br>", words) + "</div>";
   }
 
   private static class ShowNumbersArrayAdapter extends ArrayAdapter<String> {
@@ -254,6 +262,7 @@ public class OfflineAndDeletedWordsActivity extends AppCompatActivity {
       super(context, resource, objects);
     }
 
+    @SuppressLint("SetTextI18n")
     @androidx.annotation.NonNull
     @Override
     public View getView(int position, @Nullable View convertView, @androidx.annotation.NonNull ViewGroup parent) {

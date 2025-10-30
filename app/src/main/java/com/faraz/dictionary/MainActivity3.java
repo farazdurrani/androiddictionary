@@ -9,7 +9,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.icu.math.BigDecimal;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -18,7 +17,6 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
 import java.io.IOException;
@@ -31,7 +29,7 @@ import java.util.concurrent.CompletableFuture;
 
 public class MainActivity3 extends AppCompatActivity {
 
-  private static final String activity = MainActivity3.class.getSimpleName();
+  private static final String TAG = MainActivity3.class.getSimpleName();
   private static final String NUMBER_OF_WORDS_TO_SHOW = "number.of.words.to.show";
   private static final BigDecimal ONE_HUNDRED = new BigDecimal("100");
   private String[] words;
@@ -42,7 +40,6 @@ public class MainActivity3 extends AppCompatActivity {
   private Repository repository;
 
   @SuppressLint("SetTextI18n")
-  @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
   @Override
   public void onCreate(Bundle icicle) {
     super.onCreate(icicle);
@@ -62,7 +59,7 @@ public class MainActivity3 extends AppCompatActivity {
         showWordsAndCount(_words);
         toggleButtons(true);
       } catch (Exception e) {
-        Log.e(activity, e.getLocalizedMessage(), e);
+        Log.e(TAG, e.getLocalizedMessage(), e);
         runOnUiThread(() -> Toast.makeText(context, "Mongo has gone belly up!", LENGTH_SHORT).show());
       }
     });
@@ -76,8 +73,6 @@ public class MainActivity3 extends AppCompatActivity {
     });
   }
 
-  @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
-  @SuppressLint("SetTextI18n")
   private void showWordsAndCount(List<String> _words) {
     words = _words.toArray(new String[0]);
     ArrayAdapter<String> adapter = new ArrayAdapter<>(context, R.layout.custom_layout, words);
@@ -94,7 +89,6 @@ public class MainActivity3 extends AppCompatActivity {
     runOnUiThread(() -> findViewById(R.id.undoRemind).setEnabled(visible));
   }
 
-  @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
   @SuppressLint("SetTextI18n")
   public void undoRemind(View view) {
     toggleButtons(false);
@@ -112,7 +106,6 @@ public class MainActivity3 extends AppCompatActivity {
     }).thenRun(this::sleepThenEnableButtons);
   }
 
-  @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
   @SuppressLint("SetTextI18n")
   public void markWordsAsReminded(View view) {
     toggleButtons(false);
@@ -125,7 +118,7 @@ public class MainActivity3 extends AppCompatActivity {
         List<String> _words = repository.getWordsForReminder(parseInt(properties.getProperty(NUMBER_OF_WORDS_TO_SHOW)));
         showWordsAndCount(_words);
       } catch (Exception e) {
-        Log.e(activity, e.getLocalizedMessage(), e);
+        Log.e(TAG, e.getLocalizedMessage(), e);
         runOnUiThread(() -> Toast.makeText(context, "Not sure what went wrong.", LENGTH_LONG).show());
       }
     }).thenRun(this::sleepThenEnableButtons);
@@ -153,7 +146,7 @@ public class MainActivity3 extends AppCompatActivity {
 
   /**
    * TODO: The stop-gap solution to avoid reading of the data that hasn't been written yet due to the writing of the
-   * TODO: data in an asynchronous fashion.
+   *       data in an asynchronous fashion.
    */
   private void sleepThenEnableButtons() {
     try {

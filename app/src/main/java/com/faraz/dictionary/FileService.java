@@ -2,42 +2,42 @@ package com.faraz.dictionary;
 
 import static java.lang.System.lineSeparator;
 
-import android.annotation.SuppressLint;
-import android.os.Build;
 import android.os.Environment;
 import android.util.Log;
 
-import androidx.annotation.RequiresApi;
-
 import org.apache.commons.lang3.ObjectUtils;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.FileReader;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 public class FileService {
 
-
+  public static final String TAG = FileService.class.getSimpleName();
   //Initialize it once when the app is loading up
-  public static String externalFilesDir;
+  private static String externalFilesDir;
   private final String filename;
 
-  @SuppressLint("NewApi")
   public FileService(String filename, String... folder) {
     externalFilesDir = folder.length > 0 ? folder[0] : externalFilesDir;
     this.filename = filename;
     try {
-      if (!Files.exists(Paths.get(externalFilesDir))) {
-        Files.createDirectories(Paths.get(externalFilesDir));
+      File file = new File(externalFilesDir, filename);
+      if (file.createNewFile()) {
+        Log.i(TAG, String.format(Locale.US, "Successfully created file at %s", file.getAbsolutePath()));
+      } else {
+        Log.i(TAG, String.format(Locale.US, "File already exists at %s" , file.getAbsolutePath()));
       }
-      boolean ignore = new File(externalFilesDir, filename).createNewFile();
     } catch (IOException e) {
+      Log.e(TAG, "error...", e);
       throw new RuntimeException(e);
     }
   }
@@ -72,7 +72,7 @@ public class FileService {
       outputStream.flush();
       outputStream.close();
     } catch (Exception e) {
-      Log.e("MainActivity", "Something went wrong", e);
+      Log.e(TAG, "Something went wrong", e);
     }
   }
 
@@ -85,32 +85,37 @@ public class FileService {
     try {
       new FileOutputStream(new File(externalFilesDir, filename)).close();
     } catch (IOException e) {
+      Log.e(TAG, "error...", e);
       throw new RuntimeException(e);
     }
   }
 
-  @RequiresApi(api = Build.VERSION_CODES.O)
   public List<String> readFile() {
-    try {
-      return Files.readAllLines(Paths.get(new File(externalFilesDir, filename).toURI()))
-              .stream().distinct().collect(Collectors.toList());
+    try (BufferedReader buffer = new BufferedReader(new FileReader(new File(externalFilesDir, filename)))) {
+      List<String> lines = new ArrayList<>();
+      String line;
+      while ((line = buffer.readLine()) != null) {
+        lines.add(line);
+      }
+      return lines;
     } catch (Exception e) {
-      Log.e(this.getClass().getSimpleName(), "Error", e);
+      Log.e(TAG, "Error", e);
       return Collections.emptyList();
     }
   }
 
-  @RequiresApi(api = Build.VERSION_CODES.O)
   public byte[] readFileAsByte() {
-    try {
-      return Files.readAllBytes(Paths.get(new File(externalFilesDir, filename).toURI()));
-    } catch (Exception e) {
-      Log.e(this.getClass().getSimpleName(), "Error", e);
+    File myFile = new File(externalFilesDir, filename);
+    byte[] byteArray = new byte[(int) myFile.length()];
+    try (FileInputStream inputStream = new FileInputStream(myFile)) {
+      int ignore = inputStream.read(byteArray);
+    } catch (IOException e) {
+      Log.e(TAG, "Error", e);
       return new byte[0];
     }
+    return byteArray;
   }
 
-  @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
   public void delete(String word) {
     String[] words = readFile().stream().filter(w -> !w.equals(word)).distinct().toArray(String[]::new);
     Optional.of(words).filter(ObjectUtils::isEmpty)
