@@ -206,7 +206,8 @@ public class MainActivity2 extends AppCompatActivity {
 
   private void sendLastFewRemindedWordsBeforeSyncing() {
     CompletableFuture.supplyAsync(this::getLastFewRemindedWordsToSendInAnEmail)
-            .thenAccept(this::sendLastFewRemindedWordsInAnEmail).exceptionally(logExceptionFunction(TAG, exceptionToast)).join();
+            .thenAccept(this::sendLastFewRemindedWordsInAnEmail)
+            .exceptionally(logExceptionFunction(TAG, exceptionToast)).join();
   }
 
   private void sendWordsInAnEmailBeforeSyncing() {

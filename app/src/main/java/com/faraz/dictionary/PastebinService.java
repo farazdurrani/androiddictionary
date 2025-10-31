@@ -38,7 +38,7 @@ public class PastebinService {
   }
 
   public String create(String content) {
-    final PasteRequest pasteRequest =new PasteRequest(content, Format.JSON, Visibility.PRIVATE,
+    final PasteRequest pasteRequest = new PasteRequest(content, Format.JSON, Visibility.PRIVATE,
             String.format(Locale.US, "Words backup %d %s %s", this.series, SERIES_SPLITTER,
                     Instant.now().toString()), Expiration.NEVER, "WordBkup");
     try {
@@ -49,7 +49,7 @@ public class PastebinService {
     }
   }
 
-  public List<String> lastBackupAndCleanup() {
+  public List<String> getLastBackupKeysAndCleanup() {
     List<Paste> pastes = this.client.list(100).stream()
             .sorted((p1, p2) -> toDate(p2).compareTo(toDate(p1))).toList();
     deleteLastFew(pastes);
@@ -85,9 +85,7 @@ public class PastebinService {
   }
 
   private void deleteLastFew(List<Paste> pastes) {
-    if (pastes.size() > 80) {
-      pastes.stream().skip(80).map(Paste::getKey).forEach(this.client::delete);
-    }
+    pastes.stream().skip(80).map(Paste::getKey).forEach(this.client::delete);
   }
 
   private Instant toDate(Paste paste) {

@@ -85,11 +85,7 @@ public class Repository {
         List<WordEntity> wordEntities = Collections.emptyList();
         String json = StringUtils.strip((new String(fileService.readFileAsByte())));
         if (StringUtils.isBlank(json)) {
-          wordEntities = Optional.of(new PastebinService(pastebinDeveloperKey, pastebinUserKey))
-                  .map(pbs -> Optional.of(pbs).map(PastebinService::lastBackupAndCleanup).stream()
-                          .flatMap(List::stream).peek(this::print).map(pbs::get).map(this::toWordEntities).toList())
-                  .flatMap(list -> Optional.of(list.stream().flatMap(List::stream).toList())).orElseGet(ArrayList::new);
-          writeOverFile(getValuesAsString(wordEntities));
+          writeOverFile(getValuesAsString(wordEntities = getWordEntities()));
         }
         Optional.of(wordEntities).filter(ObjectUtils::isNotEmpty).orElseGet(() -> toWordEntities(json))
                 .forEach(we -> inMemoryDb.put(we.getWord(), stripWhiteSpaces(we)));
@@ -234,5 +230,14 @@ public class Repository {
     } catch (JsonProcessingException e) {
       throw new RuntimeException(e);
     }
+  }
+
+  @NonNull
+  private List<WordEntity> getWordEntities() {
+    return Optional.of(new PastebinService(pastebinDeveloperKey, pastebinUserKey))
+            .map(pbs -> Optional.of(pbs).map(PastebinService::getLastBackupKeysAndCleanup).stream()
+                    .flatMap(List::stream).peek(this::print).map(pbs::get).map(this::toWordEntities)
+                    .toList())
+            .flatMap(list -> Optional.of(list.stream().flatMap(List::stream).toList())).orElseGet(ArrayList::new);
   }
 }

@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -21,8 +22,11 @@ public class PastebinClient {
 
   private static final String BASE_API_URL = "https://pastebin.com/api";
   private static final MediaType MEDIA_TYPE = MediaType.get("application/x-www-form-urlencoded");
-
-  private final OkHttpClient client = new OkHttpClient();
+  private static final OkHttpClient client = new OkHttpClient().newBuilder()
+          .connectTimeout(30, TimeUnit.SECONDS)
+          .readTimeout(60, TimeUnit.SECONDS)
+          .writeTimeout(90, TimeUnit.SECONDS)
+          .build();
   private final String developerKey;
   private final String userKey;
 
@@ -37,8 +41,8 @@ public class PastebinClient {
 
   public List<Paste> list(int limit) {
     if (this.userKey == null) {
-      throw new IllegalStateException(
-              "Cannot retrieve list of pastes without user key. Please call login method first or provide user key to PastebinClient.");
+      throw new IllegalStateException("Cannot retrieve list of pastes without user key. Please call login " +
+              "method first or provide user key to PastebinClient.");
     }
 
     ListRequest request = new ListRequest(limit);
