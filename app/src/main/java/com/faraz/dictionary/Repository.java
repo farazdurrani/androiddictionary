@@ -70,36 +70,6 @@ public class Repository {
     init();
   }
 
-  /**
-   * This repo is initialized automatically at startup and is initialized exactly once no matter how many times the
-   * constructor is invoked.
-   */
-  private void init() {
-    // halt erroneous attempt to re-init repository;
-    if (initialized) {
-      Log.i(TAG, "Repository already initialized.");
-      return;
-    }
-    Completable.runAsync(() -> {
-      try {
-        List<WordEntity> wordEntities = Collections.emptyList();
-        String json = StringUtils.strip((new String(fileService.readFileAsByte())));
-        if (StringUtils.isBlank(json)) {
-          writeOverFile(getValuesAsString(wordEntities = getWordEntities()));
-        }
-        Optional.of(wordEntities).filter(ObjectUtils::isNotEmpty).orElseGet(() -> toWordEntities(json))
-                .forEach(we -> inMemoryDb.put(we.getWord(), stripWhiteSpaces(we)));
-        initialized = ObjectUtils.isNotEmpty(inMemoryDb);
-      } catch (Exception e) {
-        Log.e(TAG, "error...", e);
-      }
-    });
-  }
-
-  private void print(String string) {
-    Log.i(TAG, String.format(Locale.US, "Pastebin: Getting key '%s'.", string));
-  }
-
   public List<String> getWords() {
     return ImmutableList.copyOf(inMemoryDb.keySet());
   }
@@ -130,18 +100,6 @@ public class Repository {
   public List<String> getValuesAsStrings() {
     return Lists.partition(inMemoryDb.values().stream().toList(), 4000).stream().map(this::getValuesAsString)
             .toList();
-  }
-
-  private String getValuesAsString(Collection<WordEntity> values) {
-    try {
-      return values.isEmpty() ? EMPTY : objectMapper.writeValueAsString(values);
-    } catch (JsonProcessingException e) {
-      return ExceptionUtils.getStackTrace(e);
-    }
-  }
-
-  private String getValuesAsString() {
-    return getValuesAsString(inMemoryDb.values());
   }
 
   /**
@@ -218,7 +176,7 @@ public class Repository {
     fileService.writeFileExternalStorage(false, value);
   }
 
-  public static Instant toInstant(String instant) {
+  private static Instant toInstant(String instant) {
     return Optional.ofNullable(instant).map(StringUtils::strip).filter(StringUtils::isNotBlank).map(Instant::parse)
             .orElseThrow(() -> new RuntimeException("String 'instant' cannot be empty/null"));
   }
@@ -236,8 +194,53 @@ public class Repository {
   private List<WordEntity> getWordEntities() {
     return Optional.of(new PastebinService(pastebinDeveloperKey, pastebinUserKey))
             .map(pbs -> Optional.of(pbs).map(PastebinService::getLastBackupKeysAndCleanup).stream()
-                    .flatMap(List::stream).peek(this::print).map(pbs::get).map(this::toWordEntities)
-                    .toList())
+                    .peek(this::print).map(pbs::get).flatMap(List::stream).map(this::toWordEntities).toList())
             .flatMap(list -> Optional.of(list.stream().flatMap(List::stream).toList())).orElseGet(ArrayList::new);
+  }
+
+  private void print(List<String> strings) {
+    strings.forEach(this::print);
+  }
+
+  private void print(String string) {
+    Log.i(TAG, String.format(Locale.US, "Pastebin: Getting key '%s'.", string));
+  }
+
+  private String getValuesAsString(Collection<WordEntity> values) {
+    try {
+      return values.isEmpty() ? EMPTY : objectMapper.writeValueAsString(values);
+    } catch (JsonProcessingException e) {
+      return ExceptionUtils.getStackTrace(e);
+    }
+  }
+
+  private String getValuesAsString() {
+    return getValuesAsString(inMemoryDb.values());
+  }
+
+  /**
+   * This repo is initialized automatically at startup and is initialized exactly once no matter how many times the
+   * constructor is invoked.
+   */
+  private void init() {
+    // halt erroneous attempt to re-init repository;
+    if (initialized) {
+      Log.i(TAG, "Repository already initialized.");
+      return;
+    }
+    Completable.runAsync(() -> {
+      try {
+        List<WordEntity> wordEntities = Collections.emptyList();
+        String json = StringUtils.strip((new String(fileService.readFileAsByte())));
+        if (StringUtils.isBlank(json)) {
+          writeOverFile(getValuesAsString(wordEntities = getWordEntities()));
+        }
+        Optional.of(wordEntities).filter(ObjectUtils::isNotEmpty).orElseGet(() -> toWordEntities(json))
+                .forEach(we -> inMemoryDb.put(we.getWord(), stripWhiteSpaces(we)));
+        initialized = ObjectUtils.isNotEmpty(inMemoryDb);
+      } catch (Exception e) {
+        Log.e(TAG, "error...", e);
+      }
+    });
   }
 }

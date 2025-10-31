@@ -189,9 +189,9 @@ public class MainActivity2 extends AppCompatActivity {
   private void backupData() {
     try {
       CompletableFuture<Void> one = CompletableFuture.supplyAsync(() -> repository.getValuesAsStrings())
-              .thenAccept(list -> Optional.of(pastebinServiceObject()).ifPresent(pbs -> Optional.of(list).stream()
-                      .flatMap(List::stream).filter(ObjectUtils::isNotEmpty).map(pbs::create)
-                      .forEach(this::printCreated)))
+              .thenAccept(list -> Optional.of(pastebinServiceObject()).flatMap(pbs -> Optional.of(list)
+                              .filter(ObjectUtils::isNotEmpty).map(content -> pbs.create(content, repository.getLength())))
+                      .ifPresent(urls -> urls.forEach(this::printCreated)))
               .exceptionally(logExceptionFunction(TAG, exceptionToast));
       CompletableFuture<Void> two = CompletableFuture.supplyAsync(this::getWordsForEmailCompletable)
               .thenAccept(this::sendBackupEmail)
