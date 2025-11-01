@@ -47,7 +47,7 @@ public class PastebinService {
   public List<String> create(List<String> content, int length) {
     try {
       return IntStream.range(0, content.size()).mapToObj(index -> pageRequest(content.get(index), length, index))
-              .parallel().map(client::paste).toList();
+              .map(client::paste).toList();
     } catch (Exception e) {
       Log.e(TAG, "error...", e);
       throw new RuntimeException(e);
@@ -77,7 +77,7 @@ public class PastebinService {
    */
   public List<String> get(List<String> pasteKeys) {
     try {
-      return pasteKeys.stream().parallel().map(client::getUserPaste).toList();
+      return pasteKeys.stream().map(client::getUserPaste).toList();
     } catch (Exception e) {
       Log.e(TAG, "error...", e);
       throw new RuntimeException(e);
@@ -89,7 +89,7 @@ public class PastebinService {
   }
 
   private void deleteAfter30(List<Paste> pastes) {
-    pastes.stream().skip(30).map(Paste::getKey).parallel().forEach(client::delete);
+    pastes.stream().skip(30).map(Paste::getKey).forEach(client::delete);
   }
 
   private Instant toDate(Paste paste) {
@@ -108,6 +108,6 @@ public class PastebinService {
   private PasteRequest pageRequest(String content, int length, int index) {
     return new PasteRequest(content, Format.JSON, Visibility.PUBLIC,
             String.format(Locale.US, "%d Words backup %d %s %s %s %d", length, ASSOCIATION, SERIES_SPLITTER,
-                    Instant.now().toString(), SERIES_SPLITTER, index), Expiration.NEVER, "WordBkup");
+                    Instant.now().toString(), SERIES_SPLITTER, index), Expiration.NEVER, null);
   }
 }

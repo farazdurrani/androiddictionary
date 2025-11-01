@@ -113,10 +113,12 @@ public class MainActivity2 extends AppCompatActivity {
               List<View> buttons = findViewById(R.id.mainactivity2).getTouchables();
               toggleButtons(buttons, false);
               Completable.runAsync(this::sendWordsInAnEmailBeforeSyncing)
-                      .thenRunAsync(this::sendLastFewRemindedWordsBeforeSyncing).thenRunAsync(repository::reset)
+                      .thenRunAsync(this::sendLastFewRemindedWordsBeforeSyncing)
+                      .thenRunAsync(repository::reset)
                       .thenRunAsync(() -> runOnUiThread(() ->
                               Toast.makeText(MainActivity2.this, "Autocomplete and Database are in sync now.",
-                                      LENGTH_SHORT).show())).thenRunAsync(() -> toggleButtons(buttons, true))
+                                      LENGTH_SHORT).show()))
+                      .thenRunAsync(() -> toggleButtons(buttons, true))
                       .thenRunAsync(() -> {
                         Intent intent = new Intent(context, MainActivity.class);
                         startActivity(intent);

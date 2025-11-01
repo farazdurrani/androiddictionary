@@ -10,6 +10,7 @@ import org.apache.commons.lang3.builder.HashCodeBuilder;
 
 public class WordEntity {
 
+  private Integer id;
   private String word;
   private String lookupTime;
   private String remindedTime;
@@ -19,10 +20,21 @@ public class WordEntity {
     //FOR JACKSON'S OBJECTMAPPER!
   }
 
-  public WordEntity(String word, String lookupTime, String remindedTime) {
+  public WordEntity(Integer id, String word, String lookupTime, String remindedTime) {
+    this.id = id;
     this.word = word;
     this.lookupTime = lookupTime;
     this.remindedTime = remindedTime;
+  }
+
+  @JsonProperty(value = "id")
+  public Integer getId() {
+    return id;
+  }
+
+  @JsonIgnore
+  public void setId(Integer id) {
+    this.id = id;
   }
 
   @JsonProperty(value = "word")
@@ -63,20 +75,20 @@ public class WordEntity {
 
     WordEntity that = (WordEntity) object;
 
-    return new EqualsBuilder().append(word, that.word)
-            .append(lookupTime, that.lookupTime).append(remindedTime, that.remindedTime).isEquals();
+    return new EqualsBuilder().append(id, that.id).isEquals();
   }
 
   @Override
   public int hashCode() {
-    return new HashCodeBuilder(17, 37).append(word).append(lookupTime).append(remindedTime).toHashCode();
+    return new HashCodeBuilder(17, 37).append(id).toHashCode();
   }
 
   @NonNull
   @Override
   public String toString() {
     return "WordEntity{" +
-            "word='" + word + '\'' +
+            "id=" + id +
+            ", word='" + word + '\'' +
             ", lookupTime='" + lookupTime + '\'' +
             ", remindedTime='" + remindedTime + '\'' +
             '}';

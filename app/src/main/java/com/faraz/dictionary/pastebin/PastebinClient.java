@@ -102,6 +102,7 @@ public class PastebinClient {
             .build();
 
     try (Response response = client.newCall(request).execute()) {
+      Thread.sleep(1000L); //can't really call pastebin in rapid fire succession.
       final ResponseBody responseBody = response.body();
       if (responseBody == null) {
         throw new RuntimeException("Could not get response body from " + url);
@@ -114,7 +115,7 @@ public class PastebinClient {
         throw new RuntimeException(body);
       }
       return body;
-    } catch (IOException e) {
+    } catch (Exception e) {
       throw new RuntimeException("Unable to make request to to " + url + ": " + e.getMessage(), e);
     }
   }

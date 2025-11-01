@@ -62,6 +62,7 @@ public class Repository {
   private static FileService fileService;
   private final String pastebinDeveloperKey;
   private final String pastebinUserKey;
+  private int lastId; //always increments. DONOT decrement.
 
   public Repository(String... creds) {
     pastebinDeveloperKey = creds.length > 0 ? creds[0] : EMPTY;
@@ -90,7 +91,7 @@ public class Repository {
     if (wordEntity != null) {
       wordEntity.setRemindedTime(currentTime);
     } else {
-      wordEntity = new WordEntity(word, currentTime, null);
+      wordEntity = new WordEntity(++lastId, word, currentTime, null);
       inMemoryDb.put(word, wordEntity);
     }
     flush();
@@ -169,7 +170,7 @@ public class Repository {
   }
 
   private WordEntity stripWhiteSpaces(WordEntity we) {
-    return new WordEntity(StringUtils.strip(we.getWord()), we.getLookupTime(), we.getRemindedTime());
+    return new WordEntity(we.getId(), StringUtils.strip(we.getWord()), we.getLookupTime(), we.getRemindedTime());
   }
 
   private void writeOverFile(String value) {
@@ -183,8 +184,10 @@ public class Repository {
 
   private List<WordEntity> toWordEntities(String json) {
     try {
-      return StringUtils.isBlank(json) ? Collections.emptyList() :
-              objectMapper.readValue(json, typeFactory.constructCollectionType(List.class, WordEntity.class));
+      if(StringUtils.isBlank(json)) return Collections.emptyList();
+      List<WordEntity> wordEntities = objectMapper.readValue(json, typeFactory.constructCollectionType(List.class,
+              WordEntity.class));
+      return wordEntities.stream().sorted(Comparator.comparing(WordEntity::getId)).toList();
     } catch (JsonProcessingException e) {
       throw new RuntimeException(e);
     }
@@ -238,6 +241,8 @@ public class Repository {
         Optional.of(wordEntities).filter(ObjectUtils::isNotEmpty).orElseGet(() -> toWordEntities(json))
                 .forEach(we -> inMemoryDb.put(we.getWord(), stripWhiteSpaces(we)));
         initialized = ObjectUtils.isNotEmpty(inMemoryDb);
+        //noinspection OptionalGetWithoutIsPresent
+        lastId = inMemoryDb.values().stream().max(Comparator.comparing(WordEntity::getId)).map(WordEntity::getId).get();
       } catch (Exception e) {
         Log.e(TAG, "error...", e);
       }
