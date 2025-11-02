@@ -8,14 +8,13 @@
 
     <ListView
         android:id="@+id/wordsList"
-        android:layout_width="332dp"
-        android:layout_height="449dp"
+        android:layout_width="314dp"
+        android:layout_height="310dp"
+        android:layout_marginTop="56dp"
         android:layout_weight="1"
-        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.019" />
+        app:layout_constraintTop_toTopOf="parent" />
 
     <AutoCompleteTextView
         android:id="@+id/offlineWordBox"
@@ -29,10 +28,9 @@
         android:inputType="text"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.555"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/remindedWordsCount"
-        app:layout_constraintVertical_bias="0.521">
+        app:layout_constraintVertical_bias="0.383">
 
     </AutoCompleteTextView>
 
@@ -40,12 +38,12 @@
         android:id="@+id/remindedWordsCount"
         android:layout_width="299dp"
         android:layout_height="50dp"
+        android:layout_marginBottom="188dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.503"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/wordsList"
-        app:layout_constraintVertical_bias="0.0" />
+        app:layout_constraintVertical_bias="0.236" />
 
     <Button
         android:id="@+id/markAsReminded"
