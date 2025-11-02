@@ -34,17 +34,13 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.android.volley.RequestQueue;
-import com.android.volley.toolbox.JsonArrayRequest;
-import com.android.volley.toolbox.RequestFuture;
-import com.android.volley.toolbox.Volley;
+import com.faraz.dictionary.httpclient.HttpClient;
 import com.github.wnameless.json.flattener.JsonFlattener;
 
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
-import org.json.JSONArray;
 
 import java.io.File;
 import java.io.IOException;
@@ -60,7 +56,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 
 public class MainActivity extends AppCompatActivity {
@@ -78,7 +73,6 @@ public class MainActivity extends AppCompatActivity {
   private static final String MERRIAM_WEBSTER_URL = "dictionary.merriamWebster.url";
   public static Properties properties;
   private final List<String> AUTO_COMPLETE_WORDS = new ArrayList<>();
-  private RequestQueue requestQueue;
   private Repository repository;
   private FileService offlineWordsFileService;
   private Context context;
@@ -129,7 +123,6 @@ public class MainActivity extends AppCompatActivity {
     saveView = findViewById(R.id.save);
     deleteButton = findViewById(R.id.deleteButton);
     deleteButton.setVisibility(INVISIBLE);
-    setRequestQueue();
     setOpenInBrowserListener();
     setLookupWordListener();
     setStoreWordListener();
@@ -386,19 +379,7 @@ public class MainActivity extends AppCompatActivity {
   }
 
   private String[] lookupInMerriamWebster() {
-    String url = formMerriamWebsterUrl();
-    RequestFuture<JSONArray> requestFuture = RequestFuture.newFuture();
-    JsonArrayRequest jsonObjectRequest = new JsonArrayRequest(url, requestFuture, requestFuture);
-    requestQueue.add(jsonObjectRequest);
-    try {
-      return parseMerriamWebsterResponse(requestFuture.get().toString());
-    } catch (InterruptedException | ExecutionException e) {
-      throw new RuntimeException(e);
-    }
-  }
-
-  private void setRequestQueue() {
-    this.requestQueue = Volley.newRequestQueue(this);
+    return parseMerriamWebsterResponse(HttpClient.get(formMerriamWebsterUrl()));
   }
 
   private void doLookup(String word) {

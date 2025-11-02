@@ -1,14 +1,13 @@
 package com.faraz.dictionary.pastebin;
 
 import com.faraz.dictionary.encode.URLEncoder;
+import com.faraz.dictionary.httpclient.HttpClient;
 import com.tickaroo.tikxml.TikXml;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import okhttp3.MediaType;
@@ -19,15 +18,10 @@ import okhttp3.Response;
 import okhttp3.ResponseBody;
 import okio.Buffer;
 
-public class PastebinClient {
+public class PastebinClient extends HttpClient {
 
   private static final String BASE_API_URL = "https://pastebin.com/api";
-  private static final MediaType MEDIA_TYPE = MediaType.get("application/x-www-form-urlencoded");
-  private static final OkHttpClient client = new OkHttpClient().newBuilder()
-          .connectTimeout(30, TimeUnit.SECONDS)
-          .readTimeout(60, TimeUnit.SECONDS)
-          .writeTimeout(90, TimeUnit.SECONDS)
-          .build();
+  private static final MediaType MEDIA_TYPE_URL_ENCODED = MediaType.get("application/x-www-form-urlencoded");
   private final String developerKey;
   private final String userKey;
 
@@ -98,7 +92,7 @@ public class PastebinClient {
     final String url = BASE_API_URL + "/" + endpoint;
     final okhttp3.Request request = new Request.Builder()
             .url(url)
-            .post(RequestBody.create(postBody.toString(), MEDIA_TYPE))
+            .post(RequestBody.create(postBody.toString(), MEDIA_TYPE_URL_ENCODED))
             .build();
 
     try (Response response = client.newCall(request).execute()) {
