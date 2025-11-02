@@ -8,14 +8,33 @@
 
     <ListView
         android:id="@+id/wordsList"
-        android:layout_width="335dp"
-        android:layout_height="520dp"
+        android:layout_width="332dp"
+        android:layout_height="449dp"
         android:layout_weight="1"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintVertical_bias="0.019" />
+
+    <AutoCompleteTextView
+        android:id="@+id/offlineWordBox"
+        android:layout_width="339dp"
+        android:layout_height="66dp"
+        android:clickable="true"
+        android:ems="10"
+        android:focusable="true"
+        android:hint="store a word for offline lookup..."
+        android:imeOptions="actionSearch"
+        android:inputType="text"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.555"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/remindedWordsCount"
+        app:layout_constraintVertical_bias="0.521">
+
+    </AutoCompleteTextView>
 
     <TextView
         android:id="@+id/remindedWordsCount"
@@ -34,12 +53,11 @@
         android:layout_height="wrap_content"
         android:onClick="markWordsAsReminded"
         android:text="Next few"
-        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintBottom_toTopOf="@+id/offlineWordBox"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.834"
+        app:layout_constraintHorizontal_bias="0.814"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/remindedWordsCount"
-        app:layout_constraintVertical_bias="0.1" />
+        app:layout_constraintTop_toBottomOf="@+id/remindedWordsCount" />
 
     <Button
         android:id="@+id/undoRemind"
@@ -47,12 +65,11 @@
         android:layout_height="wrap_content"
         android:onClick="undoRemind"
         android:text="Undo"
-        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintBottom_toTopOf="@+id/offlineWordBox"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.192"
+        app:layout_constraintHorizontal_bias="0.173"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/remindedWordsCount"
-        app:layout_constraintVertical_bias="0.1" />
+        app:layout_constraintTop_toBottomOf="@+id/remindedWordsCount" />
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>

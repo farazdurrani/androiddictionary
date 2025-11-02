@@ -2,6 +2,7 @@ package com.faraz.dictionary;
 
 import static android.widget.Toast.LENGTH_LONG;
 import static android.widget.Toast.LENGTH_SHORT;
+import static com.faraz.dictionary.MainActivity.AUTO_COMPLETE_WORDS;
 import static java.lang.Integer.parseInt;
 
 import android.annotation.SuppressLint;
@@ -11,19 +12,26 @@ import android.icu.math.BigDecimal;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.View;
 import android.widget.ArrayAdapter;
+import android.widget.AutoCompleteTextView;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import org.apache.commons.lang3.StringUtils;
+
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.RoundingMode;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 
@@ -34,10 +42,12 @@ public class MainActivity3 extends AppCompatActivity {
   private static final BigDecimal ONE_HUNDRED = new BigDecimal("100");
   private String[] words;
   private TextView remindedWordCountView;
+  private AutoCompleteTextView offlineWordBox;
   private ListView listView;
   private Context context;
   private Properties properties;
   private Repository repository;
+  private FileService offlineWordsFileService;
 
   @SuppressLint("SetTextI18n")
   @Override
@@ -49,6 +59,12 @@ public class MainActivity3 extends AppCompatActivity {
     listView = findViewById(R.id.wordsList);
     setWordsListListener();
     remindedWordCountView = findViewById(R.id.remindedWordsCount);
+    offlineWordBox = findViewById(R.id.offlineWordBox);
+    offlineWordBox.setThreshold(1);
+    offlineWordBox.setAdapter(new ArrayAdapter<>(this, android.R.layout.select_dialog_item, AUTO_COMPLETE_WORDS));
+    offlineWordsFileService = new FileService("offlinewords.txt", Optional.ofNullable(getExternalFilesDir(null))
+            .map(File::getAbsolutePath).orElseThrow());
+    setClickListenerOnOfflineWordBox();
     repository = new Repository();
     toggleButtons(false);
     runOnUiThread(() -> remindedWordCountView.setText("Loading..."));
@@ -63,30 +79,6 @@ public class MainActivity3 extends AppCompatActivity {
         runOnUiThread(() -> Toast.makeText(context, "Mongo has gone belly up!", LENGTH_SHORT).show());
       }
     });
-  }
-
-  private void setWordsListListener() {
-    listView.setOnItemClickListener((parent, view, position, id) -> {
-      String word = (String) listView.getAdapter().getItem(position);
-      Uri uri = Uri.parse(String.format("https://www.google.com/search?q=define: %s", word));
-      startActivity(new Intent(Intent.ACTION_VIEW, uri));
-    });
-  }
-
-  private void showWordsAndCount(List<String> _words) {
-    words = _words.toArray(new String[0]);
-    ArrayAdapter<String> adapter = new ArrayAdapter<>(context, R.layout.custom_layout, words);
-    runOnUiThread(() -> listView.setAdapter(adapter));
-    String remindedWordCount = repository.getRemindedCount() == repository.getLength() ? "All" :
-            String.valueOf(repository.getRemindedCount());
-    String percentage = toPercentageOf(repository.getRemindedCount(), repository.getLength());
-    runOnUiThread(() -> remindedWordCountView.setText(String.format("'%s (%s%%)' words have been marked as reminded.",
-            remindedWordCount, percentage)));
-  }
-
-  private void toggleButtons(boolean visible) {
-    runOnUiThread(() -> findViewById(R.id.markAsReminded).setEnabled(visible));
-    runOnUiThread(() -> findViewById(R.id.undoRemind).setEnabled(visible));
   }
 
   @SuppressLint("SetTextI18n")
@@ -138,7 +130,7 @@ public class MainActivity3 extends AppCompatActivity {
     return properties;
   }
 
-  public String toPercentageOf(long value, int total) {
+  private String toPercentageOf(long value, int total) {
     String perc = BigDecimal.valueOf(value).divide(BigDecimal.valueOf(total), 4, RoundingMode.HALF_EVEN.ordinal())
             .multiply(ONE_HUNDRED).toBigDecimal().toPlainString();
     return perc.substring(0, perc.length() > 4 ? 5 : perc.length());
@@ -155,5 +147,51 @@ public class MainActivity3 extends AppCompatActivity {
       throw new RuntimeException(e);
     }
     toggleButtons(true);
+  }
+
+  private void setClickListenerOnOfflineWordBox() {
+    offlineWordBox.setOnKeyListener((view, code, event) -> {
+      if ((event.getAction() == KeyEvent.ACTION_DOWN) && (code == KeyEvent.KEYCODE_ENTER)) {
+        writeToOfflineFile();
+        return true;
+      }
+      return false;
+    });
+  }
+
+  private void writeToOfflineFile() {
+    if (StringUtils.isNotBlank(offlineWordBox.getText().toString())) {
+      offlineWordsFileService.writeFileExternalStorage(true, offlineWordBox.getText().toString());
+      runOnUiThread(() -> Toast.makeText(context, String.format(Locale.US, "'%s' has been stored offline.",
+              offlineWordBox.getText().toString()), LENGTH_LONG).show());
+      runOnUiThread(() -> offlineWordBox.setText(null));
+      runOnUiThread(() -> offlineWordBox.setHint("store a word for offline lookup..."));
+    } else {
+      runOnUiThread(() -> Toast.makeText(context, "...yeah we don't store empty words buddy!", LENGTH_LONG).show());
+    }
+  }
+
+  private void setWordsListListener() {
+    listView.setOnItemClickListener((parent, view, position, id) -> {
+      String word = (String) listView.getAdapter().getItem(position);
+      Uri uri = Uri.parse(String.format("https://www.google.com/search?q=define: %s", word));
+      startActivity(new Intent(Intent.ACTION_VIEW, uri));
+    });
+  }
+
+  private void showWordsAndCount(List<String> _words) {
+    words = _words.toArray(new String[0]);
+    ArrayAdapter<String> adapter = new ArrayAdapter<>(context, R.layout.custom_layout, words);
+    runOnUiThread(() -> listView.setAdapter(adapter));
+    String remindedWordCount = repository.getRemindedCount() == repository.getLength() ? "All" :
+            String.valueOf(repository.getRemindedCount());
+    String percentage = toPercentageOf(repository.getRemindedCount(), repository.getLength());
+    runOnUiThread(() -> remindedWordCountView.setText(String.format("'%s (%s%%)' words have been marked as reminded.",
+            remindedWordCount, percentage)));
+  }
+
+  private void toggleButtons(boolean visible) {
+    runOnUiThread(() -> findViewById(R.id.markAsReminded).setEnabled(visible));
+    runOnUiThread(() -> findViewById(R.id.undoRemind).setEnabled(visible));
   }
 }

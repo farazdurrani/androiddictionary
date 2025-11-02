@@ -66,13 +66,13 @@ public class MainActivity extends AppCompatActivity {
   public static final String TAG = MainActivity.class.getSimpleName();
   public static final String PASTEBIN_DEV_KEY = "pastebin.dev.key";
   public static final String PASTEBIN_USER_KEY = "pastebin.user.key";
-  static final String CHICAGO = "America/Chicago";
+  public static final List<String> AUTO_COMPLETE_WORDS = new ArrayList<>();
+  public static final String CHICAGO = "America/Chicago";
   private static final String NO_DEFINITION_FOUND = "No definitions found for '%s'. Perhaps, you meant:";
   private static final String REGEX_WHITE_SPACES = "\\s+";
   private static final String MERRIAM_WEBSTER_KEY = "dictionary.merriamWebster.key";
   private static final String MERRIAM_WEBSTER_URL = "dictionary.merriamWebster.url";
   public static Properties properties;
-  private final List<String> AUTO_COMPLETE_WORDS = new ArrayList<>();
   private Repository repository;
   private FileService offlineWordsFileService;
   private Context context;
