@@ -43,7 +43,7 @@ dependencies {
     implementation 'androidx.constraintlayout:constraintlayout:2.1.3'
     //noinspection GradleDependency
     implementation 'com.android.volley:volley:1.2.0'
-    //turns out, we do need json-flattener
+    //turns out, we do need json-flattener. Another note: we DO need this. Forget about replacing it.
     implementation ('com.github.wnameless.json:json-flattener:0.17.3') {
         exclude group: 'com.fasterxml.jackson.core', module: 'jackson-databind'
     }
