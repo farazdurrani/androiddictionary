@@ -1,6 +1,6 @@
 todos: get rid of 'com.github.wnameless.json:json-flattener:0.16.4' and use the jackson mapper. (NO)
-todos: get rid of volley and bring in okhttp? perhaps?
-todos: when loading random words when there are no words, mongo error comes up.
+todos: get rid of volley and bring in okhttp? perhaps? Nvm. Just too much work.
+todos: when loading random words when there are no words, mongo error comes up. (yeah didn't see it again).
 
 mongo api https://www.mongodb.com/developer/products/atlas/atlas-data-api-introduction/
 termux https://termux.dev/docs
