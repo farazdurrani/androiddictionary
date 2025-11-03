@@ -4,6 +4,7 @@ import androidx.annotation.NonNull;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.common.base.Objects;
 
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
@@ -70,17 +71,14 @@ public class WordEntity {
   @Override
   public boolean equals(Object object) {
     if (this == object) return true;
-
     if (object == null || getClass() != object.getClass()) return false;
-
     WordEntity that = (WordEntity) object;
-
-    return new EqualsBuilder().append(id, that.id).isEquals();
+    return new EqualsBuilder().append(id, that.id).append(word, that.word).isEquals();
   }
 
   @Override
   public int hashCode() {
-    return new HashCodeBuilder(17, 37).append(id).toHashCode();
+    return new HashCodeBuilder(17, 37).append(id).append(word).toHashCode();
   }
 
   @NonNull
