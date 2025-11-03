@@ -224,7 +224,7 @@ public class MainActivity2 extends AppCompatActivity {
   }
 
   private String getLastFewRemindedWordsToSendInAnEmail() {
-    return OfflineAndDeletedWordsActivity.addDivStyling(repository.getLast100RemindedWords());
+    return OfflineAndDeletedWordsActivity.addDivStyling(repository.getLast50RemindedWords());
   }
 
   private void printCreated(String s) {

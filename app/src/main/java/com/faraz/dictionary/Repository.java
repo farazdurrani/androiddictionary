@@ -11,7 +11,6 @@ import androidx.annotation.Nullable;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.TypeFactory;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 
 import org.apache.commons.lang3.ObjectUtils;
@@ -34,7 +33,6 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 public class Repository {
   public static final ZoneId CHICAGO_ZONE_ID = ZoneId.of(CHICAGO);
@@ -55,6 +53,21 @@ public class Repository {
       }
       return super.put(key, value);
     }
+
+    @Override
+    public WordEntity get(Object key) {
+      String _key = Optional.ofNullable(key).filter(String.class::isInstance).map(String.class::cast).map(String::strip)
+              .map(String::toLowerCase).orElseThrow();
+      return super.get(_key);
+    }
+
+    @Nullable
+    @Override
+    public WordEntity remove(@Nullable Object key) {
+      String _key = Optional.ofNullable(key).filter(String.class::isInstance).map(String.class::cast).map(String::strip)
+              .map(String::toLowerCase).orElseThrow();
+      return super.remove(_key);
+    }
   };
   private static final Comparator<WordEntity> SORT_BY_REMINDED_TIME_COMPARATOR =
           (w1, w2) -> toDateRemindedTime(w2).compareTo(toDateRemindedTime(w1));
@@ -72,17 +85,17 @@ public class Repository {
   }
 
   public List<String> getWords() {
-    return ImmutableList.copyOf(inMemoryDb.keySet());
+    return inMemoryDb.values().stream().map(WordEntity::getWord).toList();
   }
 
-  public List<String> getLast100RemindedWords() {
+  public List<String> getLast50RemindedWords() {
     List<String> list = inMemoryDb.values().stream().filter(we -> we.getRemindedTime() != null)
             .sorted(SORT_BY_REMINDED_TIME_COMPARATOR).map(WordEntity::getWord).toList();
-    return list.subList(0, Math.min(100, list.size()));
+    return list.subList(0, Math.min(50, list.size()));
   }
 
   public int getLength() {
-    return inMemoryDb.size();
+    return inMemoryDb.values().size();
   }
 
   public DBResult upsert(String word) {
@@ -91,7 +104,8 @@ public class Repository {
     if (wordEntity != null) {
       wordEntity.setRemindedTime(currentTime);
     } else {
-      wordEntity = new WordEntity(++lastId, word, currentTime, null);
+      ++lastId;
+      wordEntity = new WordEntity(lastId, word, currentTime, null);
       inMemoryDb.put(word, wordEntity);
     }
     flush();
@@ -115,7 +129,7 @@ public class Repository {
 
   public List<String> getWordsForReminder(int limit) {
     return inMemoryDb.values().stream().filter(REMINDED_TIME_IS_ABSENT_PREDICATE).limit(limit).map(WordEntity::getWord)
-            .collect(Collectors.collectingAndThen(Collectors.toList(), ImmutableList::copyOf));
+            .toList();
   }
 
   public long getRemindedCount() {
@@ -170,7 +184,8 @@ public class Repository {
   }
 
   private WordEntity stripWhiteSpaces(WordEntity we) {
-    return new WordEntity(we.getId(), StringUtils.strip(we.getWord()), we.getLookupTime(), we.getRemindedTime());
+    String word = Optional.of(we).map(WordEntity::getWord).map(String::strip).map(String::toLowerCase).orElseThrow();
+    return new WordEntity(we.getId(), StringUtils.strip(word), we.getLookupTime(), we.getRemindedTime());
   }
 
   private void writeOverFile(String value) {
