@@ -3,6 +3,8 @@ package com.faraz.dictionary;
 import static android.widget.Toast.LENGTH_LONG;
 import static android.widget.Toast.LENGTH_SHORT;
 import static com.faraz.dictionary.MainActivity.AUTO_COMPLETE_WORDS;
+import static com.faraz.dictionary.MainActivity.REGEX_WHITE_SPACES;
+import static org.apache.commons.lang3.StringUtils.SPACE;
 import static java.lang.Integer.parseInt;
 
 import android.annotation.SuppressLint;
@@ -34,6 +36,7 @@ import java.util.Locale;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 public class MainActivity3 extends AppCompatActivity {
 
@@ -161,14 +164,20 @@ public class MainActivity3 extends AppCompatActivity {
 
   private void writeToOfflineFile() {
     if (StringUtils.isNotBlank(offlineWordBox.getText().toString())) {
-      offlineWordsFileService.writeFileExternalStorage(true, offlineWordBox.getText().toString());
+      String word = cleanWord(offlineWordBox.getText().toString());
+      offlineWordsFileService.writeFileExternalStorage(true, word);
       runOnUiThread(() -> Toast.makeText(context, String.format(Locale.US, "'%s' has been stored offline.",
-              offlineWordBox.getText().toString()), LENGTH_LONG).show());
+              word), LENGTH_LONG).show());
       runOnUiThread(() -> offlineWordBox.setText(null));
       runOnUiThread(() -> offlineWordBox.setHint("store a word for offline lookup..."));
     } else {
       runOnUiThread(() -> Toast.makeText(context, "...yeah we don't store empty words buddy!", LENGTH_LONG).show());
     }
+  }
+
+  private String cleanWord(String string) {
+    return Arrays.stream(string.split(REGEX_WHITE_SPACES)).map(String::trim).map(String::toLowerCase)
+            .collect(Collectors.joining(SPACE)).trim();
   }
 
   private void setWordsListListener() {

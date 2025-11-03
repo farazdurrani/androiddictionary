@@ -68,8 +68,8 @@ public class MainActivity extends AppCompatActivity {
   public static final String PASTEBIN_USER_KEY = "pastebin.user.key";
   public static final List<String> AUTO_COMPLETE_WORDS = new ArrayList<>();
   public static final String CHICAGO = "America/Chicago";
+  public static final String REGEX_WHITE_SPACES = "\\s+";
   private static final String NO_DEFINITION_FOUND = "No definitions found for '%s'. Perhaps, you meant:";
-  private static final String REGEX_WHITE_SPACES = "\\s+";
   private static final String MERRIAM_WEBSTER_KEY = "dictionary.merriamWebster.key";
   private static final String MERRIAM_WEBSTER_URL = "dictionary.merriamWebster.url";
   public static Properties properties;

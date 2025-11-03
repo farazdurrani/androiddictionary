@@ -104,8 +104,7 @@ public class Repository {
     if (wordEntity != null) {
       wordEntity.setRemindedTime(currentTime);
     } else {
-      ++lastId;
-      wordEntity = new WordEntity(lastId, word, currentTime, null);
+      wordEntity = new WordEntity(++lastId, word, currentTime, null);
       inMemoryDb.put(word, wordEntity);
     }
     flush();

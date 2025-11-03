@@ -1,10 +1,12 @@
 package com.faraz.dictionary;
 
+import static android.widget.Toast.LENGTH_LONG;
 import static android.widget.Toast.LENGTH_SHORT;
 import static com.faraz.dictionary.MainActivity.AUTO_COMPLETE_WORDS_REMOVE;
 import static java.lang.String.format;
 import static java.util.concurrent.CompletableFuture.supplyAsync;
 
+import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
@@ -20,6 +22,7 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 
 import java.util.Arrays;
+import java.util.Locale;
 import java.util.Optional;
 
 public class MainActivity5 extends AppCompatActivity {
@@ -37,12 +40,12 @@ public class MainActivity5 extends AppCompatActivity {
   public void onCreate(Bundle icicle) {
     super.onCreate(icicle);
     setContentView(R.layout.activity_main5);
-    context = getBaseContext();
+    context = this;
     listView = findViewById(R.id.wordsList);
     setListener();
     fileService = new FileService("deletedwords.txt");
     repository = new Repository();
-    supplyAsync(this::getLastFewWords).thenAccept(_words -> {
+    supplyAsync(this::getAllWords).thenAccept(_words -> {
       words = _words;
       runOnUiThread(() -> listView.setAdapter(new ArrayAdapter<>(context, R.layout.custom_layout, words)));
     }).thenAccept(ignore -> {
@@ -64,15 +67,21 @@ public class MainActivity5 extends AppCompatActivity {
   private void setListener() {
     listView.setOnItemClickListener((parent, view, position, id) -> {
       String word = (String) listView.getAdapter().getItem(position);
-      try {
-        writeToTextFile(word);
-        deleteFromDb(word);
-        deleteWordFromAutoComplete(word);
-        restoreAutocompleteBox();
-      } catch (Exception exc) {
-        Optional.of(exc).ifPresent(e -> runOnUiThread(() -> listView.setAdapter(new ArrayAdapter<>(context,
-                R.layout.custom_layout, new String[]{word, ExceptionUtils.getStackTrace(e)}))));
-      }
+      new AlertDialog.Builder(context).setTitle("Confirm Action")
+              .setMessage(String.format(Locale.US, "Are you sure you want to delete this word %s?", word))
+              .setPositiveButton("Yes", (dialog, which) -> {
+                dialog.dismiss();
+                try {
+                  writeToTextFile(word);
+                  deleteFromDb(word);
+                  deleteWordFromAutoComplete(word);
+                  restoreAutocompleteBox();
+                } catch (Exception exc) {
+                  Optional.of(exc).ifPresent(e -> runOnUiThread(() -> listView.setAdapter(new ArrayAdapter<>(context,
+                          R.layout.custom_layout, new String[]{word, ExceptionUtils.getStackTrace(e)}))));
+                }
+              }).setNegativeButton("No", (dialog, which) -> runOnUiThread(() -> Toast.makeText(context, "Fine.",
+                      LENGTH_LONG).show())).show();
     });
   }
 
@@ -109,7 +118,7 @@ public class MainActivity5 extends AppCompatActivity {
     fileService.writeFileExternalStorage(true, word);
   }
 
-  private String[] getLastFewWords() {
+  private String[] getAllWords() {
     String[] words = repository.getWords().toArray(new String[0]);
     ArrayUtils.reverse(words);
     return words;
