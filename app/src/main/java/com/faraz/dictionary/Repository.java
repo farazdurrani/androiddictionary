@@ -71,16 +71,15 @@ public class Repository {
   };
   private static final Comparator<WordEntity> SORT_BY_REMINDED_TIME_COMPARATOR =
           (w1, w2) -> toDateRemindedTime(w2).compareTo(toDateRemindedTime(w1));
-  private static boolean initialized;
-  private static FileService fileService;
-  private static int lastId; //always increments. DONOT decrement.
+  private static final FileService fileService = new FileService(filename);
+  private static boolean initialized; // mutable
+  private static int lastId; //always increments. DONOT decrement. // mutable
   private final String pastebinDeveloperKey;
   private final String pastebinUserKey;
 
   public Repository(String... creds) {
     pastebinDeveloperKey = creds.length > 0 ? creds[0] : EMPTY;
     pastebinUserKey = creds.length > 1 ? creds[1] : EMPTY;
-    fileService = new FileService(filename);
     init();
   }
 
@@ -99,6 +98,7 @@ public class Repository {
   }
 
   public DBResult upsert(String word) {
+    word = Optional.ofNullable(word).map(String::strip).map(String::toLowerCase).orElseThrow();
     String currentTime = DATE_TIME_FORMATTER.format(Instant.now(Clock.system(CHICAGO_ZONE_ID)));
     WordEntity wordEntity = inMemoryDb.get(word);
     if (wordEntity != null) {
