@@ -73,9 +73,9 @@ public class Repository {
           (w1, w2) -> toDateRemindedTime(w2).compareTo(toDateRemindedTime(w1));
   private static boolean initialized;
   private static FileService fileService;
+  private static int lastId; //always increments. DONOT decrement.
   private final String pastebinDeveloperKey;
   private final String pastebinUserKey;
-  private int lastId; //always increments. DONOT decrement.
 
   public Repository(String... creds) {
     pastebinDeveloperKey = creds.length > 0 ? creds[0] : EMPTY;
@@ -199,7 +199,7 @@ public class Repository {
 
   private List<WordEntity> toWordEntities(String json) {
     try {
-      if(StringUtils.isBlank(json)) return Collections.emptyList();
+      if (StringUtils.isBlank(json)) return Collections.emptyList();
       List<WordEntity> wordEntities = objectMapper.readValue(json, typeFactory.constructCollectionType(List.class,
               WordEntity.class));
       return wordEntities.stream().sorted(Comparator.comparing(WordEntity::getId)).toList();
