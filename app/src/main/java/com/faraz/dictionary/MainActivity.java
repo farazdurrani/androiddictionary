@@ -169,7 +169,7 @@ public class MainActivity extends AppCompatActivity {
       offlineWordsFileService.delete(originalLookupWord);
       runOnUiThread(() -> deleteButton.setVisibility(INVISIBLE));
     } catch (Exception e) {
-      Log.e(TAG, "error...", e);
+      Log.e(TAG, ExceptionUtils.getStackTrace(e));
       runOnUiThread(() -> definitionsView.setText(format("Error deleting '%s'. %s ", originalLookupWord,
               ExceptionUtils.getStackTrace(e))));
     }

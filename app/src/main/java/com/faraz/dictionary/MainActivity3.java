@@ -25,6 +25,7 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -78,7 +79,7 @@ public class MainActivity3 extends AppCompatActivity {
         showWordsAndCount(_words);
         toggleButtons(true);
       } catch (Exception e) {
-        Log.e(TAG, e.getLocalizedMessage(), e);
+        Log.e(TAG, ExceptionUtils.getStackTrace(e));
         runOnUiThread(() -> Toast.makeText(context, "Mongo has gone belly up!", LENGTH_SHORT).show());
       }
     });
@@ -113,7 +114,7 @@ public class MainActivity3 extends AppCompatActivity {
         List<String> _words = repository.getWordsForReminder(parseInt(properties.getProperty(NUMBER_OF_WORDS_TO_SHOW)));
         showWordsAndCount(_words);
       } catch (Exception e) {
-        Log.e(TAG, e.getLocalizedMessage(), e);
+        Log.e(TAG, ExceptionUtils.getStackTrace(e));
         runOnUiThread(() -> Toast.makeText(context, "Not sure what went wrong.", LENGTH_LONG).show());
       }
     }).thenRun(this::sleepThenEnableButtons);

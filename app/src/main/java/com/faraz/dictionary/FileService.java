@@ -6,6 +6,7 @@ import android.os.Environment;
 import android.util.Log;
 
 import org.apache.commons.lang3.ObjectUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -37,7 +38,7 @@ public class FileService {
         Log.i(TAG, String.format(Locale.US, "File already exists at %s" , file.getAbsolutePath()));
       }
     } catch (IOException e) {
-      Log.e(TAG, "error...", e);
+      Log.e(TAG, ExceptionUtils.getStackTrace(e));
       throw new RuntimeException(e);
     }
   }
@@ -50,7 +51,7 @@ public class FileService {
     //Checking the availability state of the External Storage.
     String state = Environment.getExternalStorageState();
     if (!Environment.MEDIA_MOUNTED.equals(state)) {
-      Log.e("MainActivity", "can't write to the file.");
+      Log.e(TAG, "can't write to the file.");
       return;
     }
 
@@ -72,7 +73,7 @@ public class FileService {
       outputStream.flush();
       outputStream.close();
     } catch (Exception e) {
-      Log.e(TAG, "Something went wrong", e);
+      Log.e(TAG, ExceptionUtils.getStackTrace(e));
     }
   }
 
@@ -85,7 +86,7 @@ public class FileService {
     try {
       new FileOutputStream(new File(externalFilesDir, filename)).close();
     } catch (IOException e) {
-      Log.e(TAG, "error...", e);
+      Log.e(TAG, ExceptionUtils.getStackTrace(e));
       throw new RuntimeException(e);
     }
   }
@@ -99,7 +100,7 @@ public class FileService {
       }
       return lines;
     } catch (Exception e) {
-      Log.e(TAG, "Error", e);
+      Log.e(TAG, ExceptionUtils.getStackTrace(e));
       return Collections.emptyList();
     }
   }
@@ -110,7 +111,7 @@ public class FileService {
     try (FileInputStream inputStream = new FileInputStream(myFile)) {
       int ignore = inputStream.read(byteArray);
     } catch (IOException e) {
-      Log.e(TAG, "Error", e);
+      Log.e(TAG, ExceptionUtils.getStackTrace(e));
       return new byte[0];
     }
     return byteArray;

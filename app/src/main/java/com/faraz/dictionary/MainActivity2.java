@@ -170,7 +170,7 @@ public class MainActivity2 extends AppCompatActivity {
     try {
       response = request.sendWith(mailjetClient);
     } catch (MailjetException e) {
-      Log.e(TAG, e.getLocalizedMessage(), e);
+      Log.e(TAG, ExceptionUtils.getStackTrace(e));
     }
     return noErrors(response);
   }
@@ -200,7 +200,7 @@ public class MainActivity2 extends AppCompatActivity {
               .exceptionally(logExceptionFunction(TAG, exceptionToast));
       CompletableFuture.allOf(one, two).join();
     } catch (Exception e) {
-      Log.e(TAG, e.getLocalizedMessage(), e);
+      Log.e(TAG, ExceptionUtils.getStackTrace(e));
       runOnUiThread(() -> Toast.makeText(MainActivity2.this, ExceptionUtils.getStackTrace(e), LENGTH_LONG).show());
     }
   }

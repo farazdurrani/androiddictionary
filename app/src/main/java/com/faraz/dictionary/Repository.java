@@ -258,7 +258,7 @@ public class Repository {
         //noinspection OptionalGetWithoutIsPresent
         lastId = inMemoryDb.values().stream().max(Comparator.comparing(WordEntity::getId)).map(WordEntity::getId).get();
       } catch (Exception e) {
-        Log.e(TAG, "error...", e);
+        Log.e(TAG, ExceptionUtils.getStackTrace(e));
       }
     });
   }

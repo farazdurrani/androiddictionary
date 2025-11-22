@@ -50,6 +50,7 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -179,7 +180,7 @@ public class OfflineAndDeletedWordsActivity extends AppCompatActivity {
                 LENGTH_SHORT).show());
       }
     } catch (Exception e) {
-      Log.e(TAG, "error...", e);
+      Log.e(TAG, ExceptionUtils.getStackTrace(e));
       throw new RuntimeException(e);
     }
   }
@@ -225,7 +226,7 @@ public class OfflineAndDeletedWordsActivity extends AppCompatActivity {
     } catch (MailjetException e) {
       runOnUiThread(() -> Toast.makeText(OfflineAndDeletedWordsActivity.this, "Error occurred while sending email.",
               LENGTH_SHORT).show());
-      Log.e(TAG, "error...", e);
+      Log.e(TAG, ExceptionUtils.getStackTrace(e));
     }
     return noErrors(response);
   }
@@ -244,7 +245,7 @@ public class OfflineAndDeletedWordsActivity extends AppCompatActivity {
       try (InputStream is = getBaseContext().getAssets().open("application.properties")) {
         properties.load(is);
       } catch (IOException e) {
-        Log.e(TAG, "error...", e);
+        Log.e(TAG, ExceptionUtils.getStackTrace(e));
         throw new RuntimeException(e);
       }
     }

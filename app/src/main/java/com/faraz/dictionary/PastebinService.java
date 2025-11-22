@@ -13,6 +13,7 @@ import com.faraz.dictionary.pastebin.PastebinClient;
 import com.faraz.dictionary.pastebin.Visibility;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -49,7 +50,7 @@ public class PastebinService {
       return IntStream.range(0, content.size()).mapToObj(index -> pageRequest(content.get(index), length, index))
               .map(client::paste).toList();
     } catch (Exception e) {
-      Log.e(TAG, "error...", e);
+      Log.e(TAG, ExceptionUtils.getStackTrace(e));
       throw new RuntimeException(e);
     }
   }
@@ -79,7 +80,7 @@ public class PastebinService {
     try {
       return pasteKeys.stream().map(client::getUserPaste).toList();
     } catch (Exception e) {
-      Log.e(TAG, "error...", e);
+      Log.e(TAG, ExceptionUtils.getStackTrace(e));
       throw new RuntimeException(e);
     }
   }

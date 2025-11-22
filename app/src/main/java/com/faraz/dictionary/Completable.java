@@ -4,6 +4,8 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
+
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -43,7 +45,7 @@ public class Completable<T> {
   @NonNull
   public static Function<Throwable, Void> logExceptionFunction(String tag, Consumer<Throwable> consumer) {
     return ex -> {
-      Log.e(tag, "error..", ex);
+      Log.e(tag, ExceptionUtils.getStackTrace(ex));
       if (consumer != null) consumer.accept(ex);
       return null;
     };
