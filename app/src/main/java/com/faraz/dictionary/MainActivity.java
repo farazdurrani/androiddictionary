@@ -64,8 +64,6 @@ public class MainActivity extends AppCompatActivity {
   public static final Consumer<Object> NOOP = ignore -> {
   };
   public static final String TAG = MainActivity.class.getSimpleName();
-  public static final String PASTEBIN_DEV_KEY = "pastebin.dev.key";
-  public static final String PASTEBIN_USER_KEY = "pastebin.user.key";
   public static final List<String> AUTO_COMPLETE_WORDS = new ArrayList<>();
   public static final String CHICAGO = "America/Chicago";
   public static final String REGEX_WHITE_SPACES = "\\s+";
@@ -127,7 +125,7 @@ public class MainActivity extends AppCompatActivity {
     setLookupWordListener();
     setStoreWordListener();
     Optional.of(isOffline()).ifPresent(this::setOfflineFlagAndButton);
-    repository = new Repository(loadProperty(PASTEBIN_DEV_KEY), loadProperty(PASTEBIN_USER_KEY));
+    repository = new Repository();
     Completable.runSync(this::loadWordsForAutoComplete).thenRunSync(() -> ofNullable(getIntent().getExtras())
             .map(e -> e.getString(LOOKUPTHISWORD)).ifPresent(this::doLookup));
   }

@@ -27,6 +27,10 @@ public class FileService {
   private static String externalFilesDir;
   private final String filename;
 
+  public String getFilepath() {
+    return new File(externalFilesDir, filename).getAbsolutePath();
+  }
+
   public FileService(String filename, String... folder) {
     externalFilesDir = folder.length > 0 ? folder[0] : externalFilesDir;
     this.filename = filename;

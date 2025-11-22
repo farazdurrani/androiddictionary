@@ -1,5 +1,6 @@
 package com.faraz.dictionary;
 
+import java.io.File;
 import java.util.Date;
 import java.util.Properties;
 
@@ -24,7 +25,7 @@ public class JavaMailSend extends javax.mail.Authenticator {
   private final String _host;
   private final boolean _auth;
   private final boolean _debuggable;
-  private final Multipart _multipart;
+  private BodyPart attachmentBodyPart;
   private String _user;
   private String _pass;
   private String[] _to;
@@ -39,8 +40,6 @@ public class JavaMailSend extends javax.mail.Authenticator {
 
     _debuggable = false; // debug mode on or off - default off
     _auth = true; // smtp authentication - default on
-
-    _multipart = new MimeMultipart();
 
     // There is something wrong with MailCap, javamail can not find a
     // handler for the multipart/mixed part, so this bit needs to be added.
@@ -63,9 +62,9 @@ public class JavaMailSend extends javax.mail.Authenticator {
   public boolean send() throws Exception {
     Properties props = _setProperties();
 
-    if (!_user.equals("") && !_pass.equals("") && _to.length > 0
-            && !_from.equals("") && !_subject.equals("")
-            && !_body.equals("")) {
+    if (!_user.isEmpty() && !_pass.isEmpty() && _to.length > 0
+            && !_from.isEmpty() && !_subject.isEmpty()
+            && !_body.isEmpty()) {
       Session session = Session.getInstance(props, this);
 
       MimeMessage msg = new MimeMessage(session);
@@ -85,6 +84,9 @@ public class JavaMailSend extends javax.mail.Authenticator {
       MimeBodyPart htmlPart = new MimeBodyPart();
       htmlPart.setContent(_body, "text/html");
       mp.addBodyPart(htmlPart);
+      if (attachmentBodyPart != null) {
+        mp.addBodyPart(attachmentBodyPart);
+      }
       msg.setContent(mp, "text/html");
       // send email
       Transport.send(msg);
@@ -95,12 +97,10 @@ public class JavaMailSend extends javax.mail.Authenticator {
   }
 
   public void addAttachment(String filename) throws Exception {
-    BodyPart messageBodyPart = new MimeBodyPart();
+    attachmentBodyPart = new MimeBodyPart();
     DataSource source = new FileDataSource(filename);
-    messageBodyPart.setDataHandler(new DataHandler(source));
-    messageBodyPart.setFileName(filename);
-
-    _multipart.addBodyPart(messageBodyPart);
+    attachmentBodyPart.setDataHandler(new DataHandler(source));
+    attachmentBodyPart.setFileName(filename.substring(filename.lastIndexOf(File.separatorChar) + 1));
   }
 
   @Override

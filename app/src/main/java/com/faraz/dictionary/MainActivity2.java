@@ -3,25 +3,26 @@ package com.faraz.dictionary;
 import static android.widget.Toast.LENGTH_LONG;
 import static android.widget.Toast.LENGTH_SHORT;
 import static com.faraz.dictionary.Completable.logExceptionFunction;
-import static com.faraz.dictionary.MainActivity.PASTEBIN_DEV_KEY;
-import static com.faraz.dictionary.MainActivity.PASTEBIN_USER_KEY;
 import static com.mailjet.client.transactional.response.SentMessageStatus.SUCCESS;
 import static org.apache.commons.text.WordUtils.capitalize;
 import static java.lang.String.format;
 import static java.lang.System.currentTimeMillis;
 import static java.util.Optional.ofNullable;
 
-import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
 
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.google.common.base.Charsets;
 import com.google.common.collect.ImmutableList;
+import com.google.common.io.CharStreams;
 import com.mailjet.client.ClientOptions;
 import com.mailjet.client.MailjetClient;
 import com.mailjet.client.errors.MailjetException;
@@ -37,6 +38,7 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
@@ -44,6 +46,7 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
@@ -60,9 +63,11 @@ public class MainActivity2 extends AppCompatActivity {
   public static final String JAVAMAIL_FROM = "javamail.from";
   public static final String JAVAMAIL_TO = "javamail.to";
   private static final String TAG = MainActivity2.class.getSimpleName();
+  private static final int REQUEST_CODE_PICK_FILE = 2;
   public static boolean defaultEmailProvider = true; //default email provider is JavaMail. Other option is MailJet.
   private final Consumer<Throwable> exceptionToast = ex -> runOnUiThread(() -> Toast.makeText(MainActivity2.this,
           ExceptionUtils.getStackTrace(ex), LENGTH_LONG).show());
+  AtomicBoolean proceed = new AtomicBoolean(false);
   private MailjetClient mailjetClient;
   private Properties properties;
   private Repository repository;
@@ -74,7 +79,7 @@ public class MainActivity2 extends AppCompatActivity {
     setContentView(R.layout.activity_main2);
     context = this;
     mailjetClient();
-    repository = new Repository(loadProperty(PASTEBIN_DEV_KEY), loadProperty(PASTEBIN_USER_KEY));
+    repository = new Repository();
   }
 
   public void seeAll(View view) {
@@ -106,25 +111,23 @@ public class MainActivity2 extends AppCompatActivity {
   }
 
   public void syncAutocompleteActivity(View view) {
-    new AlertDialog.Builder(context).setTitle("Confirm Action")
-            .setMessage("This action will delete the database before syncing. Are you sure?")
-            .setPositiveButton("Yes", (dialog, which) -> {
-              dialog.dismiss();
-              List<View> buttons = findViewById(R.id.mainactivity2).getTouchables();
-              toggleButtons(buttons, false);
-              Completable.runAsync(this::sendWordsInAnEmailBeforeSyncing)
-                      .thenRunAsync(this::sendLastFewRemindedWordsBeforeSyncing)
-                      .thenRunAsync(repository::reset)
-                      .thenRunAsync(() -> runOnUiThread(() ->
-                              Toast.makeText(MainActivity2.this, "Autocomplete and Database are in sync now.",
-                                      LENGTH_SHORT).show()))
-                      .thenRunAsync(() -> toggleButtons(buttons, true))
-                      .thenRunAsync(() -> {
-                        Intent intent = new Intent(context, MainActivity.class);
-                        startActivity(intent);
-                      });
-            }).setNegativeButton("No", (dialog, which) -> runOnUiThread(() -> Toast.makeText(context, "Good choice.",
-                    LENGTH_LONG).show())).show();
+    List<View> buttons = findViewById(R.id.mainactivity2).getTouchables();
+    toggleButtons(buttons, false);
+    pickAFileAndReadAndStore();
+    CompletableFuture.runAsync(() -> {
+      while (true) {
+        if (proceed.get()) {
+          repository.reset();
+          runOnUiThread(() -> Toast.makeText(MainActivity2.this, "Autocomplete and Database are in sync now.",
+                  LENGTH_SHORT).show());
+          toggleButtons(buttons, true);
+          Intent intent = new Intent(context, MainActivity.class);
+          startActivity(intent);
+          proceed.set(false);
+          break;
+        }
+      }
+    });
   }
 
   public void mailjetClient() {
@@ -148,15 +151,16 @@ public class MainActivity2 extends AppCompatActivity {
     return this.properties.getProperty(property);
   }
 
-  private boolean sendEmail(String subject, String body) throws Exception {
-    return defaultEmailProvider ? sendEmailUsingJavaMailAPI(subject, body) : sendEmailUsingMailJetClient(subject, body);
+  private boolean sendEmail(String subject, String body, boolean attachment) throws Exception {
+    return defaultEmailProvider ? sendEmailUsingJavaMailAPI(subject, body, attachment) :
+            sendEmailUsingMailJetClient(subject, body, attachment);
   }
 
   /**
    * Mailjet api just goes into this bounce/restart/soft bounce thing.
    * Update: Switched back. Meh...
    */
-  private boolean sendEmailUsingMailJetClient(String subject, String body) {
+  private boolean sendEmailUsingMailJetClient(String subject, String body, boolean ignore) {
     String from = loadProperty(MAIL_FROM);
     String to = loadProperty(MAIL_TO);
     body = "<div style=\"font-size:20px\">" + body + "</div>";
@@ -179,10 +183,16 @@ public class MainActivity2 extends AppCompatActivity {
    * It doesn't return the status.
    * And sometimes the email never gets sent.
    */
-  private boolean sendEmailUsingJavaMailAPI(String subject, String body) throws Exception {
+  private boolean sendEmailUsingJavaMailAPI(String subject, String bodyOrAttachment, boolean attachment)
+          throws Exception {
     JavaMailSend mail = new JavaMailSend(loadProperty(JAVAMAIL_USER), loadProperty(JAVAMAIL_PASS));
     mail.set_from(format(loadProperty(JAVAMAIL_FROM), currentTimeMillis()));
-    mail.setBody(body);
+    if (attachment) {
+      mail.addAttachment(bodyOrAttachment);
+      mail.setBody("See attachment...");
+    } else {
+      mail.setBody(bodyOrAttachment);
+    }
     mail.set_to(new String[]{loadProperty(JAVAMAIL_TO)});
     mail.set_subject(subject);
     return mail.send();
@@ -190,13 +200,11 @@ public class MainActivity2 extends AppCompatActivity {
 
   private void backupData() {
     try {
-      CompletableFuture<Void> one = CompletableFuture.supplyAsync(() -> repository.getValuesAsStrings())
-              .thenAccept(list -> Optional.of(pastebinServiceObject()).flatMap(pbs -> Optional.of(list)
-                              .filter(ObjectUtils::isNotEmpty).map(content -> pbs.create(content, repository.getLength())))
-                      .ifPresent(urls -> urls.forEach(this::printCreated)))
+      CompletableFuture<Void> one = CompletableFuture.supplyAsync(() -> repository.getFilepath())
+              .thenAccept(this::sendFullDataInBackupEmail)
               .exceptionally(logExceptionFunction(TAG, exceptionToast));
       CompletableFuture<Void> two = CompletableFuture.supplyAsync(this::getWordsForEmailCompletable)
-              .thenAccept(this::sendBackupEmail)
+              .thenAccept(this::sendJustWordsInBackupEmail)
               .exceptionally(logExceptionFunction(TAG, exceptionToast));
       CompletableFuture.allOf(one, two).join();
     } catch (Exception e) {
@@ -205,16 +213,26 @@ public class MainActivity2 extends AppCompatActivity {
     }
   }
 
-
-  private void sendLastFewRemindedWordsBeforeSyncing() {
-    CompletableFuture.supplyAsync(this::getLastFewRemindedWordsToSendInAnEmail)
-            .thenAccept(this::sendLastFewRemindedWordsInAnEmail)
-            .exceptionally(logExceptionFunction(TAG, exceptionToast)).join();
+  private void pickAFileAndReadAndStore() {
+    Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT); // Or ACTION_OPEN_DOCUMENT_TREE
+    intent.addCategory(Intent.CATEGORY_OPENABLE);
+    intent.setType("*/*"); // To allow selecting any file type
+    startActivityForResult(intent, REQUEST_CODE_PICK_FILE);
   }
 
-  private void sendWordsInAnEmailBeforeSyncing() {
-    CompletableFuture.supplyAsync(this::getWordsForEmailCompletable).thenAccept(this::sendBackupBeforeSync)
-            .exceptionally(logExceptionFunction(TAG, exceptionToast)).join();
+  @Override
+  protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+    super.onActivityResult(requestCode, resultCode, data);
+    if (requestCode == REQUEST_CODE_PICK_FILE && resultCode == RESULT_OK && data != null) {
+      Uri uri = Optional.ofNullable(data.getData()).orElseThrow();
+      try (InputStream inputStream = getContentResolver().openInputStream(uri)) {
+        String result = CharStreams.toString(new InputStreamReader(inputStream, Charsets.UTF_8));
+        repository.writeOverFile(result);
+        proceed.set(true);
+      } catch (IOException e) {
+        Log.e(TAG, ExceptionUtils.getStackTrace(e));
+      }
+    }
   }
 
   private String getWordsForEmailCompletable() {
@@ -223,43 +241,26 @@ public class MainActivity2 extends AppCompatActivity {
             .addAll(repository.getWords().stream().map(this::anchor).toList()).build().reverse()).build());
   }
 
-  private String getLastFewRemindedWordsToSendInAnEmail() {
-    return OfflineAndDeletedWordsActivity.addDivStyling(repository.getLast50RemindedWords());
-  }
-
-  private void printCreated(String s) {
-    Log.i(TAG, String.format(Locale.US, "backup: %s created.", s));
-  }
-
-  private PastebinService pastebinServiceObject() {
-    return new PastebinService(loadProperty(PASTEBIN_DEV_KEY), loadProperty(PASTEBIN_USER_KEY));
-  }
-
   private String anchor(String word) {
     return "<a href='https://www.google.com/search?q=define: " + word + "' target='_blank'>" + capitalize(word) +
             "</a>";
   }
 
-  private void sendBackupEmail(String backup_words) {
-    sendEmailWithSubject(backup_words, "Words Backup.", String.format(Locale.US, "'%d' words sent for backup.",
-            repository.getLength()), "Error occurred while backing-up words.");
+  private void sendFullDataInBackupEmail(String filename) {
+    sendEmailWithSubject(filename, "Words Backup with full data.", true, String.format(Locale.US,
+                    "'%d' words sent for backup.", repository.getLength()),
+            "Error occurred while backing-up full data.");
   }
 
-  private void sendBackupBeforeSync(String backup_words) {
-    sendEmailWithSubject(backup_words, "Words Backup before the sync.",
-            String.format(Locale.US, "'%d' words sent for backup before the sync", repository.getLength()),
-            "Error occurred while backing-up data before sync.");
+  private void sendJustWordsInBackupEmail(String backup_words) {
+    sendEmailWithSubject(backup_words, "Words Backup.", false, String.format(Locale.US, "'%d' words sent for backup.",
+            repository.getLength()), "Error occurred while backing-up just words.");
   }
 
-  private void sendLastFewRemindedWordsInAnEmail(String remindedWords) {
-    sendEmailWithSubject(remindedWords, "Sending the Last few Reminded Words before the sync.",
-            "Sent the last few reminded words before the sync",
-            "Error occurred while sending the last few reminded words before the sync.");
-  }
-
-  private void sendEmailWithSubject(String body, String subject, String successMsg, String failMsg) {
+  private void sendEmailWithSubject(String body, String subject, boolean attachment, String successMsg,
+                                    String failMsg) {
     try {
-      if (sendEmail(subject, body)) {
+      if (sendEmail(subject, body, attachment)) {
         runOnUiThread(() -> Toast.makeText(MainActivity2.this, successMsg, LENGTH_SHORT).show());
       } else {
         runOnUiThread(() -> Toast.makeText(MainActivity2.this, failMsg, LENGTH_SHORT).show());

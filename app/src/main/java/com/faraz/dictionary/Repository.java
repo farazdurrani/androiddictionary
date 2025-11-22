@@ -11,7 +11,6 @@ import androidx.annotation.Nullable;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.TypeFactory;
-import com.google.common.collect.Lists;
 
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -21,13 +20,11 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -74,27 +71,21 @@ public class Repository {
   private static final FileService fileService = new FileService(filename);
   private static boolean initialized; // mutable
   private static int lastId; //always increments. DONOT decrement. // mutable
-  private final String pastebinDeveloperKey;
-  private final String pastebinUserKey;
 
-  public Repository(String... creds) {
-    pastebinDeveloperKey = creds.length > 0 ? creds[0] : EMPTY;
-    pastebinUserKey = creds.length > 1 ? creds[1] : EMPTY;
+  public Repository() {
     init();
+  }
+
+  public String getFilepath() {
+    return fileService.getFilepath();
   }
 
   public List<String> getWords() {
     return inMemoryDb.values().stream().map(WordEntity::getWord).toList();
   }
 
-  public List<String> getLast50RemindedWords() {
-    List<String> list = inMemoryDb.values().stream().filter(we -> we.getRemindedTime() != null)
-            .sorted(SORT_BY_REMINDED_TIME_COMPARATOR).map(WordEntity::getWord).toList();
-    return list.subList(0, Math.min(50, list.size()));
-  }
-
   public int getLength() {
-    return inMemoryDb.values().size();
+    return inMemoryDb.size();
   }
 
   public DBResult upsert(String word) {
@@ -111,16 +102,10 @@ public class Repository {
     return wordEntity.getRemindedTime() == null ? DBResult.INSERT : DBResult.UPDATE;
   }
 
-  public List<String> getValuesAsStrings() {
-    return Lists.partition(inMemoryDb.values().stream().toList(), 4000).stream().map(this::getValuesAsString)
-            .toList();
-  }
-
   /**
    * Dangerous method!
    */
   public void reset() {
-    fileService.clearFile();
     inMemoryDb.clear();
     initialized = false;
     init();
@@ -187,7 +172,7 @@ public class Repository {
     return new WordEntity(we.getId(), StringUtils.strip(word), we.getLookupTime(), we.getRemindedTime());
   }
 
-  private void writeOverFile(String value) {
+  public void writeOverFile(String value) {
     fileService.writeFileExternalStorage(false, value);
   }
 
@@ -205,22 +190,6 @@ public class Repository {
     } catch (JsonProcessingException e) {
       throw new RuntimeException(e);
     }
-  }
-
-  @NonNull
-  private List<WordEntity> getWordEntities() {
-    return Optional.of(new PastebinService(pastebinDeveloperKey, pastebinUserKey))
-            .map(pbs -> Optional.of(pbs).map(PastebinService::getLastBackupKeysAndCleanup).stream()
-                    .peek(this::print).map(pbs::get).flatMap(List::stream).map(this::toWordEntities).toList())
-            .flatMap(list -> Optional.of(list.stream().flatMap(List::stream).toList())).orElseGet(ArrayList::new);
-  }
-
-  private void print(List<String> strings) {
-    strings.forEach(this::print);
-  }
-
-  private void print(String string) {
-    Log.i(TAG, String.format(Locale.US, "Pastebin: Getting key '%s'.", string));
   }
 
   private String getValuesAsString(Collection<WordEntity> values) {
@@ -247,16 +216,11 @@ public class Repository {
     }
     Completable.runAsync(() -> {
       try {
-        List<WordEntity> wordEntities = Collections.emptyList();
         String json = StringUtils.strip((new String(fileService.readFileAsByte())));
-        if (StringUtils.isBlank(json)) {
-          writeOverFile(getValuesAsString(wordEntities = getWordEntities()));
-        }
-        Optional.of(wordEntities).filter(ObjectUtils::isNotEmpty).orElseGet(() -> toWordEntities(json))
-                .forEach(we -> inMemoryDb.put(we.getWord(), stripWhiteSpaces(we)));
+        toWordEntities(json).forEach(we -> inMemoryDb.put(we.getWord(), stripWhiteSpaces(we)));
         initialized = ObjectUtils.isNotEmpty(inMemoryDb);
-        //noinspection OptionalGetWithoutIsPresent
-        lastId = inMemoryDb.values().stream().max(Comparator.comparing(WordEntity::getId)).map(WordEntity::getId).get();
+        lastId = inMemoryDb.values().stream().max(Comparator.comparing(WordEntity::getId)).map(WordEntity::getId)
+                .orElseThrow(() -> new RuntimeException("Where's the darn last id?"));
       } catch (Exception e) {
         Log.e(TAG, ExceptionUtils.getStackTrace(e));
       }
