@@ -233,7 +233,7 @@ public class MainActivity2 extends AppCompatActivity {
   private void handleSyncDataFile(int resultCode, @Nullable Intent data) {
     if (resultCode == RESULT_OK && data != null) {
       Supplier<RuntimeException> dataNotFoundException = () -> new RuntimeException("Where's the data!");
-      Uri uri = Optional.ofNullable(data.getData()).orElseThrow(dataNotFoundException);
+      Uri uri = Optional.of(data).map(Intent::getData).orElseThrow(dataNotFoundException);
       try (InputStream inputStream = getContentResolver().openInputStream(uri);
            InputStreamReader inputStreamReader = new InputStreamReader(inputStream, Charsets.UTF_8)) {
         String result = CharStreams.toString(inputStreamReader);
