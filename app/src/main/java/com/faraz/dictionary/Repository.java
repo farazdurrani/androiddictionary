@@ -220,7 +220,7 @@ public class Repository {
         toWordEntities(json).forEach(we -> inMemoryDb.put(we.getWord(), stripWhiteSpaces(we)));
         initialized = ObjectUtils.isNotEmpty(inMemoryDb);
         lastId = inMemoryDb.values().stream().max(Comparator.comparing(WordEntity::getId)).map(WordEntity::getId)
-                .orElse(-1);
+                .orElse(Integer.MIN_VALUE);
       } catch (Exception e) {
         Log.e(TAG, ExceptionUtils.getStackTrace(e));
       }

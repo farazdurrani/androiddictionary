@@ -2,10 +2,6 @@ package com.faraz.dictionary;
 
 import androidx.annotation.NonNull;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.google.common.base.Objects;
-
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 
@@ -28,42 +24,34 @@ public class WordEntity {
     this.remindedTime = remindedTime;
   }
 
-  @JsonProperty(value = "id")
   public Integer getId() {
     return id;
   }
 
-  @JsonIgnore
   public void setId(Integer id) {
     this.id = id;
   }
 
-  @JsonProperty(value = "word")
   public String getWord() {
     return word;
   }
 
-  @JsonIgnore
   public void setWord(String word) {
     this.word = word;
   }
 
-  @JsonProperty(value = "lookupTime")
   public String getLookupTime() {
     return lookupTime;
   }
 
-  @JsonIgnore
   public void setLookupTime(String lookupTime) {
     this.lookupTime = lookupTime;
   }
 
-  @JsonProperty(value = "remindedTime")
   public String getRemindedTime() {
     return remindedTime;
   }
 
-  @JsonIgnore
   public void setRemindedTime(String remindedTime) {
     this.remindedTime = remindedTime;
   }
