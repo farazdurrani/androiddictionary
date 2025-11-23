@@ -23,9 +23,11 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.google.common.base.Charsets;
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.CharStreams;
+import com.google.common.io.Files;
 import com.mailjet.client.ClientOptions;
 import com.mailjet.client.MailjetClient;
 import com.mailjet.client.errors.MailjetException;
+import com.mailjet.client.transactional.Attachment;
 import com.mailjet.client.transactional.SendContact;
 import com.mailjet.client.transactional.SendEmailsRequest;
 import com.mailjet.client.transactional.TrackOpens;
@@ -34,8 +36,10 @@ import com.mailjet.client.transactional.response.MessageResult;
 import com.mailjet.client.transactional.response.SendEmailsResponse;
 
 import org.apache.commons.lang3.ObjectUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -46,7 +50,6 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
@@ -67,7 +70,8 @@ public class MainActivity2 extends AppCompatActivity {
   public static boolean defaultEmailProvider = true; //default email provider is JavaMail. Other option is MailJet.
   private final Consumer<Throwable> exceptionToast = ex -> runOnUiThread(() -> Toast.makeText(MainActivity2.this,
           ExceptionUtils.getStackTrace(ex), LENGTH_LONG).show());
-  AtomicBoolean proceed = new AtomicBoolean(false);
+  String[] proceed = {"false"}; // possible values are false, true, stop. This is to control what follows after file
+  // picking operation.
   private MailjetClient mailjetClient;
   private Properties properties;
   private Repository repository;
@@ -111,26 +115,41 @@ public class MainActivity2 extends AppCompatActivity {
   }
 
   public void syncAutocompleteActivity(View view) {
-    List<View> buttons = findViewById(R.id.mainactivity2).getTouchables();
-    toggleButtons(buttons, false);
     pickAFileAndReadAndStore();
     CompletableFuture.runAsync(() -> {
-      while (true) {
-        if (proceed.get()) {
+      boolean forever = true;
+      while (forever) {
+        if (proceed[0].equals("true")) {
+          proceed[0] = "false";
+          List<View> buttons = findViewById(R.id.mainactivity2).getTouchables();
+          toggleButtons(buttons, false);
+          CompletableFuture.runAsync(this::sendFullDataInBackupEmailBeforeSync);
           repository.reset();
           runOnUiThread(() -> Toast.makeText(MainActivity2.this, "Autocomplete and Database are in sync now.",
                   LENGTH_SHORT).show());
           toggleButtons(buttons, true);
           Intent intent = new Intent(context, MainActivity.class);
           startActivity(intent);
-          proceed.set(false);
-          break;
+          forever = false;
+        } else if (proceed[0].equals("stop")) {
+          proceed[0] = "false";
+          runOnUiThread(() -> Toast.makeText(MainActivity2.this, "Did not proceed thru with the sync",
+                  LENGTH_SHORT).show());
+          forever = false;
         }
       }
     });
   }
 
-  public void mailjetClient() {
+  private void sendFullDataInBackupEmailBeforeSync() {
+    String body = getWordsForEmailCompletable();
+    String attachment = repository.getFilepath();
+    sendEmailWithSubject(body, "Words Backup with full data before sync.", attachment, String.format(Locale.US,
+                    "'%d' words sent for backup before sync.", repository.getLength()),
+            "Error occurred while backing-up full data before sync.");
+  }
+
+  private void mailjetClient() {
     if (mailjetClient == null) {
       ClientOptions options =
               ClientOptions.builder().apiKey(loadProperty(MAIL_KEY)).apiSecretKey(loadProperty(MAIL_SECRET))
@@ -151,7 +170,7 @@ public class MainActivity2 extends AppCompatActivity {
     return this.properties.getProperty(property);
   }
 
-  private boolean sendEmail(String subject, String body, boolean attachment) throws Exception {
+  private boolean sendEmail(String subject, String body, String attachment) throws Exception {
     return defaultEmailProvider ? sendEmailUsingJavaMailAPI(subject, body, attachment) :
             sendEmailUsingMailJetClient(subject, body, attachment);
   }
@@ -159,15 +178,22 @@ public class MainActivity2 extends AppCompatActivity {
   /**
    * Mailjet api just goes into this bounce/restart/soft bounce thing.
    * Update: Switched back. Meh...
+   * Update: added attachment but haven't tested yet.
    */
-  private boolean sendEmailUsingMailJetClient(String subject, String body, boolean ignore) {
+  private boolean sendEmailUsingMailJetClient(String subject, String body, String attachment) {
     String from = loadProperty(MAIL_FROM);
     String to = loadProperty(MAIL_TO);
     body = "<div style=\"font-size:20px\">" + body + "</div>";
-    TransactionalEmail message1 = TransactionalEmail.builder().to(new SendContact(to, "Personal Dictionary"))
-            .from(new SendContact(from, "Personal Dictionary")).htmlPart(body).subject(subject)
-            .trackOpens(TrackOpens.DISABLED).build();
-
+    TransactionalEmail.TransactionalEmailBuilder teb = TransactionalEmail.builder().to(new SendContact(to,
+                    "Personal Dictionary")).from(new SendContact(from, "Personal Dictionary"))
+            .htmlPart(body).subject(subject).trackOpens(TrackOpens.DISABLED);
+    if (StringUtils.isNotBlank(attachment)) {
+      String filecontent = getFileContent(attachment);
+      Attachment ab = Attachment.builder().contentType("application/json").base64Content(filecontent)
+              .filename(attachment.substring(attachment.lastIndexOf(File.separatorChar) + 1)).build();
+      teb.attachment(ab);
+    }
+    TransactionalEmail message1 = teb.build();
     SendEmailsRequest request = SendEmailsRequest.builder().message(message1).build();
     SendEmailsResponse response = null;
     // act
@@ -179,20 +205,25 @@ public class MainActivity2 extends AppCompatActivity {
     return noErrors(response);
   }
 
+  private String getFileContent(String attachment) {
+    try {
+      return com.mailjet.client.Base64.encode(Files.toByteArray(new File(attachment)));
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
   /**
    * It doesn't return the status.
    * And sometimes the email never gets sent.
    */
-  private boolean sendEmailUsingJavaMailAPI(String subject, String bodyOrAttachment, boolean attachment)
-          throws Exception {
+  private boolean sendEmailUsingJavaMailAPI(String subject, String body, String attachment) throws Exception {
     JavaMailSend mail = new JavaMailSend(loadProperty(JAVAMAIL_USER), loadProperty(JAVAMAIL_PASS));
     mail.set_from(format(loadProperty(JAVAMAIL_FROM), currentTimeMillis()));
-    if (attachment) {
-      mail.addAttachment(bodyOrAttachment);
-      mail.setBody("See attachment...");
-    } else {
-      mail.setBody(bodyOrAttachment);
+    if (StringUtils.isNotBlank(attachment)) {
+      mail.addAttachment(attachment);
     }
+    mail.setBody(body);
     mail.set_to(new String[]{loadProperty(JAVAMAIL_TO)});
     mail.set_subject(subject);
     return mail.send();
@@ -200,13 +231,8 @@ public class MainActivity2 extends AppCompatActivity {
 
   private void backupData() {
     try {
-      CompletableFuture<Void> one = CompletableFuture.supplyAsync(() -> repository.getFilepath())
-              .thenAccept(this::sendFullDataInBackupEmail)
-              .exceptionally(logExceptionFunction(TAG, exceptionToast));
-      CompletableFuture<Void> two = CompletableFuture.supplyAsync(this::getWordsForEmailCompletable)
-              .thenAccept(this::sendJustWordsInBackupEmail)
-              .exceptionally(logExceptionFunction(TAG, exceptionToast));
-      CompletableFuture.allOf(one, two).join();
+      CompletableFuture.runAsync(this::sendFullDataInBackupEmail)
+              .exceptionally(logExceptionFunction(TAG, exceptionToast)).join();
     } catch (Exception e) {
       Log.e(TAG, ExceptionUtils.getStackTrace(e));
       runOnUiThread(() -> Toast.makeText(MainActivity2.this, ExceptionUtils.getStackTrace(e), LENGTH_LONG).show());
@@ -223,14 +249,18 @@ public class MainActivity2 extends AppCompatActivity {
   @Override
   protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
     super.onActivityResult(requestCode, resultCode, data);
-    if (requestCode == REQUEST_CODE_PICK_FILE && resultCode == RESULT_OK && data != null) {
-      Uri uri = Optional.ofNullable(data.getData()).orElseThrow();
-      try (InputStream inputStream = getContentResolver().openInputStream(uri)) {
-        String result = CharStreams.toString(new InputStreamReader(inputStream, Charsets.UTF_8));
-        repository.writeOverFile(result);
-        proceed.set(true);
-      } catch (IOException e) {
-        Log.e(TAG, ExceptionUtils.getStackTrace(e));
+    if (requestCode == REQUEST_CODE_PICK_FILE) {
+      if (resultCode == RESULT_OK && data != null) {
+        Uri uri = Optional.ofNullable(data.getData()).orElseThrow();
+        try (InputStream inputStream = getContentResolver().openInputStream(uri)) {
+          String result = CharStreams.toString(new InputStreamReader(inputStream, Charsets.UTF_8));
+          repository.writeOverFile(result);
+          proceed[0] = "true";
+        } catch (IOException e) {
+          Log.e(TAG, ExceptionUtils.getStackTrace(e));
+        }
+      } else if (resultCode == RESULT_CANCELED) {
+        proceed[0] = "stop";
       }
     }
   }
@@ -246,19 +276,15 @@ public class MainActivity2 extends AppCompatActivity {
             "</a>";
   }
 
-  private void sendFullDataInBackupEmail(String filename) {
-    sendEmailWithSubject(filename, "Words Backup with full data.", true, String.format(Locale.US,
+  private void sendFullDataInBackupEmail() {
+    String body = getWordsForEmailCompletable();
+    String attachment = repository.getFilepath();
+    sendEmailWithSubject(body, "Words Backup with full data.", attachment, String.format(Locale.US,
                     "'%d' words sent for backup.", repository.getLength()),
             "Error occurred while backing-up full data.");
   }
 
-  private void sendJustWordsInBackupEmail(String backup_words) {
-    sendEmailWithSubject(backup_words, "Words Backup.", false, String.format(Locale.US, "'%d' words sent for backup.",
-            repository.getLength()), "Error occurred while backing-up just words.");
-  }
-
-  private void sendEmailWithSubject(String body, String subject, boolean attachment, String successMsg,
-                                    String failMsg) {
+  private void sendEmailWithSubject(String body, String subject, String attachment, String successMsg, String failMsg) {
     try {
       if (sendEmail(subject, body, attachment)) {
         runOnUiThread(() -> Toast.makeText(MainActivity2.this, successMsg, LENGTH_SHORT).show());

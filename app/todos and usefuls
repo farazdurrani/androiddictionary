@@ -1,4 +1,5 @@
-todos: get rid of 'com.github.wnameless.json:json-flattener:0.16.4' and use the jackson mapper. (NO)
+todos: get rid of 'com.github.wnameless.json:json-flattener:0.16.4' and use the jackson mapper. (NO DO NOT DO THAT)
+todoes: mailjet and javamail is in too many places. Consolidate.
 
 mongo api https://www.mongodb.com/developer/products/atlas/atlas-data-api-introduction/
 termux https://termux.dev/docs
