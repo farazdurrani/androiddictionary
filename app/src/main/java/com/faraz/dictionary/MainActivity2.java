@@ -93,13 +93,16 @@ public class MainActivity2 extends AppCompatActivity {
 
   public void backupData(View view) {
     new AlertDialog.Builder(context).setTitle("Confirm Action")
-            .setMessage("This is an expensive action. Are you sure?")
+            .setMessage("This is an Expensive Action. Are you sure?")
             .setPositiveButton("Yes", (dialog, which) -> {
               dialog.dismiss();
               List<View> buttons = findViewById(R.id.mainactivity2).getTouchables();
-              toggleButtons(buttons, false);
-              runOnUiThread(() -> Toast.makeText(MainActivity2.this, "Backing up data!", LENGTH_LONG).show());
-              Completable.runAsync(this::backupData).thenRunAsync(() -> toggleButtons(buttons, true));
+              CompletableFuture.runAsync(() -> toggleButtons(buttons, false))
+                      .thenRun(() -> runOnUiThread(() -> Toast.makeText(MainActivity2.this, "Backing up data!",
+                              LENGTH_LONG).show()))
+                      .thenRun(this::sendFullDataInBackupEmail)
+                      .thenRun(() -> toggleButtons(buttons, true))
+                      .exceptionally(logExceptionFunction(TAG, exceptionToast));
             }).setNegativeButton("No", (dialog, which) -> runOnUiThread(() -> Toast.makeText(context, "Good choice.",
                     LENGTH_LONG).show())).show();
   }
@@ -130,6 +133,14 @@ public class MainActivity2 extends AppCompatActivity {
     sendEmailWithSubject(body, "Words Backup with full data before sync.", attachment, String.format(Locale.US,
                     "'%d' words sent for backup before sync.", repository.getLength()),
             "Error occurred while backing-up full data before sync.");
+  }
+
+  private void sendFullDataInBackupEmail() {
+    String body = getWordsForEmailCompletable();
+    String attachment = repository.getFilepath();
+    sendEmailWithSubject(body, "Words Backup with full data.", attachment, String.format(Locale.US,
+                    "'%d' words sent for backup.", repository.getLength()),
+            "Error occurred while backing-up full data.");
   }
 
   private void mailjetClient() {
@@ -212,16 +223,6 @@ public class MainActivity2 extends AppCompatActivity {
     return mail.send();
   }
 
-  private void backupData() {
-    try {
-      CompletableFuture.runAsync(this::sendFullDataInBackupEmail)
-              .exceptionally(logExceptionFunction(TAG, exceptionToast)).join();
-    } catch (Exception e) {
-      Log.e(TAG, ExceptionUtils.getStackTrace(e));
-      runOnUiThread(() -> Toast.makeText(MainActivity2.this, ExceptionUtils.getStackTrace(e), LENGTH_LONG).show());
-    }
-  }
-
   private void pickAFileAndReadAndStore() {
     Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT); // Or ACTION_OPEN_DOCUMENT_TREE
     intent.addCategory(Intent.CATEGORY_OPENABLE);
@@ -246,14 +247,14 @@ public class MainActivity2 extends AppCompatActivity {
         String result = CharStreams.toString(inputStreamReader);
         Optional.of(result).filter(StringUtils::isNotBlank).orElseThrow(dataNotFoundException);
         List<View> buttons = findViewById(R.id.mainactivity2).getTouchables();
-        toggleButtons(buttons, false);
-        Completable.runAsync(this::sendFullDataInBackupEmailBeforeSync)
-                .thenRunAsync(repository::clear)
-                .thenRunAsync(() -> repository.writeOverFile(result))
-                .thenRunAsync(() -> runOnUiThread(() -> Toast.makeText(MainActivity2.this,
+        CompletableFuture.runAsync(() -> toggleButtons(buttons, false))
+                .thenRun(this::sendFullDataInBackupEmailBeforeSync)
+                .thenRun(repository::clear)
+                .thenRun(() -> repository.writeOverFile(result))
+                .thenRun(() -> runOnUiThread(() -> Toast.makeText(MainActivity2.this,
                         "Autocomplete and Database are in sync now.", LENGTH_SHORT).show()))
-                .thenRunAsync(() -> toggleButtons(buttons, true))
-                .thenRunAsync(this::gotoMainActivity);
+                .thenRun(() -> toggleButtons(buttons, true))
+                .thenRun(this::gotoMainActivity);
       } catch (Exception e) {
         Log.e(TAG, ExceptionUtils.getStackTrace(e));
       }
@@ -277,14 +278,6 @@ public class MainActivity2 extends AppCompatActivity {
   private String anchor(String word) {
     return "<a href='https://www.google.com/search?q=define: " + word + "' target='_blank'>" + capitalize(word) +
             "</a>";
-  }
-
-  private void sendFullDataInBackupEmail() {
-    String body = getWordsForEmailCompletable();
-    String attachment = repository.getFilepath();
-    sendEmailWithSubject(body, "Words Backup with full data.", attachment, String.format(Locale.US,
-                    "'%d' words sent for backup.", repository.getLength()),
-            "Error occurred while backing-up full data.");
   }
 
   private void sendEmailWithSubject(String body, String subject, String attachment, String successMsg, String failMsg) {
