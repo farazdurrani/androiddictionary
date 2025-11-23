@@ -105,11 +105,10 @@ public class Repository {
   /**
    * Dangerous method!
    */
-  public void reset() {
+  public void clear() {
     fileService.clearFile();
     inMemoryDb.clear();
     initialized = false;
-    init();
   }
 
   public List<String> getWordsForReminder(int limit) {

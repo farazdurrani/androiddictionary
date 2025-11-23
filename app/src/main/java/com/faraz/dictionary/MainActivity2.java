@@ -18,6 +18,7 @@ import android.view.View;
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.common.base.Charsets;
@@ -91,10 +92,16 @@ public class MainActivity2 extends AppCompatActivity {
   }
 
   public void backupData(View view) {
-    runOnUiThread(() -> Toast.makeText(MainActivity2.this, "Backing up data!", LENGTH_LONG).show());
-    List<View> buttons = findViewById(R.id.mainactivity2).getTouchables();
-    toggleButtons(buttons, false);
-    Completable.runAsync(this::backupData).thenRunAsync(() -> toggleButtons(buttons, true));
+    new AlertDialog.Builder(context).setTitle("Confirm Action")
+            .setMessage("This is an expensive action. Are you sure?")
+            .setPositiveButton("Yes", (dialog, which) -> {
+              dialog.dismiss();
+              List<View> buttons = findViewById(R.id.mainactivity2).getTouchables();
+              toggleButtons(buttons, false);
+              runOnUiThread(() -> Toast.makeText(MainActivity2.this, "Backing up data!", LENGTH_LONG).show());
+              Completable.runAsync(this::backupData).thenRunAsync(() -> toggleButtons(buttons, true));
+            }).setNegativeButton("No", (dialog, which) -> runOnUiThread(() -> Toast.makeText(context, "Good choice.",
+                    LENGTH_LONG).show())).show();
   }
 
   private void toggleButtons(List<View> buttons, boolean enable) {
@@ -240,16 +247,13 @@ public class MainActivity2 extends AppCompatActivity {
         Optional.of(result).filter(StringUtils::isNotBlank).orElseThrow(dataNotFoundException);
         List<View> buttons = findViewById(R.id.mainactivity2).getTouchables();
         toggleButtons(buttons, false);
-        CompletableFuture.runAsync(this::sendFullDataInBackupEmailBeforeSync)
-                .thenRun(repository::reset)
-                .thenRun(() -> repository.writeOverFile(result))
-                .thenRun(() -> {
-                  runOnUiThread(() -> Toast.makeText(MainActivity2.this, "Autocomplete and Database are in sync now.",
-                          LENGTH_SHORT).show());
-                  toggleButtons(buttons, true);
-                  Intent intent = new Intent(context, MainActivity.class);
-                  startActivity(intent);
-                });
+        Completable.runAsync(this::sendFullDataInBackupEmailBeforeSync)
+                .thenRunAsync(repository::clear)
+                .thenRunAsync(() -> repository.writeOverFile(result))
+                .thenRunAsync(() -> runOnUiThread(() -> Toast.makeText(MainActivity2.this,
+                        "Autocomplete and Database are in sync now.", LENGTH_SHORT).show()))
+                .thenRunAsync(() -> toggleButtons(buttons, true))
+                .thenRunAsync(this::gotoMainActivity);
       } catch (Exception e) {
         Log.e(TAG, ExceptionUtils.getStackTrace(e));
       }
@@ -257,6 +261,11 @@ public class MainActivity2 extends AppCompatActivity {
       runOnUiThread(() -> Toast.makeText(MainActivity2.this, "Did not proceed thru with the sync",
               LENGTH_SHORT).show());
     }
+  }
+
+  private void gotoMainActivity() {
+    Intent intent = new Intent(context, MainActivity.class);
+    startActivity(intent);
   }
 
   private String getWordsForEmailCompletable() {
