@@ -52,6 +52,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 import okhttp3.OkHttpClient;
 
@@ -70,8 +71,6 @@ public class MainActivity2 extends AppCompatActivity {
   public static boolean defaultEmailProvider = true; //default email provider is JavaMail. Other option is MailJet.
   private final Consumer<Throwable> exceptionToast = ex -> runOnUiThread(() -> Toast.makeText(MainActivity2.this,
           ExceptionUtils.getStackTrace(ex), LENGTH_LONG).show());
-  String[] proceed = {"false"}; // possible values are false, true, stop. This is to control what follows after file
-  // picking operation.
   private MailjetClient mailjetClient;
   private Properties properties;
   private Repository repository;
@@ -116,29 +115,6 @@ public class MainActivity2 extends AppCompatActivity {
 
   public void syncAutocompleteActivity(View view) {
     pickAFileAndReadAndStore();
-    CompletableFuture.runAsync(() -> {
-      boolean forever = true;
-      while (forever) {
-        if (proceed[0].equals("true")) {
-          proceed[0] = "false";
-          List<View> buttons = findViewById(R.id.mainactivity2).getTouchables();
-          toggleButtons(buttons, false);
-          CompletableFuture.runAsync(this::sendFullDataInBackupEmailBeforeSync);
-          repository.reset();
-          runOnUiThread(() -> Toast.makeText(MainActivity2.this, "Autocomplete and Database are in sync now.",
-                  LENGTH_SHORT).show());
-          toggleButtons(buttons, true);
-          Intent intent = new Intent(context, MainActivity.class);
-          startActivity(intent);
-          forever = false;
-        } else if (proceed[0].equals("stop")) {
-          proceed[0] = "false";
-          runOnUiThread(() -> Toast.makeText(MainActivity2.this, "Did not proceed thru with the sync",
-                  LENGTH_SHORT).show());
-          forever = false;
-        }
-      }
-    });
   }
 
   private void sendFullDataInBackupEmailBeforeSync() {
@@ -250,18 +226,36 @@ public class MainActivity2 extends AppCompatActivity {
   protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
     super.onActivityResult(requestCode, resultCode, data);
     if (requestCode == REQUEST_CODE_PICK_FILE) {
-      if (resultCode == RESULT_OK && data != null) {
-        Uri uri = Optional.ofNullable(data.getData()).orElseThrow();
-        try (InputStream inputStream = getContentResolver().openInputStream(uri)) {
-          String result = CharStreams.toString(new InputStreamReader(inputStream, Charsets.UTF_8));
-          repository.writeOverFile(result);
-          proceed[0] = "true";
-        } catch (IOException e) {
-          Log.e(TAG, ExceptionUtils.getStackTrace(e));
-        }
-      } else if (resultCode == RESULT_CANCELED) {
-        proceed[0] = "stop";
+      handleSyncDataFile(resultCode, data);
+    }
+  }
+
+  private void handleSyncDataFile(int resultCode, @Nullable Intent data) {
+    if (resultCode == RESULT_OK && data != null) {
+      Supplier<RuntimeException> dataNotFoundException = () -> new RuntimeException("Where's the data!");
+      Uri uri = Optional.ofNullable(data.getData()).orElseThrow(dataNotFoundException);
+      try (InputStream inputStream = getContentResolver().openInputStream(uri);
+           InputStreamReader inputStreamReader = new InputStreamReader(inputStream, Charsets.UTF_8)) {
+        String result = CharStreams.toString(inputStreamReader);
+        Optional.of(result).filter(StringUtils::isNotBlank).orElseThrow(dataNotFoundException);
+        List<View> buttons = findViewById(R.id.mainactivity2).getTouchables();
+        toggleButtons(buttons, false);
+        CompletableFuture.runAsync(this::sendFullDataInBackupEmailBeforeSync)
+                .thenRun(repository::reset)
+                .thenRun(() -> repository.writeOverFile(result))
+                .thenRun(() -> {
+                  runOnUiThread(() -> Toast.makeText(MainActivity2.this, "Autocomplete and Database are in sync now.",
+                          LENGTH_SHORT).show());
+                  toggleButtons(buttons, true);
+                  Intent intent = new Intent(context, MainActivity.class);
+                  startActivity(intent);
+                });
+      } catch (Exception e) {
+        Log.e(TAG, ExceptionUtils.getStackTrace(e));
       }
+    } else if (resultCode == RESULT_CANCELED) {
+      runOnUiThread(() -> Toast.makeText(MainActivity2.this, "Did not proceed thru with the sync",
+              LENGTH_SHORT).show());
     }
   }
 

@@ -106,6 +106,7 @@ public class Repository {
    * Dangerous method!
    */
   public void reset() {
+    fileService.clearFile();
     inMemoryDb.clear();
     initialized = false;
     init();
@@ -220,7 +221,7 @@ public class Repository {
         toWordEntities(json).forEach(we -> inMemoryDb.put(we.getWord(), stripWhiteSpaces(we)));
         initialized = ObjectUtils.isNotEmpty(inMemoryDb);
         lastId = inMemoryDb.values().stream().max(Comparator.comparing(WordEntity::getId)).map(WordEntity::getId)
-                .orElseThrow(() -> new RuntimeException("Where's the darn last id?"));
+                .orElse(-1);
       } catch (Exception e) {
         Log.e(TAG, ExceptionUtils.getStackTrace(e));
       }
