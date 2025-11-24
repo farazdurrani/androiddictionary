@@ -1,5 +1,6 @@
 todos: get rid of 'com.github.wnameless.json:json-flattener:0.16.4' and use the jackson mapper. (NO DO NOT DO THAT)
 todoes: mailjet and javamail is in too many places. Consolidate.
+todoes: remove static imports from classes other than mainactivity123.
 
 mongo api https://www.mongodb.com/developer/products/atlas/atlas-data-api-introduction/
 termux https://termux.dev/docs

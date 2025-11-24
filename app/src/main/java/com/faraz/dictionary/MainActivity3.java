@@ -1,12 +1,5 @@
 package com.faraz.dictionary;
 
-import static android.widget.Toast.LENGTH_LONG;
-import static android.widget.Toast.LENGTH_SHORT;
-import static com.faraz.dictionary.MainActivity.AUTO_COMPLETE_WORDS;
-import static com.faraz.dictionary.MainActivity.REGEX_WHITE_SPACES;
-import static org.apache.commons.lang3.StringUtils.SPACE;
-import static java.lang.Integer.parseInt;
-
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
@@ -65,7 +58,8 @@ public class MainActivity3 extends AppCompatActivity {
     remindedWordCountView = findViewById(R.id.remindedWordsCount);
     offlineWordBox = findViewById(R.id.offlineWordBox);
     offlineWordBox.setThreshold(1);
-    offlineWordBox.setAdapter(new ArrayAdapter<>(this, android.R.layout.select_dialog_item, AUTO_COMPLETE_WORDS));
+    offlineWordBox.setAdapter(new ArrayAdapter<>(this, android.R.layout.select_dialog_item,
+            MainActivity.AUTO_COMPLETE_WORDS));
     offlineWordsFileService = new FileService("offlinewords.txt", Optional.ofNullable(getExternalFilesDir(null))
             .map(File::getAbsolutePath).orElseThrow());
     setClickListenerOnOfflineWordBox();
@@ -75,12 +69,13 @@ public class MainActivity3 extends AppCompatActivity {
     runOnUiThread(() -> listView.setAdapter(new ArrayAdapter<>(context, R.layout.custom_layout, new String[0])));
     CompletableFuture.runAsync(() -> {
       try {
-        List<String> _words = repository.getWordsForReminder(parseInt(properties.getProperty(NUMBER_OF_WORDS_TO_SHOW)));
+        List<String> _words = repository.getWordsForReminder(Integer.parseInt(properties
+                .getProperty(NUMBER_OF_WORDS_TO_SHOW)));
         showWordsAndCount(_words);
         toggleButtons(true);
       } catch (Exception e) {
         Log.e(TAG, ExceptionUtils.getStackTrace(e));
-        runOnUiThread(() -> Toast.makeText(context, "Mongo has gone belly up!", LENGTH_SHORT).show());
+        runOnUiThread(() -> Toast.makeText(context, "Mongo has gone belly up!", Toast.LENGTH_SHORT).show());
       }
     });
   }
@@ -92,12 +87,13 @@ public class MainActivity3 extends AppCompatActivity {
     runOnUiThread(() -> listView.setAdapter(new ArrayAdapter<>(context, R.layout.custom_layout, new String[0])));
     CompletableFuture.runAsync(() -> {
       try {
-        List<String> _words = repository.getByRemindedTime(parseInt(properties.getProperty(NUMBER_OF_WORDS_TO_SHOW)));
+        List<String> _words = repository.getByRemindedTime(Integer.parseInt(properties
+                .getProperty(NUMBER_OF_WORDS_TO_SHOW)));
         repository.unsetRemindedTime(_words);
         clearWords();
         showWordsAndCount(_words);
       } catch (Exception e) {
-        runOnUiThread(() -> Toast.makeText(context, "Not sure what went wrong.", LENGTH_LONG).show());
+        runOnUiThread(() -> Toast.makeText(context, "Not sure what went wrong.", Toast.LENGTH_LONG).show());
       }
     }).thenRun(this::sleepThenEnableButtons);
   }
@@ -111,11 +107,12 @@ public class MainActivity3 extends AppCompatActivity {
       try {
         repository.markAsReminded(Arrays.asList(words));
         clearWords();
-        List<String> _words = repository.getWordsForReminder(parseInt(properties.getProperty(NUMBER_OF_WORDS_TO_SHOW)));
+        List<String> _words = repository.getWordsForReminder(Integer.parseInt(properties
+                .getProperty(NUMBER_OF_WORDS_TO_SHOW)));
         showWordsAndCount(_words);
       } catch (Exception e) {
         Log.e(TAG, ExceptionUtils.getStackTrace(e));
-        runOnUiThread(() -> Toast.makeText(context, "Not sure what went wrong.", LENGTH_LONG).show());
+        runOnUiThread(() -> Toast.makeText(context, "Not sure what went wrong.", Toast.LENGTH_LONG).show());
       }
     }).thenRun(this::sleepThenEnableButtons);
   }
@@ -129,7 +126,7 @@ public class MainActivity3 extends AppCompatActivity {
     try (InputStream is = getBaseContext().getAssets().open("application.properties")) {
       properties.load(is);
     } catch (IOException e) {
-      runOnUiThread(() -> Toast.makeText(context, "Can't load properties.", LENGTH_SHORT).show());
+      runOnUiThread(() -> Toast.makeText(context, "Can't load properties.", Toast.LENGTH_SHORT).show());
     }
     return properties;
   }
@@ -168,17 +165,18 @@ public class MainActivity3 extends AppCompatActivity {
       String word = cleanWord(offlineWordBox.getText().toString());
       offlineWordsFileService.writeFileExternalStorage(true, word);
       runOnUiThread(() -> Toast.makeText(context, String.format(Locale.US, "'%s' has been stored offline.",
-              word), LENGTH_LONG).show());
+              word), Toast.LENGTH_LONG).show());
       runOnUiThread(() -> offlineWordBox.setText(null));
       runOnUiThread(() -> offlineWordBox.setHint("store a word for offline lookup..."));
     } else {
-      runOnUiThread(() -> Toast.makeText(context, "...yeah we don't store empty words buddy!", LENGTH_LONG).show());
+      runOnUiThread(() -> Toast.makeText(context, "...yeah we don't store empty words buddy!", Toast.LENGTH_LONG)
+              .show());
     }
   }
 
   private String cleanWord(String string) {
-    return Arrays.stream(string.split(REGEX_WHITE_SPACES)).map(String::trim).map(String::toLowerCase)
-            .collect(Collectors.joining(SPACE)).trim();
+    return Arrays.stream(string.split(MainActivity.REGEX_WHITE_SPACES)).map(String::trim).map(String::toLowerCase)
+            .collect(Collectors.joining(StringUtils.SPACE)).trim();
   }
 
   private void setWordsListListener() {

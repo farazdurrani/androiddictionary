@@ -1,14 +1,5 @@
 package com.faraz.dictionary;
 
-import static android.widget.Toast.LENGTH_LONG;
-import static android.widget.Toast.LENGTH_SHORT;
-import static com.faraz.dictionary.Completable.logExceptionFunction;
-import static com.mailjet.client.transactional.response.SentMessageStatus.SUCCESS;
-import static org.apache.commons.text.WordUtils.capitalize;
-import static java.lang.String.format;
-import static java.lang.System.currentTimeMillis;
-import static java.util.Optional.ofNullable;
-
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
@@ -35,10 +26,12 @@ import com.mailjet.client.transactional.TrackOpens;
 import com.mailjet.client.transactional.TransactionalEmail;
 import com.mailjet.client.transactional.response.MessageResult;
 import com.mailjet.client.transactional.response.SendEmailsResponse;
+import com.mailjet.client.transactional.response.SentMessageStatus;
 
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.apache.commons.text.WordUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -71,7 +64,7 @@ public class MainActivity2 extends AppCompatActivity {
   private static final int REQUEST_CODE_PICK_FILE = 2;
   public static boolean defaultEmailProvider = true; //default email provider is JavaMail. Other option is MailJet.
   private final Consumer<Throwable> exceptionToast = ex -> runOnUiThread(() -> Toast.makeText(MainActivity2.this,
-          ExceptionUtils.getStackTrace(ex), LENGTH_LONG).show());
+          ExceptionUtils.getStackTrace(ex), Toast.LENGTH_LONG).show());
   private MailjetClient mailjetClient;
   private Properties properties;
   private Repository repository;
@@ -93,18 +86,22 @@ public class MainActivity2 extends AppCompatActivity {
 
   public void backupData(View view) {
     new AlertDialog.Builder(context).setTitle("Confirm Action")
-            .setMessage("This is an Expensive Action. Are you sure?")
+            .setMessage("This is an expensive action. Are you sure?")
             .setPositiveButton("Yes", (dialog, which) -> {
               dialog.dismiss();
               List<View> buttons = findViewById(R.id.mainactivity2).getTouchables();
               CompletableFuture.runAsync(() -> toggleButtons(buttons, false))
                       .thenRun(() -> runOnUiThread(() -> Toast.makeText(MainActivity2.this, "Backing up data!",
-                              LENGTH_LONG).show()))
+                              Toast.LENGTH_LONG).show()))
                       .thenRun(this::sendFullDataInBackupEmail)
                       .thenRun(() -> toggleButtons(buttons, true))
-                      .exceptionally(logExceptionFunction(TAG, exceptionToast));
+                      .exceptionally(Completable.logExceptionFunction(TAG, exceptionToast));
             }).setNegativeButton("No", (dialog, which) -> runOnUiThread(() -> Toast.makeText(context, "Good choice.",
-                    LENGTH_LONG).show())).show();
+                    Toast.LENGTH_LONG).show())).show();
+  }
+
+  public void syncAutocompleteActivity(View view) {
+    pickAFileAndReadAndStore();
   }
 
   private void toggleButtons(List<View> buttons, boolean enable) {
@@ -114,17 +111,13 @@ public class MainActivity2 extends AppCompatActivity {
   public void switchEmailProvider(View view) {
     defaultEmailProvider = !defaultEmailProvider;
     runOnUiThread(() -> Toast.makeText(MainActivity2.this,
-            format("Email Provider has been switched to %s", (defaultEmailProvider ? "JavaMail" : "MailJet")),
-            LENGTH_SHORT).show());
+            String.format("Email Provider has been switched to %s", (defaultEmailProvider ? "JavaMail" : "MailJet")),
+            Toast.LENGTH_SHORT).show());
   }
 
   public void randomWordsActivity(View view) {
     Intent intent = new Intent(this, MainActivity3.class);
     startActivity(intent);
-  }
-
-  public void syncAutocompleteActivity(View view) {
-    pickAFileAndReadAndStore();
   }
 
   private void sendFullDataInBackupEmailBeforeSync() {
@@ -213,7 +206,7 @@ public class MainActivity2 extends AppCompatActivity {
    */
   private boolean sendEmailUsingJavaMailAPI(String subject, String body, String attachment) throws Exception {
     JavaMailSend mail = new JavaMailSend(loadProperty(JAVAMAIL_USER), loadProperty(JAVAMAIL_PASS));
-    mail.set_from(format(loadProperty(JAVAMAIL_FROM), currentTimeMillis()));
+    mail.set_from(String.format(loadProperty(JAVAMAIL_FROM), System.currentTimeMillis()));
     if (StringUtils.isNotBlank(attachment)) {
       mail.addAttachment(attachment);
     }
@@ -252,15 +245,16 @@ public class MainActivity2 extends AppCompatActivity {
                 .thenRun(repository::clear)
                 .thenRun(() -> repository.writeOverFile(result))
                 .thenRun(() -> runOnUiThread(() -> Toast.makeText(MainActivity2.this,
-                        "Autocomplete and Database are in sync now.", LENGTH_SHORT).show()))
+                        "Autocomplete and Database are in sync now.", Toast.LENGTH_LONG).show()))
                 .thenRun(() -> toggleButtons(buttons, true))
+                .thenRun(MainActivity.AUTO_COMPLETE_WORDS_REMOVE::clear)
                 .thenRun(this::gotoMainActivity);
       } catch (Exception e) {
         Log.e(TAG, ExceptionUtils.getStackTrace(e));
       }
     } else if (resultCode == RESULT_CANCELED) {
       runOnUiThread(() -> Toast.makeText(MainActivity2.this, "Did not proceed thru with the sync",
-              LENGTH_SHORT).show());
+              Toast.LENGTH_SHORT).show());
     }
   }
 
@@ -276,16 +270,16 @@ public class MainActivity2 extends AppCompatActivity {
   }
 
   private String anchor(String word) {
-    return "<a href='https://www.google.com/search?q=define: " + word + "' target='_blank'>" + capitalize(word) +
-            "</a>";
+    return "<a href='https://www.google.com/search?q=define: " + word + "' target='_blank'>" +
+            WordUtils.capitalize(word) + "</a>";
   }
 
   private void sendEmailWithSubject(String body, String subject, String attachment, String successMsg, String failMsg) {
     try {
       if (sendEmail(subject, body, attachment)) {
-        runOnUiThread(() -> Toast.makeText(MainActivity2.this, successMsg, LENGTH_SHORT).show());
+        runOnUiThread(() -> Toast.makeText(MainActivity2.this, successMsg, Toast.LENGTH_SHORT).show());
       } else {
-        runOnUiThread(() -> Toast.makeText(MainActivity2.this, failMsg, LENGTH_SHORT).show());
+        runOnUiThread(() -> Toast.makeText(MainActivity2.this, failMsg, Toast.LENGTH_SHORT).show());
       }
     } catch (Exception e) {
       throw new RuntimeException(e);
@@ -294,8 +288,8 @@ public class MainActivity2 extends AppCompatActivity {
 
   private boolean noErrors(SendEmailsResponse response) {
     Predicate<MessageResult[]> allSuccessAndNoErrors =
-            mr -> Arrays.stream(mr).map(MessageResult::getStatus).allMatch(SUCCESS::equals) &&
+            mr -> Arrays.stream(mr).map(MessageResult::getStatus).allMatch(SentMessageStatus.SUCCESS::equals) &&
                     Arrays.stream(mr).map(MessageResult::getErrors).allMatch(ObjectUtils::isEmpty);
-    return ofNullable(response).map(SendEmailsResponse::getMessages).filter(allSuccessAndNoErrors).isPresent();
+    return Optional.ofNullable(response).map(SendEmailsResponse::getMessages).filter(allSuccessAndNoErrors).isPresent();
   }
 }
