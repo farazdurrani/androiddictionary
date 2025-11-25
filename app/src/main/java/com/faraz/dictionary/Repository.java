@@ -224,8 +224,8 @@ public class Repository {
     });
   }
 
-  public boolean isReminded(String text) {
-    return Optional.ofNullable(inMemoryDb.get(text)).map(WordEntity::getRemindedTime).map(StringUtils::isNotBlank)
+  public boolean isReminded(String word) {
+    return Optional.ofNullable(word).map(inMemoryDb::get).map(WordEntity::getRemindedTime).map(StringUtils::isNotBlank)
             .orElse(false);
   }
 }
