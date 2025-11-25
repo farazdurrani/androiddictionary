@@ -1,8 +1,5 @@
 package com.faraz.dictionary;
 
-import static com.faraz.dictionary.MainActivity.CHICAGO;
-import static org.apache.commons.lang3.StringUtils.EMPTY;
-
 import android.util.Log;
 
 import androidx.annotation.NonNull;
@@ -32,7 +29,7 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 public class Repository {
-  public static final ZoneId CHICAGO_ZONE_ID = ZoneId.of(CHICAGO);
+  public static final ZoneId CHICAGO_ZONE_ID = ZoneId.of(MainActivity.CHICAGO);
   private static final String TAG = Repository.class.getSimpleName();
   private static final String filename = "inmemorydb.json";
   private static final Predicate<WordEntity> REMINDED_TIME_IS_ABSENT_PREDICATE = we -> we.getRemindedTime() == null;
@@ -194,7 +191,7 @@ public class Repository {
 
   private String getValuesAsString(Collection<WordEntity> values) {
     try {
-      return values.isEmpty() ? EMPTY : objectMapper.writeValueAsString(values);
+      return values.isEmpty() ? StringUtils.EMPTY : objectMapper.writeValueAsString(values);
     } catch (JsonProcessingException e) {
       return ExceptionUtils.getStackTrace(e);
     }
@@ -225,5 +222,10 @@ public class Repository {
         Log.e(TAG, ExceptionUtils.getStackTrace(e));
       }
     });
+  }
+
+  public boolean isReminded(String text) {
+    return StringUtils.isNotBlank(Optional.ofNullable(inMemoryDb.get(text)).map(WordEntity::getRemindedTime)
+            .orElse(StringUtils.EMPTY));
   }
 }

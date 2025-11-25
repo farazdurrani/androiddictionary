@@ -9,12 +9,15 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
 import org.apache.commons.lang3.StringUtils;
@@ -43,6 +46,7 @@ public class MainActivity3 extends AppCompatActivity {
   private ListView listView;
   private Context context;
   private Properties properties;
+
   private Repository repository;
   private FileService offlineWordsFileService;
 
@@ -58,8 +62,8 @@ public class MainActivity3 extends AppCompatActivity {
     remindedWordCountView = findViewById(R.id.remindedWordsCount);
     offlineWordBox = findViewById(R.id.offlineWordBox);
     offlineWordBox.setThreshold(1);
-    offlineWordBox.setAdapter(new ArrayAdapter<>(this, android.R.layout.select_dialog_item,
-            MainActivity.AUTO_COMPLETE_WORDS));
+    offlineWordBox.setAdapter(
+            new ShowRemindedArrayAdapter(this, android.R.layout.select_dialog_item, MainActivity.AUTO_COMPLETE_WORDS));
     offlineWordsFileService = new FileService("offlinewords.txt", Optional.ofNullable(getExternalFilesDir(null))
             .map(File::getAbsolutePath).orElseThrow());
     setClickListenerOnOfflineWordBox();
@@ -201,5 +205,25 @@ public class MainActivity3 extends AppCompatActivity {
   private void toggleButtons(boolean visible) {
     runOnUiThread(() -> findViewById(R.id.markAsReminded).setEnabled(visible));
     runOnUiThread(() -> findViewById(R.id.undoRemind).setEnabled(visible));
+  }
+
+  private class ShowRemindedArrayAdapter extends ArrayAdapter<String> {
+    public ShowRemindedArrayAdapter(@NonNull Context context, int resource,
+                                    @NonNull List<String> objects) {
+      super(context, resource, objects);
+    }
+
+    @SuppressLint("SetTextI18n")
+    @androidx.annotation.NonNull
+    @Override
+    public View getView(int position, @Nullable View convertView, @androidx.annotation.NonNull ViewGroup parent) {
+      TextView view = (TextView) super.getView(position, convertView, parent);
+      String text = view.getText().toString();
+      if (repository.isReminded(text)) {
+        text = "**" + text;
+      }
+      view.setText(text);
+      return view;
+    }
   }
 }

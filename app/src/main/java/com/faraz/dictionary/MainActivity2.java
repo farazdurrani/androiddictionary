@@ -60,6 +60,8 @@ public class MainActivity2 extends AppCompatActivity {
   public static final String JAVAMAIL_PASS = "javamail.pass";
   public static final String JAVAMAIL_FROM = "javamail.from";
   public static final String JAVAMAIL_TO = "javamail.to";
+  public static final Supplier<RuntimeException> DATA_NOT_FOUND_EXCEPTION =
+          () -> new RuntimeException("Where's the data!");
   private static final String TAG = MainActivity2.class.getSimpleName();
   private static final int REQUEST_CODE_PICK_FILE = 2;
   public static boolean defaultEmailProvider = true; //default email provider is JavaMail. Other option is MailJet.
@@ -233,12 +235,11 @@ public class MainActivity2 extends AppCompatActivity {
 
   private void handleSyncDataFile(int resultCode, @Nullable Intent data) {
     if (resultCode == RESULT_OK && data != null) {
-      Supplier<RuntimeException> dataNotFoundException = () -> new RuntimeException("Where's the data!");
-      Uri uri = Optional.of(data).map(Intent::getData).orElseThrow(dataNotFoundException);
+      Uri uri = Optional.of(data).map(Intent::getData).orElseThrow(DATA_NOT_FOUND_EXCEPTION);
       try (InputStream inputStream = getContentResolver().openInputStream(uri);
            InputStreamReader inputStreamReader = new InputStreamReader(inputStream, Charsets.UTF_8)) {
         String result = CharStreams.toString(inputStreamReader);
-        Optional.of(result).filter(StringUtils::isNotBlank).orElseThrow(dataNotFoundException);
+        Optional.of(result).filter(StringUtils::isNotBlank).orElseThrow(DATA_NOT_FOUND_EXCEPTION);
         List<View> buttons = findViewById(R.id.mainactivity2).getTouchables();
         CompletableFuture.runAsync(() -> toggleButtons(buttons, false))
                 .thenRun(this::sendFullDataInBackupEmailBeforeSync)

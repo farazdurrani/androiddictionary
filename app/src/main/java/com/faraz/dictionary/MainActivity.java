@@ -9,12 +9,15 @@ import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.faraz.dictionary.httpclient.HttpClient;
@@ -81,8 +84,8 @@ public class MainActivity extends AppCompatActivity {
                         String.join(System.lineSeparator(), ow)), () -> offlineWordsFileService.clearFile());
       }
       AUTO_COMPLETE_WORDS_REMOVE.clear();
-      runOnUiThread(() -> lookupWord.setAdapter(new ArrayAdapter<>(this, android.R.layout.select_dialog_item,
-              AUTO_COMPLETE_WORDS)));
+      runOnUiThread(() -> lookupWord.setAdapter(
+              new ShowRemindedArrayAdapter(this, android.R.layout.select_dialog_item, AUTO_COMPLETE_WORDS)));
       runOnUiThread(() -> lookupWord.setHint(AUTO_COMPLETE_WORDS.size() + " autocomplete words."));
     }
   }
@@ -98,7 +101,7 @@ public class MainActivity extends AppCompatActivity {
             .map(File::getAbsolutePath).orElseThrow());
     lookupWord = findViewById(R.id.wordBox);
     lookupWord.setThreshold(1);
-    lookupWord.setAdapter(new ArrayAdapter<>(this, android.R.layout.select_dialog_item, AUTO_COMPLETE_WORDS));
+    lookupWord.setAdapter(new ShowRemindedArrayAdapter(this, android.R.layout.select_dialog_item, AUTO_COMPLETE_WORDS));
     definitionsView = findViewById(R.id.definitions);
     definitionsView.setMovementMethod(new ScrollingMovementMethod());
     googleLink = findViewById(R.id.google);
@@ -299,8 +302,8 @@ public class MainActivity extends AppCompatActivity {
       AUTO_COMPLETE_WORDS.add(originalLookupWord);
     }
     runOnUiThread(() -> {
-      lookupWord.setAdapter(new ArrayAdapter<>(this, android.R.layout.select_dialog_item,
-              AUTO_COMPLETE_WORDS));
+      lookupWord.setAdapter(
+              new ShowRemindedArrayAdapter(this, android.R.layout.select_dialog_item, AUTO_COMPLETE_WORDS));
       lookupWord.setHint(AUTO_COMPLETE_WORDS.size() + " autocomplete words.");
     });
   }
@@ -403,6 +406,26 @@ public class MainActivity extends AppCompatActivity {
       return (200 <= responseCode && responseCode <= 399);
     } catch (IOException exception) {
       return false;
+    }
+  }
+
+  private class ShowRemindedArrayAdapter extends ArrayAdapter<String> {
+    public ShowRemindedArrayAdapter(@NonNull Context context, int resource,
+                                    @NonNull List<String> objects) {
+      super(context, resource, objects);
+    }
+
+    @SuppressLint("SetTextI18n")
+    @androidx.annotation.NonNull
+    @Override
+    public View getView(int position, @Nullable View convertView, @androidx.annotation.NonNull ViewGroup parent) {
+      TextView view = (TextView) super.getView(position, convertView, parent);
+      String text = view.getText().toString();
+      if (repository.isReminded(text)) {
+        text = "**" + text;
+      }
+      view.setText(text);
+      return view;
     }
   }
 }
