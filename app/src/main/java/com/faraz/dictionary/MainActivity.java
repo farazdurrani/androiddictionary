@@ -186,10 +186,10 @@ public class MainActivity extends AppCompatActivity {
     doInitialWork();
     Optional.of(offline).filter(BooleanUtils::isTrue)
             .ifPresent(ignore -> CompletableFuture.runAsync(this::writeToOfflineFile));
-    Optional.of(offline).filter(BooleanUtils::isFalse).ifPresent(this::lookupAndstoreInDbAndOpenBrowser);
+    Optional.of(offline).filter(BooleanUtils::isFalse).ifPresent(this::lookupAndStoreInDbAndOpenBrowser);
   }
 
-  private void lookupAndstoreInDbAndOpenBrowser(boolean ignore) {
+  private void lookupAndStoreInDbAndOpenBrowser(boolean ignore) {
     CompletableFuture.runAsync(this::lookupWord);
     openInWebBrowser();
   }

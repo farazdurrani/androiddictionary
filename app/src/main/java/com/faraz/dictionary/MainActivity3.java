@@ -37,7 +37,7 @@ public class MainActivity3 extends AppCompatActivity {
   private static final String TAG = MainActivity3.class.getSimpleName();
   private static final String NUMBER_OF_WORDS_TO_SHOW = "number.of.words.to.show";
   private static final BigDecimal ONE_HUNDRED = new BigDecimal("100");
-  private String[] words;
+  private List<String> words;
   private TextView remindedWordCountView;
   private AutoCompleteTextView offlineWordBox;
   private ListView listView;
@@ -106,7 +106,7 @@ public class MainActivity3 extends AppCompatActivity {
     runOnUiThread(() -> listView.setAdapter(new ArrayAdapter<>(context, R.layout.custom_layout, new String[0])));
     CompletableFuture.runAsync(() -> {
       try {
-        repository.markAsReminded(Arrays.asList(words));
+        repository.markAsReminded(words);
         clearWords();
         List<String> _words = repository.getWordsForReminder(Integer.parseInt(properties
                 .getProperty(NUMBER_OF_WORDS_TO_SHOW)));
@@ -186,15 +186,13 @@ public class MainActivity3 extends AppCompatActivity {
   }
 
   private void setWordsListListener() {
-    listView.setOnItemClickListener((parent, view, position, id) -> {
-      String word = (String) listView.getAdapter().getItem(position);
-      Uri uri = Uri.parse(String.format("https://www.google.com/search?q=define: %s", word));
-      startActivity(new Intent(Intent.ACTION_VIEW, uri));
-    });
+    listView.setOnItemClickListener((parent, view, position, id) -> words.stream()
+            .map(w -> Uri.parse(String.format("https://www.google.com/search?q=define: %s", w)))
+            .map(uri -> new Intent(Intent.ACTION_VIEW, uri)).forEach(this::startActivity));
   }
 
   private void showWordsAndCount(List<String> _words) {
-    words = _words.toArray(new String[0]);
+    words = _words;
     ArrayAdapter<String> adapter = new ArrayAdapter<>(context, R.layout.custom_layout, words);
     runOnUiThread(() -> listView.setAdapter(adapter));
     String remindedWordCount = repository.getRemindedCount() == repository.getLength() ? "All" :
