@@ -18,10 +18,11 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import org.apache.commons.lang3.ArrayUtils;
+import com.google.common.collect.ImmutableList;
+
 import org.apache.commons.lang3.exception.ExceptionUtils;
 
-import java.util.Arrays;
+import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 
@@ -34,7 +35,7 @@ public class MainActivity5 extends AppCompatActivity {
   private Context context;
   private FileService fileService;
   private Repository repository;
-  private String[] words;
+  private List<String> words;
 
   @Override
   public void onCreate(Bundle icicle) {
@@ -51,7 +52,7 @@ public class MainActivity5 extends AppCompatActivity {
     }).thenAccept(ignore -> {
       lookupWord = findViewById(R.id.deleteWordBox);
       lookupWord.setThreshold(1);
-      runOnUiThread(() -> lookupWord.setAdapter(new ArrayAdapter<>(this, android.R.layout.select_dialog_item,
+      runOnUiThread(() -> lookupWord.setAdapter(new ShowRemindedArrayAdapter(this, android.R.layout.select_dialog_item,
               words)));
       setAutocompleteListener();
     });
@@ -60,7 +61,7 @@ public class MainActivity5 extends AppCompatActivity {
   private void setAutocompleteListener() {
     lookupWord.setOnItemClickListener((adapterViewParent, view, position, id) -> {
       String w = (String) lookupWord.getAdapter().getItem(position);
-      runOnUiThread(() -> listView.setAdapter(new ArrayAdapter<>(context, R.layout.custom_layout, new String[]{w})));
+      runOnUiThread(() -> listView.setAdapter(new ArrayAdapter<>(context, R.layout.custom_layout, List.of(w))));
     });
   }
 
@@ -78,7 +79,7 @@ public class MainActivity5 extends AppCompatActivity {
                   restoreAutocompleteBox();
                 } catch (Exception exc) {
                   Optional.of(exc).ifPresent(e -> runOnUiThread(() -> listView.setAdapter(new ArrayAdapter<>(context,
-                          R.layout.custom_layout, new String[]{word, ExceptionUtils.getStackTrace(e)}))));
+                          R.layout.custom_layout, List.of(word, ExceptionUtils.getStackTrace(e))))));
                 }
               }).setNegativeButton("No", (dialog, which) -> runOnUiThread(() -> Toast.makeText(context, "Fine.",
                       LENGTH_LONG).show())).show();
@@ -87,7 +88,7 @@ public class MainActivity5 extends AppCompatActivity {
 
   private void restoreAutocompleteBox() {
     runOnUiThread(() -> {
-      lookupWord.setAdapter(new ArrayAdapter<>(this, android.R.layout.select_dialog_item, words));
+      lookupWord.setAdapter(new ShowRemindedArrayAdapter(this, android.R.layout.select_dialog_item, words));
       lookupWord.setText(null);
       lookupWord.setHint("Enter a word to delete");
     });
@@ -106,7 +107,7 @@ public class MainActivity5 extends AppCompatActivity {
 
   private void deleteFromDb(String word) {
     repository.delete(word);
-    words = Arrays.stream(words).filter(w -> !w.equals(word)).toArray(String[]::new);
+    words = words.stream().filter(w -> !w.equals(word)).toList();
     ArrayAdapter<String> adapter = new ArrayAdapter<>(context, R.layout.custom_layout, words);
     runOnUiThread(() -> {
       listView.setAdapter(adapter);
@@ -118,9 +119,7 @@ public class MainActivity5 extends AppCompatActivity {
     fileService.writeFileExternalStorage(true, word);
   }
 
-  private String[] getAllWords() {
-    String[] words = repository.getWords().toArray(new String[0]);
-    ArrayUtils.reverse(words);
-    return words;
+  private List<String> getAllWords() {
+    return ImmutableList.<String>builder().addAll(repository.getWords()).build().reverse();
   }
 }
