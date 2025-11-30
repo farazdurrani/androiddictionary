@@ -164,15 +164,20 @@ public class MainActivity3 extends AppCompatActivity {
   private void writeToOfflineFile() {
     if (StringUtils.isNotBlank(offlineWordBox.getText().toString())) {
       String word = cleanWord(offlineWordBox.getText().toString());
-      offlineWordsFileService.writeFileExternalStorage(true, word);
-      runOnUiThread(() -> Toast.makeText(context, String.format(Locale.US, "'%s' has been stored offline.",
-              word), Toast.LENGTH_LONG).show());
-      runOnUiThread(() -> offlineWordBox.setText(null));
-      runOnUiThread(() -> offlineWordBox.setHint("store a word for offline lookup..."));
+      if (offlineWordsFileService.readFile().contains(word)) {
+        runOnUiThread(() -> Toast.makeText(context, String.format(Locale.US, "'%s' is already stored offline.",
+                word), Toast.LENGTH_LONG).show());
+      } else {
+        offlineWordsFileService.writeFileExternalStorage(true, word);
+        runOnUiThread(() -> Toast.makeText(context, String.format(Locale.US, "'%s' has been stored offline.",
+                word), Toast.LENGTH_LONG).show());
+      }
     } else {
       runOnUiThread(() -> Toast.makeText(context, "...yeah we don't store empty words buddy!", Toast.LENGTH_LONG)
               .show());
     }
+    runOnUiThread(() -> offlineWordBox.setText(null));
+    runOnUiThread(() -> offlineWordBox.setHint("store a word for offline lookup..."));
   }
 
   private String cleanWord(String string) {
