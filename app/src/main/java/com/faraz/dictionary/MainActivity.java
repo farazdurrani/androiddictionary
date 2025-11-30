@@ -197,8 +197,14 @@ public class MainActivity extends AppCompatActivity {
   @SuppressLint("SetTextI18n")
   private void writeToOfflineFile() {
     if (StringUtils.isNotBlank(originalLookupWord)) {
-      offlineWordsFileService.writeFileExternalStorage(true, originalLookupWord);
-      runOnUiThread(() -> definitionsView.setText(String.format("'%s' has been stored offline.", originalLookupWord)));
+      if (offlineWordsFileService.readFile().contains(originalLookupWord)) {
+        runOnUiThread(() -> definitionsView.setText(String.format("'%s' is already stored offline.",
+                originalLookupWord)));
+      } else {
+        offlineWordsFileService.writeFileExternalStorage(true, originalLookupWord);
+        runOnUiThread(() -> definitionsView.setText(String.format("'%s' has been stored offline.",
+                originalLookupWord)));
+      }
     } else {
       runOnUiThread(() -> definitionsView.setText("...yeah we don't store empty words buddy!"));
     }
