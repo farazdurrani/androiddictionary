@@ -1,6 +1,7 @@
 package com.faraz.dictionary;
 
 import static android.view.View.INVISIBLE;
+import static android.widget.Toast.LENGTH_LONG;
 import static android.widget.Toast.LENGTH_SHORT;
 import static com.faraz.dictionary.Completable.runAsync;
 import static com.faraz.dictionary.MainActivity.FILE_NAME;
@@ -21,6 +22,7 @@ import static java.lang.System.currentTimeMillis;
 import static java.util.Optional.ofNullable;
 
 import android.annotation.SuppressLint;
+import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
@@ -74,6 +76,7 @@ public class OfflineAndDeletedWordsActivity extends AppCompatActivity {
   private String[] words;
   private ListView listView;
   private Context context;
+  private Context contextForAlertDialog;
   private FileService fileService;
   private String filename;
   private Properties properties;
@@ -85,6 +88,7 @@ public class OfflineAndDeletedWordsActivity extends AppCompatActivity {
     super.onCreate(icicle);
     setContentView(R.layout.offline_and_deleted_words_activity);
     context = getBaseContext();
+    contextForAlertDialog = this;
     listView = findViewById(R.id.wordList);
     ofNullable(getIntent().getExtras()).filter(e -> BooleanUtils.isFalse(e.getBoolean(WIPEOUT_DATA_BUTTON)))
             .ifPresent(ignore -> findViewById(R.id.wipeoutDeletedWords).setVisibility(INVISIBLE));
@@ -148,8 +152,17 @@ public class OfflineAndDeletedWordsActivity extends AppCompatActivity {
   }
 
   public void wipeoutDeletedWords(View view) {
-    ofNullable(getIntent().getExtras()).map(e -> e.getBoolean(WIPEOUT_DATA_BUTTON)).filter(BooleanUtils::isTrue)
-            .ifPresent(this::deleteWordsAndShowNewDisplay);
+    new AlertDialog.Builder(contextForAlertDialog).setTitle("Confirm Action")
+            .setMessage("Are you sure you want wipe-out the deleted words completely?")
+            .setPositiveButton("Yes", (dialog, which) -> {
+              dialog.dismiss();
+              ofNullable(getIntent().getExtras()).map(e -> e.getBoolean(WIPEOUT_DATA_BUTTON))
+                      .filter(BooleanUtils::isTrue)
+                      .ifPresent(this::deleteWordsAndShowNewDisplay);
+            }).setNegativeButton("No",
+                    (dialog, which) -> runOnUiThread(() -> Toast.makeText(contextForAlertDialog, "Fine.",
+                            LENGTH_LONG).show()))
+            .show();
   }
 
   @SuppressLint("SetTextI18n")

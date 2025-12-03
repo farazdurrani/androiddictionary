@@ -10,7 +10,10 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import android.view.KeyEvent;
 import android.view.View;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.ListView;
@@ -60,8 +63,31 @@ public class MainActivity5 extends AppCompatActivity {
 
   private void setAutocompleteListener() {
     lookupWord.setOnItemClickListener((adapterViewParent, view, position, id) -> {
-      String w = (String) lookupWord.getAdapter().getItem(position);
-      runOnUiThread(() -> listView.setAdapter(new ArrayAdapter<>(context, R.layout.custom_layout, List.of(w))));
+      String selectedWord = (String) lookupWord.getAdapter().getItem(position);
+      runOnUiThread(() -> {
+        listView.setAdapter(new ArrayAdapter<>(context, R.layout.custom_layout, List.of(selectedWord)));
+        lookupWord.setText(null);
+        lookupWord.setHint("Enter a word to delete.");
+      });
+      // hide the keyboard
+      InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+      imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+    });
+
+    lookupWord.setOnEditorActionListener((textView, actionId, event) -> {
+      if (actionId == EditorInfo.IME_ACTION_DONE || (event != null && event.getKeyCode() == KeyEvent.KEYCODE_ENTER &&
+              event.getAction() == KeyEvent.ACTION_DOWN)) {
+        String enteredText = textView.getText().toString();
+        words = ImmutableList.<String>builder().addAll(repository.getWords().stream()
+                .filter(w -> w.startsWith(enteredText)).toList()).build().reverse();
+        // hide the keyboard
+        InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+        imm.hideSoftInputFromWindow(textView.getWindowToken(), 0);
+        runOnUiThread(() -> listView.setAdapter(new ArrayAdapter<>(context, R.layout.custom_layout, words)));
+        restoreAutocompleteBox();
+        return true;
+      }
+      return false;
     });
   }
 
@@ -82,7 +108,8 @@ public class MainActivity5 extends AppCompatActivity {
                           R.layout.custom_layout, List.of(word, ExceptionUtils.getStackTrace(e))))));
                 }
               }).setNegativeButton("No", (dialog, which) -> runOnUiThread(() -> Toast.makeText(context, "Fine.",
-                      LENGTH_LONG).show())).show();
+                      LENGTH_LONG).show()))
+              .show();
     });
   }
 
@@ -90,7 +117,7 @@ public class MainActivity5 extends AppCompatActivity {
     runOnUiThread(() -> {
       lookupWord.setAdapter(new ShowRemindedArrayAdapter(this, android.R.layout.select_dialog_item, words));
       lookupWord.setText(null);
-      lookupWord.setHint("Enter a word to delete");
+      lookupWord.setHint("Enter a word to delete.");
     });
   }
 
