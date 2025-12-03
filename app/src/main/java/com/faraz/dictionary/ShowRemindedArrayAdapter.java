@@ -17,6 +17,7 @@ public class ShowRemindedArrayAdapter extends ArrayAdapter<String> {
   // todo this class is not loaded when andriod is doing its thing. If it were to load it during android doing its thing
   // this line 'static and new Repository' this early on would surely have caused mayhem. Keep an eye on this in
   // future in case there's a fallout.
+  // if this class is initialized during or after onCreate, good.
   private static final Repository repository = new Repository();
 
   public ShowRemindedArrayAdapter(@NonNull Context context, int resource,

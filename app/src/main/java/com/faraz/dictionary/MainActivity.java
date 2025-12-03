@@ -95,6 +95,7 @@ public class MainActivity extends AppCompatActivity {
     context = getBaseContext();
     offlineWordsFileService = new FileService("offlinewords.txt", Optional.ofNullable(getExternalFilesDir(null))
             .map(File::getAbsolutePath).orElseThrow());
+    repository = new Repository();
     lookupWord = findViewById(R.id.wordBox);
     lookupWord.setThreshold(1);
     lookupWord.setAdapter(new ShowRemindedArrayAdapter(this, android.R.layout.select_dialog_item, AUTO_COMPLETE_WORDS));
@@ -108,7 +109,6 @@ public class MainActivity extends AppCompatActivity {
     setLookupWordListener();
     setStoreWordListener();
     Optional.of(isOffline()).ifPresent(this::setOfflineFlagAndButton);
-    repository = new Repository();
     Completable.runSync(this::loadWordsForAutoComplete).thenRunSync(() -> Optional.ofNullable(getIntent().getExtras())
             .map(e -> e.getString(OfflineAndDeletedWordsActivity.LOOKUPTHISWORD)).ifPresent(this::doLookup));
   }
