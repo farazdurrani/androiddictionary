@@ -1,7 +1,5 @@
 package com.faraz.dictionary;
 
-import static java.lang.System.lineSeparator;
-
 import android.os.Environment;
 import android.util.Log;
 
@@ -27,10 +25,6 @@ public class FileService {
   private static String externalFilesDir;
   private final String filename;
 
-  public String getFilepath() {
-    return new File(externalFilesDir, filename).getAbsolutePath();
-  }
-
   public FileService(String filename, String... folder) {
     externalFilesDir = folder.length > 0 ? folder[0] : externalFilesDir;
     this.filename = filename;
@@ -39,12 +33,16 @@ public class FileService {
       if (file.createNewFile()) {
         Log.i(TAG, String.format(Locale.US, "Successfully created file at %s", file.getAbsolutePath()));
       } else {
-        Log.i(TAG, String.format(Locale.US, "File already exists at %s" , file.getAbsolutePath()));
+        Log.i(TAG, String.format(Locale.US, "File already exists at %s", file.getAbsolutePath()));
       }
     } catch (IOException e) {
       Log.e(TAG, ExceptionUtils.getStackTrace(e));
       throw new RuntimeException(e);
     }
+  }
+
+  public String getFilepath() {
+    return new File(externalFilesDir, filename).getAbsolutePath();
   }
 
   /**
@@ -72,7 +70,7 @@ public class FileService {
       // before calling this method.
       for (String word : words) {
         outputStream.write(word.getBytes());
-        outputStream.write(lineSeparator().getBytes());
+        outputStream.write(System.lineSeparator().getBytes());
       }
       outputStream.flush();
       outputStream.close();
@@ -125,6 +123,6 @@ public class FileService {
     String[] words = readFile().stream().filter(w -> !w.equals(word)).distinct().toArray(String[]::new);
     Optional.of(words).filter(ObjectUtils::isEmpty)
             .ifPresentOrElse(ignore -> clearFile(), () -> writeFileExternalStorage(false,
-                    String.join(lineSeparator(), words)));
+                    String.join(System.lineSeparator(), words)));
   }
 }

@@ -1,11 +1,5 @@
 package com.faraz.dictionary;
 
-import static android.widget.Toast.LENGTH_LONG;
-import static android.widget.Toast.LENGTH_SHORT;
-import static com.faraz.dictionary.MainActivity.AUTO_COMPLETE_WORDS_REMOVE;
-import static java.lang.String.format;
-import static java.util.concurrent.CompletableFuture.supplyAsync;
-
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
@@ -28,6 +22,7 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 public class MainActivity5 extends AppCompatActivity {
 
@@ -49,7 +44,7 @@ public class MainActivity5 extends AppCompatActivity {
     setListener();
     fileService = new FileService("deletedwords.txt");
     repository = new Repository();
-    supplyAsync(this::getAllWords).thenAccept(_words -> {
+    CompletableFuture.supplyAsync(this::getAllWords).thenAccept(_words -> {
       words = _words;
       runOnUiThread(() -> listView.setAdapter(new ArrayAdapter<>(context, R.layout.custom_layout, words)));
     }).thenAccept(ignore -> {
@@ -108,7 +103,7 @@ public class MainActivity5 extends AppCompatActivity {
                           R.layout.custom_layout, List.of(word, ExceptionUtils.getStackTrace(e))))));
                 }
               }).setNegativeButton("No", (dialog, which) -> runOnUiThread(() -> Toast.makeText(context, "Fine.",
-                      LENGTH_LONG).show()))
+                      Toast.LENGTH_LONG).show()))
               .show();
     });
   }
@@ -129,7 +124,7 @@ public class MainActivity5 extends AppCompatActivity {
   }
 
   private void deleteWordFromAutoComplete(String word) {
-    AUTO_COMPLETE_WORDS_REMOVE.add(word);
+    MainActivity.AUTO_COMPLETE_WORDS_REMOVE.add(word);
   }
 
   private void deleteFromDb(String word) {
@@ -138,7 +133,7 @@ public class MainActivity5 extends AppCompatActivity {
     ArrayAdapter<String> adapter = new ArrayAdapter<>(context, R.layout.custom_layout, words);
     runOnUiThread(() -> {
       listView.setAdapter(adapter);
-      Toast.makeText(context, format("%s has been deleted.", word), LENGTH_SHORT).show();
+      Toast.makeText(context, String.format("%s has been deleted.", word), Toast.LENGTH_SHORT).show();
     });
   }
 
