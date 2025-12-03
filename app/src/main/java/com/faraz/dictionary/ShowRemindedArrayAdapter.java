@@ -14,12 +14,14 @@ import java.util.List;
 
 public class ShowRemindedArrayAdapter extends ArrayAdapter<String> {
 
-  private final Repository repository;
+  // todo this class is not loaded when andriod is doing its thing. If it were to load it during android doing its thing
+  // this line 'static and new Repository' this early on would surely have caused mayhem. Keep an eye on this in
+  // future in case there's a fallout.
+  private static final Repository repository = new Repository();
 
   public ShowRemindedArrayAdapter(@NonNull Context context, int resource,
                                   @NonNull List<String> objects) {
     super(context, resource, objects);
-    repository = new Repository();
   }
 
   @SuppressLint("SetTextI18n")
