@@ -23,13 +23,12 @@ public class FileService {
   public static final String TAG = FileService.class.getSimpleName();
   //Initialize it once when the app is loading up
   private static String externalFilesDir;
-  private final String filename;
+  private final File file;
 
   public FileService(String filename, String... folder) {
     externalFilesDir = folder.length > 0 ? folder[0] : externalFilesDir;
-    this.filename = filename;
     try {
-      File file = new File(externalFilesDir, filename);
+      file = new File(externalFilesDir, filename);
       if (file.createNewFile()) {
         Log.i(TAG, String.format(Locale.US, "Successfully created file at %s", file.getAbsolutePath()));
       } else {
@@ -42,7 +41,7 @@ public class FileService {
   }
 
   public String getFilepath() {
-    return new File(externalFilesDir, filename).getAbsolutePath();
+    return file.getAbsolutePath();
   }
 
   /**
@@ -64,10 +63,11 @@ public class FileService {
     try {
       //second argument of FileOutputStream constructor indicates whether
       //to append or create new file if one exists
-      outputStream = new FileOutputStream(new File(externalFilesDir, filename), append);
+      outputStream = new FileOutputStream(file, append);
 
       //todo extremely slow if too many words. Just use String.join(lineSeparator(), words). You do this at one place
       // before calling this method.
+      // Or you just send one big csv or single big blob of string anyway. so should be good.
       for (String word : words) {
         outputStream.write(word.getBytes());
         outputStream.write(System.lineSeparator().getBytes());
@@ -86,7 +86,7 @@ public class FileService {
    */
   public void clearFile() {
     try {
-      new FileOutputStream(new File(externalFilesDir, filename)).close();
+      new FileOutputStream(file).close();
     } catch (IOException e) {
       Log.e(TAG, ExceptionUtils.getStackTrace(e));
       throw new RuntimeException(e);
@@ -94,7 +94,7 @@ public class FileService {
   }
 
   public List<String> readFile() {
-    try (BufferedReader buffer = new BufferedReader(new FileReader(new File(externalFilesDir, filename)))) {
+    try (BufferedReader buffer = new BufferedReader(new FileReader(file))) {
       List<String> lines = new ArrayList<>();
       String line;
       while ((line = buffer.readLine()) != null) {
@@ -108,9 +108,8 @@ public class FileService {
   }
 
   public byte[] readFileAsByte() {
-    File myFile = new File(externalFilesDir, filename);
-    byte[] byteArray = new byte[(int) myFile.length()];
-    try (FileInputStream inputStream = new FileInputStream(myFile)) {
+    byte[] byteArray = new byte[(int) file.length()];
+    try (FileInputStream inputStream = new FileInputStream(file)) {
       int ignore = inputStream.read(byteArray);
     } catch (IOException e) {
       Log.e(TAG, ExceptionUtils.getStackTrace(e));
