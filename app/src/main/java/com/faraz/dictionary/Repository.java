@@ -249,9 +249,6 @@ public class Repository {
   }
 
   private String convertMillisToReadableTime(long time) {
-    if (time == 0) {
-      return StringUtils.EMPTY;
-    }
-    return DATE_TIME_FORMATTER.format(Instant.ofEpochMilli(time));
+    return time == 0 ? StringUtils.EMPTY : DATE_TIME_FORMATTER.format(Instant.ofEpochMilli(time));
   }
 }

@@ -46,7 +46,6 @@ public class MainActivity extends AppCompatActivity {
   public static final Consumer<Object> NOOP = ignore -> {
   };
   public static final String TAG = MainActivity.class.getSimpleName();
-  public static final String CHICAGO = "America/Chicago";
   public static final String REGEX_WHITE_SPACES = "\\s+";
   private static final String NO_DEFINITION_FOUND = "No definitions found for '%s'. Perhaps, you meant:";
   private static final String MERRIAM_WEBSTER_KEY = "dictionary.merriamWebster.key";
@@ -382,19 +381,13 @@ public class MainActivity extends AppCompatActivity {
   }
 
   public boolean isOffline() {
-    return pingURL("https://www.google.com");
-  }
-
-  /**
-   * Pings a HTTP URL. This effectively sends a HEAD request and returns <code>true</code> if the response code is in
-   * the 200-399 range.
-   *
-   * @param url The HTTP URL to be pinged.
-   * @return <code>true</code> if the given HTTP URL has returned response code 200-399 on a HEAD request within the
-   * given timeout, otherwise <code>false</code>.
-   */
-  public static boolean pingURL(String url) {
-    int responseCode = HttpClient.getResponseCode(url);
-    return !(200 <= responseCode && responseCode <= 399);
+    try {
+      int ignore = HttpClient.getResponseCode("https://www.google.com");
+      //if no exception, then it's not offline.
+      return false;
+    } catch (Exception e) {
+      Log.e(TAG, ExceptionUtils.getStackTrace(e));
+      return true;
+    }
   }
 }
