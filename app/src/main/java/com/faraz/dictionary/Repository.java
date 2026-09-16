@@ -19,6 +19,8 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 
 import java.io.IOException;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -34,7 +36,9 @@ public class Repository {
   private static final String TAG = Repository.class.getSimpleName();
   private static final String filename = "inmemorydb.csv";
   private static final Predicate<WordEntity> REMINDED_TIME_IS_ABSENT_PREDICATE = we -> we.getRemindedTime() == 0;
-  private static final CsvMapper mapper = getCSVMapper();
+  private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("MM-dd-yyyy HH:mm:ss")
+          .withZone(ZoneId.systemDefault());
+  private static final CsvMapper MAPPER = getCSVMapper();
   private static final Map<String, WordEntity> inMemoryDb = new LinkedHashMap<>() {
     @Nullable
     @Override
@@ -175,7 +179,7 @@ public class Repository {
 
   private String getValuesAsString(Collection<WordEntity> values) {
     try {
-      return values.isEmpty() ? StringUtils.EMPTY : mapper.writer(getSchema()).writeValueAsString(values);
+      return values.isEmpty() ? StringUtils.EMPTY : MAPPER.writer(getSchema()).writeValueAsString(values);
     } catch (JsonProcessingException e) {
       return ExceptionUtils.getStackTrace(e);
     }
@@ -206,7 +210,7 @@ public class Repository {
   }
 
   private List<WordEntity> readCsv() {
-    try (MappingIterator<WordEntity> iterator = mapper.readerFor(WordEntity.class).with(getSchema())
+    try (MappingIterator<WordEntity> iterator = MAPPER.readerFor(WordEntity.class).with(getSchema())
             .readValues(fileService.readFileAsByte())) {
       return iterator.readAll();
     } catch (IOException e) {
@@ -216,7 +220,7 @@ public class Repository {
   }
 
   private static CsvSchema getSchema() {
-    return mapper.schemaFor(WordEntity.class).withHeader().withColumnSeparator(';');
+    return MAPPER.schemaFor(WordEntity.class).withHeader().withColumnSeparator(';');
   }
 
   public boolean isReminded(String word) {
@@ -236,5 +240,18 @@ public class Repository {
     mapper.enable(CsvParser.Feature.TRIM_SPACES);
     mapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
     return mapper;
+  }
+
+  public String getWordInfo(String word) {
+    WordEntity we = Optional.ofNullable(inMemoryDb.get(word)).orElseThrow(throwKeyNotFoundException(word));
+    return we.getWord() + System.lineSeparator() + convertMillisToReadableTime(we.getLookupTime()) +
+            System.lineSeparator() + convertMillisToReadableTime(we.getRemindedTime());
+  }
+
+  private String convertMillisToReadableTime(long time) {
+    if (time == 0) {
+      return null;
+    }
+    return DATE_TIME_FORMATTER.format(Instant.ofEpochMilli(time));
   }
 }
