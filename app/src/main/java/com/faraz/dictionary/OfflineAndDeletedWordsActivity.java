@@ -276,6 +276,9 @@ public class OfflineAndDeletedWordsActivity extends AppCompatActivity {
   }
 
   private static class ShowNumbersArrayAdapter extends ArrayAdapter<String> {
+
+    private static final Repository repository = new Repository();
+
     public ShowNumbersArrayAdapter(@androidx.annotation.NonNull Context context, int resource,
                                    @androidx.annotation.NonNull String[] objects) {
       super(context, resource, objects);
@@ -286,7 +289,9 @@ public class OfflineAndDeletedWordsActivity extends AppCompatActivity {
     @Override
     public View getView(int position, @Nullable View convertView, @androidx.annotation.NonNull ViewGroup parent) {
       TextView view = (TextView) super.getView(position, convertView, parent);
-      view.setText(++position + " " + view.getText());
+      view.setText(
+              ++position + " " + (repository.isReminded(view.getText().toString()) ? "**" + view.getText().toString() :
+                      view.getText().toString()));
       return view;
     }
   }
