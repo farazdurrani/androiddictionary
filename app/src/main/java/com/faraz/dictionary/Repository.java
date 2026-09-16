@@ -250,7 +250,7 @@ public class Repository {
 
   private String convertMillisToReadableTime(long time) {
     if (time == 0) {
-      return null;
+      return StringUtils.EMPTY;
     }
     return DATE_TIME_FORMATTER.format(Instant.ofEpochMilli(time));
   }
