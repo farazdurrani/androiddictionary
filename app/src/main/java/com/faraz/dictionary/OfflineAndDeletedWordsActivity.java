@@ -105,12 +105,33 @@ public class OfflineAndDeletedWordsActivity extends AppCompatActivity {
     }
   }
 
+  @SuppressLint("SetTextI18n")
   private void setListener() {
     listView.setOnItemClickListener((parent, view, position, id) -> {
       String word = (String) listView.getAdapter().getItem(position);
       Optional.ofNullable(word).filter(StringUtils::isNotBlank).ifPresent(this::spawnActivity);
       Optional.ofNullable(word).filter(StringUtils::isBlank).ifPresent(ignore -> runOnUiThread(
               () -> Toast.makeText(context, "cannot send non-existent words.", Toast.LENGTH_SHORT).show()));
+    });
+
+    listView.setOnItemLongClickListener((parent, view, position, id) -> {
+      String word = (String) listView.getAdapter().getItem(position);
+      AlertDialog.Builder builder = new AlertDialog.Builder(contextForAlertDialog);
+      builder.setTitle("Confirm Action");
+      builder.setMessage(String.format(Locale.US, "Are you sure you want to delete this word %s?", word));
+      builder.setPositiveButton("Yes", (dialog, which) -> {
+        dialog.dismiss();
+        fileService.delete(word);
+        words = fileService.readFile().toArray(new String[0]);
+        ArrayUtils.reverse(words);
+        runOnUiThread(() -> listView.setAdapter(new ShowNumbersArrayAdapter(context, R.layout.custom_layout, words)));
+        runOnUiThread(() -> ((TextView) findViewById(R.id.wordsCount)).setText(words.length + " words in file."));
+      });
+      builder.setNegativeButton("No", (dialog, which) -> runOnUiThread(() -> Toast.makeText(context, "Fine.",
+              Toast.LENGTH_LONG).show()));
+      AlertDialog alertDialog = builder.create();
+      alertDialog.show();
+      return true;
     });
   }
 
