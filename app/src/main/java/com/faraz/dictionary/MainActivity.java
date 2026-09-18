@@ -27,8 +27,6 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -48,7 +46,6 @@ public class MainActivity extends AppCompatActivity {
   public static final Consumer<Object> NOOP = ignore -> {
   };
   public static final String TAG = MainActivity.class.getSimpleName();
-  public static final String CHICAGO = "America/Chicago";
   public static final String REGEX_WHITE_SPACES = "\\s+";
   private static final String NO_DEFINITION_FOUND = "No definitions found for '%s'. Perhaps, you meant:";
   private static final String MERRIAM_WEBSTER_KEY = "dictionary.merriamWebster.key";
@@ -108,7 +105,7 @@ public class MainActivity extends AppCompatActivity {
     setOpenInBrowserListener();
     setLookupWordListener();
     setStoreWordListener();
-    Optional.of(isOffline()).ifPresent(this::setOfflineFlagAndButton);
+    CompletableFuture.runAsync(() -> Optional.of(isOffline()).ifPresent(this::setOfflineFlagAndButton));
     Completable.runSync(this::loadWordsForAutoComplete).thenRunSync(() -> Optional.ofNullable(getIntent().getExtras())
             .map(e -> e.getString(OfflineAndDeletedWordsActivity.LOOKUPTHISWORD)).ifPresent(this::doLookup));
   }
@@ -371,7 +368,7 @@ public class MainActivity extends AppCompatActivity {
   }
 
   private String[] lookupInMerriamWebster() {
-    return parseMerriamWebsterResponse(HttpClient.get(formMerriamWebsterUrl()));
+    return parseMerriamWebsterResponse(HttpClient.getResponseBody(formMerriamWebsterUrl()));
   }
 
   private void doLookup(String word) {
@@ -384,30 +381,13 @@ public class MainActivity extends AppCompatActivity {
   }
 
   public boolean isOffline() {
-    return pingURL("google.com", 555);
-  }
-
-  /**
-   * Pings a HTTP URL. This effectively sends a HEAD request and returns <code>true</code> if the response code is in
-   * the 200-399 range.
-   *
-   * @param url     The HTTP URL to be pinged.
-   * @param timeout The timeout in millis for both the connection timeout and the response read timeout. Note that
-   *                the total timeout is effectively two times the given timeout.
-   * @return <code>true</code> if the given HTTP URL has returned response code 200-399 on a HEAD request within the
-   * given timeout, otherwise <code>false</code>.
-   */
-  public static boolean pingURL(String url, int timeout) {
-    url = url.replaceFirst("^https", "http"); // Otherwise an exception may be thrown on invalid SSL certificates.
     try {
-      HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
-      connection.setConnectTimeout(timeout);
-      connection.setReadTimeout(timeout);
-      connection.setRequestMethod("HEAD");
-      int responseCode = connection.getResponseCode();
-      return (200 <= responseCode && responseCode <= 399);
-    } catch (IOException exception) {
+      int ignore = HttpClient.getResponseCode("https://www.google.com");
+      //if no exception, then it's not offline.
       return false;
+    } catch (Exception e) {
+      Log.e(TAG, ExceptionUtils.getStackTrace(e));
+      return true;
     }
   }
 }

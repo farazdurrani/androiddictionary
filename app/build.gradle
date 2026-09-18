@@ -46,9 +46,15 @@ dependencies {
         exclude group: 'com.fasterxml.jackson.core', module: 'jackson-databind'
     }
     //JACKSON was brought in by json-flattener above. Excluded it and brought in a specific version
-    // separately below.
+    //separately below.
+    //need this version of jackson to work with Android 24 and also for the json-flattener to work.
+    //in theory, we can perhaps remove the below jackson-databind and use the one brought in by the json-flattener
+    //but that would be a waste of time since we do need some jackson-databind. this trial and error thing is
+    //a waste of time with zero benefits.
     //noinspection GradleDependency
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.13.0' //need this version of jackson to work with Android 24
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.13.0'
+    //noinspection GradleDependency
+    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-csv:2.13.0'
     implementation 'com.mailjet:mailjet-client:6.0.1'
     implementation 'com.sun.mail:android-mail:1.6.7'
     implementation 'com.google.guava:guava:32.1.3-android'

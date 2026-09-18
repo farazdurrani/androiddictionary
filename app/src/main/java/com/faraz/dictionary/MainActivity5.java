@@ -109,6 +109,17 @@ public class MainActivity5 extends AppCompatActivity {
                       Toast.LENGTH_LONG).show()))
               .show();
     });
+
+    listView.setOnItemLongClickListener((parent, view, position, id) -> {
+      String wordInfo = repository.getWordInfo((String) listView.getAdapter().getItem(position));
+      new AlertDialog.Builder(context)
+              .setTitle("Word Details")
+              .setMessage(wordInfo)
+              .setPositiveButton("OK", null)
+              .show();
+      return true;
+    });
+
   }
 
   private List<String> setWords(List<String> words) {

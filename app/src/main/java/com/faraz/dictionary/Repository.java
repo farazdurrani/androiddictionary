@@ -6,14 +6,18 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.type.TypeFactory;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.MappingIterator;
+import com.fasterxml.jackson.dataformat.csv.CsvGenerator;
+import com.fasterxml.jackson.dataformat.csv.CsvMapper;
+import com.fasterxml.jackson.dataformat.csv.CsvParser;
+import com.fasterxml.jackson.dataformat.csv.CsvSchema;
 
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 
-import java.time.Clock;
+import java.io.IOException;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -29,13 +33,12 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 public class Repository {
-  public static final ZoneId CHICAGO_ZONE_ID = ZoneId.of(MainActivity.CHICAGO);
   private static final String TAG = Repository.class.getSimpleName();
-  private static final String filename = "inmemorydb.json";
-  private static final Predicate<WordEntity> REMINDED_TIME_IS_ABSENT_PREDICATE = we -> we.getRemindedTime() == null;
-  private static final ObjectMapper objectMapper = new ObjectMapper();
-  private static final TypeFactory typeFactory = objectMapper.getTypeFactory();
-  private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ISO_INSTANT;
+  private static final String filename = "inmemorydb.csv";
+  private static final Predicate<WordEntity> REMINDED_TIME_IS_ABSENT_PREDICATE = we -> we.getRemindedTime() == 0;
+  private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("MM-dd-yyyy HH:mm:ss")
+          .withZone(ZoneId.systemDefault());
+  private static final CsvMapper MAPPER = getCSVMapper();
   private static final Map<String, WordEntity> inMemoryDb = new LinkedHashMap<>() {
     @Nullable
     @Override
@@ -64,10 +67,9 @@ public class Repository {
     }
   };
   private static final Comparator<WordEntity> SORT_BY_REMINDED_TIME_COMPARATOR =
-          (w1, w2) -> toDateRemindedTime(w2).compareTo(toDateRemindedTime(w1));
+          Comparator.comparingLong(WordEntity::getRemindedTime).reversed();
   private static final FileService fileService = new FileService(filename);
   private static boolean initialized; // mutable
-  private static int lastId; //always increments. DONOT decrement. // mutable
 
   public Repository() {
     init();
@@ -87,16 +89,16 @@ public class Repository {
 
   public DBResult upsert(String word) {
     word = Optional.ofNullable(word).map(String::strip).map(String::toLowerCase).orElseThrow();
-    String currentTime = DATE_TIME_FORMATTER.format(Instant.now(Clock.system(CHICAGO_ZONE_ID)));
+    long currentTime = Instant.now().toEpochMilli();
     WordEntity wordEntity = inMemoryDb.get(word);
     if (wordEntity != null) {
       wordEntity.setRemindedTime(currentTime);
     } else {
-      wordEntity = new WordEntity(++lastId, word, currentTime, null);
+      wordEntity = new WordEntity(word, currentTime, 0);
       inMemoryDb.put(word, wordEntity);
     }
     flush();
-    return wordEntity.getRemindedTime() == null ? DBResult.INSERT : DBResult.UPDATE;
+    return wordEntity.getRemindedTime() == 0 ? DBResult.INSERT : DBResult.UPDATE;
   }
 
   /**
@@ -130,7 +132,7 @@ public class Repository {
   }
 
   public List<String> getByRemindedTime(int limit) {
-    List<String> list = inMemoryDb.values().stream().filter(we -> we.getRemindedTime() != null)
+    List<String> list = inMemoryDb.values().stream().filter(we -> we.getRemindedTime() != 0)
             .sorted(SORT_BY_REMINDED_TIME_COMPARATOR).map(WordEntity::getWord).toList();
     return list.subList(0, Math.min(limit, list.size()));
   }
@@ -145,13 +147,18 @@ public class Repository {
   }
 
   private WordEntity setRemindedTime(WordEntity wordEntity) {
-    String currentTime = DATE_TIME_FORMATTER.format(Instant.now(Clock.system(CHICAGO_ZONE_ID)));
-    wordEntity.setRemindedTime(currentTime);
+    //TODO another stop-gap solution to handle duplicate remind times. Sleep before setting the remindedTime.
+    try {
+      Thread.sleep(2L);
+    } catch (InterruptedException e) {
+      throw new RuntimeException(e);
+    }
+    wordEntity.setRemindedTime(Instant.now().toEpochMilli());
     return wordEntity;
   }
 
   private WordEntity unsetRemindedTime(WordEntity wordEntity) {
-    wordEntity.setRemindedTime(null);
+    wordEntity.setRemindedTime(0);
     return wordEntity;
   }
 
@@ -160,38 +167,19 @@ public class Repository {
     return () -> new RuntimeException(w + " is absent.");
   }
 
-  private static Instant toDateRemindedTime(WordEntity w) {
-    return toInstant(w.getRemindedTime());
-  }
-
   private WordEntity stripWhiteSpaces(WordEntity we) {
-    String word = Optional.of(we).map(WordEntity::getWord).map(String::strip).map(String::toLowerCase).orElseThrow();
-    return new WordEntity(we.getId(), StringUtils.strip(word), we.getLookupTime(), we.getRemindedTime());
+    String word = Optional.of(we).map(WordEntity::getWord).map(StringUtils::strip).map(String::toLowerCase)
+            .orElseThrow();
+    return new WordEntity(word, we.getLookupTime(), we.getRemindedTime());
   }
 
   public void writeOverFile(String value) {
     fileService.writeFileExternalStorage(false, value);
   }
 
-  private static Instant toInstant(String instant) {
-    return Optional.ofNullable(instant).map(StringUtils::strip).filter(StringUtils::isNotBlank).map(Instant::parse)
-            .orElseThrow(() -> new RuntimeException("String 'instant' cannot be empty/null"));
-  }
-
-  private List<WordEntity> toWordEntities(String json) {
-    try {
-      if (StringUtils.isBlank(json)) return Collections.emptyList();
-      List<WordEntity> wordEntities = objectMapper.readValue(json, typeFactory.constructCollectionType(List.class,
-              WordEntity.class));
-      return wordEntities.stream().sorted(Comparator.comparing(WordEntity::getId)).toList();
-    } catch (JsonProcessingException e) {
-      throw new RuntimeException(e);
-    }
-  }
-
   private String getValuesAsString(Collection<WordEntity> values) {
     try {
-      return values.isEmpty() ? StringUtils.EMPTY : objectMapper.writeValueAsString(values);
+      return values.isEmpty() ? StringUtils.EMPTY : MAPPER.writer(getSchema()).writeValueAsString(values);
     } catch (JsonProcessingException e) {
       return ExceptionUtils.getStackTrace(e);
     }
@@ -213,19 +201,54 @@ public class Repository {
     }
     Completable.runAsync(() -> {
       try {
-        String json = StringUtils.strip((new String(fileService.readFileAsByte())));
-        toWordEntities(json).forEach(we -> inMemoryDb.put(we.getWord(), stripWhiteSpaces(we)));
+        readCsv().forEach(we -> inMemoryDb.put(we.getWord(), stripWhiteSpaces(we)));
         initialized = ObjectUtils.isNotEmpty(inMemoryDb);
-        lastId = inMemoryDb.values().stream().max(Comparator.comparing(WordEntity::getId)).map(WordEntity::getId)
-                .orElse(Integer.MIN_VALUE);
       } catch (Exception e) {
         Log.e(TAG, ExceptionUtils.getStackTrace(e));
       }
     });
   }
 
+  private List<WordEntity> readCsv() {
+    try (MappingIterator<WordEntity> iterator = MAPPER.readerFor(WordEntity.class).with(getSchema())
+            .readValues(fileService.readFileAsByte())) {
+      return iterator.readAll();
+    } catch (IOException e) {
+      Log.e(TAG, ExceptionUtils.getStackTrace(e));
+      return Collections.emptyList();
+    }
+  }
+
+  private static CsvSchema getSchema() {
+    return MAPPER.schemaFor(WordEntity.class).withHeader().withColumnSeparator(';');
+  }
+
   public boolean isReminded(String word) {
-    return Optional.ofNullable(word).map(inMemoryDb::get).map(WordEntity::getRemindedTime).map(StringUtils::isNotBlank)
-            .orElse(false);
+    WordEntity we = inMemoryDb.get(word);
+    return we != null && we.getRemindedTime() != 0;
+  }
+
+  private static CsvMapper getCSVMapper() {
+    CsvMapper mapper = new CsvMapper();
+    mapper.enable(CsvGenerator.Feature.STRICT_CHECK_FOR_QUOTING);
+    // 1. Allows empty text cells to be evaluated as a form of null
+    mapper.enable(DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT);
+    // 2. Tells Jackson: "When you see a null/empty cell for a primitive,
+    //    don't throw an error, just assign the Java primitive default (which is 0)"
+    mapper.disable(DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES);
+    mapper.enable(CsvParser.Feature.SKIP_EMPTY_LINES);
+    mapper.enable(CsvParser.Feature.TRIM_SPACES);
+    mapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+    return mapper;
+  }
+
+  public String getWordInfo(String word) {
+    WordEntity we = Optional.ofNullable(inMemoryDb.get(word)).orElseThrow(throwKeyNotFoundException(word));
+    return we.getWord() + System.lineSeparator() + convertMillisToReadableTime(we.getLookupTime()) +
+            System.lineSeparator() + convertMillisToReadableTime(we.getRemindedTime());
+  }
+
+  private String convertMillisToReadableTime(long time) {
+    return time == 0 ? StringUtils.EMPTY : DATE_TIME_FORMATTER.format(Instant.ofEpochMilli(time));
   }
 }

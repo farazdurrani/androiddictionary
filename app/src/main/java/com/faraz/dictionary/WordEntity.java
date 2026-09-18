@@ -2,34 +2,28 @@ package com.faraz.dictionary;
 
 import androidx.annotation.NonNull;
 
-import org.apache.commons.lang3.builder.EqualsBuilder;
-import org.apache.commons.lang3.builder.HashCodeBuilder;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
+import java.time.Instant;
+
+@JsonPropertyOrder({"word", "lookupTime", "remindedTime"})
 public class WordEntity {
 
-  private Integer id;
   private String word;
-  private String lookupTime;
-  private String remindedTime;
+  private long lookupTime;
+  @JsonInclude(JsonInclude.Include.NON_DEFAULT)
+  private long remindedTime;
 
   public WordEntity() {
     //DO NOT DELETE!
     //FOR JACKSON'S OBJECTMAPPER!
   }
 
-  public WordEntity(Integer id, String word, String lookupTime, String remindedTime) {
-    this.id = id;
+  public WordEntity(String word, long lookupTime, long remindedTime) {
     this.word = word;
-    this.lookupTime = lookupTime;
+    this.lookupTime = lookupTime == 0 ? Instant.now().toEpochMilli() : lookupTime;
     this.remindedTime = remindedTime;
-  }
-
-  public Integer getId() {
-    return id;
-  }
-
-  public void setId(Integer id) {
-    this.id = id;
   }
 
   public String getWord() {
@@ -40,19 +34,19 @@ public class WordEntity {
     this.word = word;
   }
 
-  public String getLookupTime() {
+  public long getLookupTime() {
     return lookupTime;
   }
 
-  public void setLookupTime(String lookupTime) {
+  public void setLookupTime(long lookupTime) {
     this.lookupTime = lookupTime;
   }
 
-  public String getRemindedTime() {
+  public long getRemindedTime() {
     return remindedTime;
   }
 
-  public void setRemindedTime(String remindedTime) {
+  public void setRemindedTime(long remindedTime) {
     this.remindedTime = remindedTime;
   }
 
@@ -60,21 +54,21 @@ public class WordEntity {
   public boolean equals(Object object) {
     if (this == object) return true;
     if (object == null || getClass() != object.getClass()) return false;
+
     WordEntity that = (WordEntity) object;
-    return new EqualsBuilder().append(id, that.id).append(word, that.word).isEquals();
+    return word.equals(that.word);
   }
 
   @Override
   public int hashCode() {
-    return new HashCodeBuilder(17, 37).append(id).append(word).toHashCode();
+    return word.hashCode();
   }
 
   @NonNull
   @Override
   public String toString() {
     return "WordEntity{" +
-            "id=" + id +
-            ", word='" + word + '\'' +
+            "word='" + word + '\'' +
             ", lookupTime='" + lookupTime + '\'' +
             ", remindedTime='" + remindedTime + '\'' +
             '}';
